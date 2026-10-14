@@ -8,13 +8,10 @@ COPY package.json package-lock.json ./
 RUN npm ci \
     && sha256sum package-lock.json | cut -d' ' -f1 > node_modules/.huella-package-lock
 
-# Al iniciar, reinstala las dependencias si package-lock.json cambió.
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 COPY . .
 
 EXPOSE 5173
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Al iniciar, reinstala las dependencias si package-lock.json cambió.
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["npm", "run", "dev"]
