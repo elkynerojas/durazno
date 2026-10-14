@@ -94,3 +94,114 @@ body,
     align-items: flex-start;
   }
 }
+
+.barra__acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.barra__usuario {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.boton-secundario {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+.cargando {
+  padding: 2rem;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+/* Inicio de sesión */
+.acceso {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 1rem;
+}
+
+.acceso__tarjeta {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  padding: 1.75rem 1.5rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-top: 4px solid var(--acento);
+  border-radius: 10px;
+}
+
+.acceso__tarjeta h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.acceso__subtitulo {
+  margin: 0.25rem 0 1.5rem;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.acceso__tarjeta label {
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.acceso__tarjeta input {
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.75rem;
+  /* 16px evita el zoom automático del navegador en Android/iOS. */
+  font-size: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+}
+
+.acceso__tarjeta input:focus {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+.acceso__tarjeta button[type='submit'] {
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--acento);
+  border: none;
+  border-radius: 6px;
+}
+
+.acceso__tarjeta button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.acceso__error {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--error);
+  background: #fdecea;
+  border-radius: 6px;
+}
+
+.acceso__estado {
+  margin-top: 1.25rem;
+  text-align: center;
+}

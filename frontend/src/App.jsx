@@ -1,19 +1,22 @@
-import EstadoApi from './components/EstadoApi'
-import MapaPredio from './components/MapaPredio'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+
+import { ProveedorSesion } from './features/auth/ProveedorSesion'
+import InicioSesion from './features/auth/InicioSesion'
+import RutaProtegida from './features/auth/RutaProtegida'
+import VistaMapa from './features/mapa/VistaMapa'
 
 export default function App() {
   return (
-    <div className="app">
-      <header className="barra">
-        <div>
-          <h1>Trampeo de moscas de la fruta</h1>
-          <p>Cultivo de durazno · Vereda Icota, Cácota</p>
-        </div>
-        <EstadoApi />
-      </header>
-      <main className="contenido">
-        <MapaPredio />
-      </main>
-    </div>
+    <ProveedorSesion>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<InicioSesion />} />
+          <Route element={<RutaProtegida />}>
+            <Route path="/mapa" element={<VistaMapa />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ProveedorSesion>
   )
 }
