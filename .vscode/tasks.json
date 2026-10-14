@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Docker: levantar todo",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Docker: detener",
+      "type": "shell",
+      "command": "docker compose stop",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: levantar API en modo depuración",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build api",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: logs de la API",
+      "type": "shell",
+      "command": "docker compose logs -f api",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "API: pruebas (pytest)",
+      "type": "shell",
+      "command": "docker compose exec api pytest",
+      "problemMatcher": [],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "API: lint (ruff)",
+      "type": "shell",
+      "command": "docker compose exec api ruff check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "API: aplicar migraciones",
+      "type": "shell",
+      "command": "docker compose exec api alembic upgrade head",
+      "problemMatcher": []
+    },
+    {
+      "label": "API: nueva migración",
+      "type": "shell",
+      "command": "docker compose exec api alembic revision --autogenerate -m \"${input:mensajeMigracion}\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: lint (oxlint)",
+      "type": "shell",
+      "command": "docker compose exec frontend npm run lint",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "mensajeMigracion",
+      "type": "promptString",
+      "description": "Descripción de la migración (p. ej. crear lote)"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# Superpone el modo depuración sobre la API:
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d api
+# Sin --reload: los puntos de interrupción solo funcionan en el proceso principal.
+# Reinicia la API tras cambiar código. Luego, en VS Code: "API: adjuntar depurador (Docker)".
+services:
+  api:
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m debugpy --listen 0.0.0.0:5678 -m uvicorn app.main:app
+             --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+    ports:
+      - "5678:5678"

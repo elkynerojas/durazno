@@ -1,0 +1,16 @@
+# API
+fastapi[standard]>=0.115,<1.0
+pydantic-settings>=2.6,<3.0
+
+# Base de datos y geoespacial
+sqlalchemy[asyncio]>=2.0.36,<2.1
+psycopg[binary]>=3.2.10,<4.0
+geoalchemy2>=0.17,<1.0
+shapely>=2.0,<3.0
+alembic>=1.14,<2.0
+
+# Identificadores ordenables en el tiempo (UUIDv7)
+uuid6>=2024.7.10
+
+# QR
+segno>=1.6,<2.0

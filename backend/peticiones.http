@@ -1,0 +1,10 @@
+# Peticiones de prueba para la extensión REST Client de VS Code.
+# Haz clic en "Send Request" sobre cada bloque.
+
+@api = http://localhost/api/v1
+
+### Estado de la API y PostGIS
+GET {{api}}/health
+
+### Especificación OpenAPI (contrato para la app móvil de la fase 2)
+GET {{api}}/openapi.json

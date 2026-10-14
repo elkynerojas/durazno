@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "ms-azuretools.vscode-containers",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+    "oxc.oxc-vscode",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-pg",
+    "humao.rest-client",
+    "redhat.vscode-yaml"
+  ]
+}

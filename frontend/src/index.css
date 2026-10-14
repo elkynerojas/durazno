@@ -1,0 +1,96 @@
+:root {
+  --fondo: #f6f5f1;
+  --superficie: #ffffff;
+  --texto: #1f2a1f;
+  --texto-suave: #5b665b;
+  --borde: #dcdcd2;
+  --acento: #c8642b; /* durazno */
+  --ok: #2e7d32;
+  --aviso: #b26a00;
+  --error: #b3261e;
+
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--superficie);
+  border-bottom: 3px solid var(--acento);
+}
+
+.barra h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.barra p {
+  margin: 0.1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.contenido {
+  flex: 1;
+  min-height: 0;
+}
+
+.mapa {
+  height: 100%;
+  width: 100%;
+}
+
+.estado {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  white-space: nowrap;
+}
+
+.estado--ok {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.estado--aviso {
+  color: var(--aviso);
+  border-color: var(--aviso);
+}
+
+.estado--error {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+@media (max-width: 600px) {
+  .barra {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

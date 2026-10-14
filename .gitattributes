@@ -1,0 +1,8 @@
+# Fin de línea LF en todo el repositorio. Evita errores de scripts y archivos
+# de configuración cuando el código se edita en Windows y se ejecuta en
+# contenedores Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
