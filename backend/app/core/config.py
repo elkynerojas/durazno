@@ -25,7 +25,14 @@ class Settings(BaseSettings):
     # Firma de los tokens JWT. El valor por defecto solo sirve en desarrollo.
     secret_key: str = "solo-desarrollo-cambie-esta-clave"  # noqa: S105 - ver validación
     jwt_algoritmo: str = "HS256"
-    token_minutos: int = 720
+    token_minutos: int = 15
+    renovacion_dias: int = 7
+    # Tope absoluto de una sesión, aunque se renueve: luego hay que volver a iniciar sesión.
+    sesion_max_dias: int = 30
+
+    # Límite de intentos fallidos de inicio de sesión por correo.
+    intentos_maximos: int = 5
+    intentos_ventana_minutos: int = 15
 
     # Orígenes permitidos para CORS, separados por coma.
     cors_origins: str = "http://localhost:5173"

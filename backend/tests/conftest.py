@@ -11,12 +11,20 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.api.v1.endpoints.auth import limite_intentos
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.main import app
 from app.models.usuario import Usuario
 from app.services.auth import hashear_clave
 from tests.utilidades import CLAVE
+
+
+@pytest.fixture(autouse=True)
+def _reiniciar_intentos():
+    limite_intentos.reiniciar()
+    yield
+    limite_intentos.reiniciar()
 
 
 @pytest.fixture
@@ -43,11 +51,11 @@ async def cliente(session: AsyncSession) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 def crear_usuario(session: AsyncSession) -> Callable[..., Awaitable[Usuario]]:
-    """Fábrica: `await crear_usuario("nombre", rol="agronomo", activo=True)`."""
+    """Fábrica: `await crear_usuario("correo@ejemplo.com", rol="agronomo", activo=True)`."""
 
-    async def _crear(nombre: str, rol: str = "tecnico", activo: bool = True) -> Usuario:
+    async def _crear(correo: str, rol: str = "tecnico", activo: bool = True) -> Usuario:
         usuario = Usuario(
-            nombre_usuario=nombre,
+            correo=correo,
             nombre_completo="Persona de Prueba",
             rol=rol,
             clave_hash=hashear_clave(CLAVE),

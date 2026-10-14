@@ -27,9 +27,9 @@ export function ProveedorSesion({ children }) {
     return () => window.removeEventListener(EVENTO_SESION_CERRADA, salir)
   }, [salir])
 
-  const entrar = useCallback(async (nombreUsuario, clave) => {
-    const { access_token } = await iniciarSesion(nombreUsuario, clave)
-    guardarToken(access_token)
+  const entrar = useCallback(async (correo, clave) => {
+    const { access_token, refresh_token } = await iniciarSesion(correo, clave)
+    guardarToken(access_token, refresh_token)
     setUsuario(await obtenerUsuarioActual())
   }, [])
 

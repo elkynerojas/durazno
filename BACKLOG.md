@@ -137,7 +137,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-05 · Iniciar sesión según el rol
 
-- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S1 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S1 · **Responsable:** Luis
 - **Historia:** Como usuario del sistema, quiero iniciar sesión con correo y contraseña, para acceder solo a lo que corresponde a mi rol.
 
 **Criterios de aceptación**
@@ -152,17 +152,22 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 - [x] `HU-05.1` [BD] Modelo usuario (rol, activo) y migración
 - [x] `HU-05.2` [API] Hash con pwdlib/Argon2 y emisión de tokens JWT
-- [ ] `HU-05.3` [API] Endpoints /auth/token, /auth/renovar y /auth/yo
-- [ ] `HU-05.4` [API] Dependencias UsuarioActual y requiere_rol
+- [x] `HU-05.3` [API] Endpoints /auth/token, /auth/renovar y /auth/yo
+- [x] `HU-05.4` [API] Dependencias UsuarioActual y requiere_rol
 - [x] `HU-05.5` [Web] Pantalla de inicio de sesión y rutas protegidas
-- [ ] `HU-05.6` [Pruebas] Login, token vencido y acceso por rol
-- [ ] `HU-05.7` [API] Límite de intentos fallidos en el inicio de sesión
+- [x] `HU-05.6` [Pruebas] Login, token vencido y acceso por rol
+- [x] `HU-05.7` [API] Límite de intentos fallidos en el inicio de sesión
 
-> Avance (commit 60ffa59): modelo usuario, Argon2, JWT, `/auth/login`, `/auth/yo` y pantalla de
-> inicio de sesión. Falta `/auth/renovar`, `requiere_rol` (403) y la prueba de acceso por rol.
-> Al implementar la renovación, bajar `TOKEN_MINUTOS` (hoy 720) a una duración corta.
-> Divergencia por resolver: el código usa `/auth/login` y `nombre_usuario`; esta historia dice
-> `/auth/token` y correo.
+> Inicio de sesión con correo en `POST /auth/token`; `/auth/renovar` con token de renovación
+> (acceso 15 min, renovación 7 días, tope absoluto de sesión 30 días vía `auth_time`; todo
+> configurable); `requiere_rol` en `app/api/deps.py` (403). Límite: 5 intentos fallidos por correo
+> en 15 min → 429 con `Retry-After`, contado antes de consultar la base (resiste ráfagas), con
+> tope de memoria. El contador vive en memoria de la API (se reinicia con ella y no se comparte
+> entre réplicas).
+> Pendientes de la auditoría, pasados a HU-08: bloqueo de cuentas ajenas por correo y rociado de
+> contraseñas sin límite por IP (HU-08.6); token de renovación en `localStorage` → cookie
+> `HttpOnly` y revocación de sesiones (HU-08.7). Para la fase 2: no cerrar la sesión cuando la
+> renovación falla por red (solo ante 401).
 
 ### HU-06 · Gestionar usuarios del predio
 
@@ -219,6 +224,8 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 - [ ] `HU-08.3` [DevOps] Proxy /api en Nginx y certificados Let's Encrypt
 - [ ] `HU-08.4` [DevOps] Copia diaria de la base y prueba de restauración
 - [ ] `HU-08.5` [DevOps] Cabeceras CSP y HSTS en el Nginx de producción
+- [ ] `HU-08.6` [DevOps] `limit_req` por IP en Nginx para `/api/v1/auth/` y `forwarded-allow-ips` restringido al proxy (bloqueo de cuentas ajenas y rociado de contraseñas, auditoría HU-05)
+- [ ] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05
 
 ## E2 · Lotes y trampas georreferenciados
 

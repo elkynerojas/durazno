@@ -50,7 +50,7 @@ docker compose exec db psql -U icota -d durazno_icota
 Pruebas E2E (Playwright, servicio `e2e` con perfil propio; no arranca con `up`):
 
 ```bash
-docker compose exec api python -m app.scripts.sembrar_e2e   # usuario E2E_USUARIO / E2E_CLAVE
+docker compose exec api python -m app.scripts.sembrar_e2e   # usuario E2E_CORREO / E2E_CLAVE
 docker compose --profile e2e run --rm e2e
 ```
 
@@ -74,11 +74,14 @@ La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose dow
 - **Peticiones:** el navegador entra a Vite (`:5173`), que redirige `/api` a `api:8000`
   (`frontend/vite.config.js`); por eso el frontend nunca usa URLs absolutas. Swagger y los
   clientes externos entran por nginx (`:80` → `api:8000`, `nginx/default.conf`).
-- **Sesión (frontend):** el token vive en `features/auth/sesion.js`; `api/client.js` lo envía en
-  cada petición y, ante un 401, lo borra y emite `EVENTO_SESION_CERRADA`; `ProveedorSesion` escucha
-  ese evento y `RutaProtegida` protege las vistas.
-- **Sesión (backend):** `UsuarioActualDep` (`app/api/deps.py`) decodifica el JWT y recarga el usuario
-  de la base en cada petición (debe estar activo y sin `deleted_at`).
+- **Sesión (frontend):** los tokens de acceso y de renovación viven en `features/auth/sesion.js`;
+  `api/client.js` envía el de acceso y, ante un 401, intenta una vez `/auth/renovar`; si falla, borra
+  la sesión y emite `EVENTO_SESION_CERRADA`; `ProveedorSesion` escucha ese evento y `RutaProtegida`
+  protege las vistas.
+- **Sesión (backend):** inicio con correo en `POST /auth/token` (acceso de 15 min + renovación de
+  7 días, límite de intentos en `services/intentos.py`). `UsuarioActualDep` (`app/api/deps.py`)
+  decodifica el JWT y recarga el usuario en cada petición (activo y sin `deleted_at`);
+  `requiere_rol("agronomo", ...)` añade el 403 por rol.
 - **Migraciones:** un modelo que no se importe en `app/models/__init__.py` no lo ve Alembic.
   `migrations/env.py` ignora las tablas de PostGIS y usa los ayudantes de GeoAlchemy2; `db/base.py`
   fija nombres predecibles de restricciones. El `server_default=uuidv7()` exige PostgreSQL 18; las

@@ -7,7 +7,7 @@ import { useSesion } from './useSesion'
 export default function InicioSesion() {
   const { usuario, cargando, entrar } = useSesion()
   const navegar = useNavigate()
-  const [nombreUsuario, setNombreUsuario] = useState('')
+  const [correo, setCorreo] = useState('')
   const [clave, setClave] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
@@ -20,10 +20,12 @@ export default function InicioSesion() {
     setEnviando(true)
     setError(null)
     try {
-      await entrar(nombreUsuario.trim(), clave)
+      await entrar(correo.trim(), clave)
       navegar('/mapa', { replace: true })
     } catch (e) {
-      setError(e.estado === 401 ? e.message : 'No se pudo iniciar sesión. Intente de nuevo.')
+      setError(
+        [401, 429].includes(e.estado) ? e.message : 'No se pudo iniciar sesión. Intente de nuevo.',
+      )
       setEnviando(false)
     }
   }
@@ -34,16 +36,17 @@ export default function InicioSesion() {
         <h1>Trampeo de moscas de la fruta</h1>
         <p className="acceso__subtitulo">Cultivo de durazno · Vereda Icota, Cácota</p>
 
-        <label htmlFor="usuario">Usuario</label>
+        <label htmlFor="correo">Correo</label>
         <input
-          id="usuario"
-          name="usuario"
+          id="correo"
+          name="correo"
+          type="email"
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck="false"
-          value={nombreUsuario}
-          onChange={(e) => setNombreUsuario(e.target.value)}
+          value={correo}
+          onChange={(e) => setCorreo(e.target.value)}
           required
           autoFocus
         />

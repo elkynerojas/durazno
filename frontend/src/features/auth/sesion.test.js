@@ -1,15 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { borrarToken, guardarToken, leerToken } from './sesion'
+import { borrarToken, guardarToken, leerToken, leerTokenRenovacion } from './sesion'
 
 describe('sesion', () => {
-  it('guarda, lee y borra el token en localStorage', () => {
-    guardarToken('abc')
+  it('guarda, lee y borra los tokens en localStorage', () => {
+    guardarToken('abc', 'def')
     expect(localStorage.getItem('icota.token')).toBe('abc')
+    expect(localStorage.getItem('icota.renovacion')).toBe('def')
     expect(leerToken()).toBe('abc')
+    expect(leerTokenRenovacion()).toBe('def')
 
     borrarToken()
     expect(leerToken()).toBeNull()
+    expect(leerTokenRenovacion()).toBeNull()
   })
 
   it('conserva el token en memoria si localStorage no está disponible', () => {
@@ -20,10 +23,12 @@ describe('sesion', () => {
       throw new Error('bloqueado')
     })
 
-    guardarToken('xyz')
+    guardarToken('xyz', 'uvw')
     expect(leerToken()).toBe('xyz')
+    expect(leerTokenRenovacion()).toBe('uvw')
 
     borrarToken()
     expect(leerToken()).toBeNull()
+    expect(leerTokenRenovacion()).toBeNull()
   })
 })

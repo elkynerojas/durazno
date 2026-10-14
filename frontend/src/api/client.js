@@ -1,4 +1,4 @@
-import { borrarToken, leerToken } from '../features/auth/sesion'
+import { borrarToken, guardarToken, leerToken, leerTokenRenovacion } from '../features/auth/sesion'
 
 // Cliente HTTP único para la API. Todas las rutas son relativas a /api/v1;
 // en desarrollo Vite las redirige al contenedor de la API (ver vite.config.js).
@@ -15,7 +15,29 @@ export class ErrorApi extends Error {
   }
 }
 
-export async function api(ruta, { metodo = 'GET', cuerpo, ...opciones } = {}) {
+// Una sola renovación en curso, compartida por las peticiones que reciban 401 a la vez.
+let renovacionEnCurso = null
+
+function renovarTokens() {
+  renovacionEnCurso ??= (async () => {
+    const renovacion = leerTokenRenovacion()
+    if (!renovacion) return false
+    const respuesta = await fetch(`${BASE}/auth/renovar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: renovacion }),
+    }).catch(() => null)
+    if (!respuesta?.ok) return false
+    const { access_token, refresh_token } = await respuesta.json()
+    guardarToken(access_token, refresh_token)
+    return true
+  })().finally(() => {
+    renovacionEnCurso = null
+  })
+  return renovacionEnCurso
+}
+
+export async function api(ruta, { metodo = 'GET', cuerpo, reintento = true, ...opciones } = {}) {
   const token = leerToken()
   const esFormulario = cuerpo instanceof URLSearchParams
   const headers = {}
@@ -31,6 +53,9 @@ export async function api(ruta, { metodo = 'GET', cuerpo, ...opciones } = {}) {
   const datos = respuesta.status === 204 ? null : await respuesta.json().catch(() => null)
   if (!respuesta.ok) {
     if (respuesta.status === 401 && token) {
+      if (reintento && (await renovarTokens())) {
+        return api(ruta, { metodo, cuerpo, reintento: false, ...opciones })
+      }
       borrarToken()
       window.dispatchEvent(new Event(EVENTO_SESION_CERRADA))
     }
@@ -41,11 +66,12 @@ export async function api(ruta, { metodo = 'GET', cuerpo, ...opciones } = {}) {
 
 export const obtenerSalud = () => api('/health')
 
-// La API usa el flujo OAuth2 "password": usuario y clave van como formulario.
-export const iniciarSesion = (usuario, clave) =>
-  api('/auth/login', {
+// La API usa el flujo OAuth2 "password": correo (en `username`) y clave van como formulario.
+export const iniciarSesion = (correo, clave) =>
+  api('/auth/token', {
     metodo: 'POST',
-    cuerpo: new URLSearchParams({ username: usuario, password: clave }),
+    reintento: false,
+    cuerpo: new URLSearchParams({ username: correo, password: clave }),
   })
 
 export const obtenerUsuarioActual = () => api('/auth/yo')

@@ -23,31 +23,31 @@ function renderizar(entrar) {
   )
 }
 
-async function ingresar(usuario, clave) {
+async function ingresar(correo, clave) {
   const usuarioEvento = userEvent.setup()
-  await usuarioEvento.type(screen.getByLabelText('Usuario'), usuario)
+  await usuarioEvento.type(screen.getByLabelText('Correo'), correo)
   await usuarioEvento.type(screen.getByLabelText('Contraseña'), clave)
   await usuarioEvento.click(screen.getByRole('button', { name: 'Ingresar' }))
 }
 
 describe('InicioSesion', () => {
-  it('entra con usuario sin espacios y va al mapa', async () => {
+  it('entra con el correo y va al mapa', async () => {
     const entrar = vi.fn().mockResolvedValue()
     renderizar(entrar)
 
-    await ingresar('  tecnico1 ', 'clave-segura')
+    await ingresar('tecnico1@ejemplo.com', 'clave-segura')
 
-    expect(entrar).toHaveBeenCalledWith('tecnico1', 'clave-segura')
+    expect(entrar).toHaveBeenCalledWith('tecnico1@ejemplo.com', 'clave-segura')
     expect(await screen.findByText('Vista del mapa')).toBeInTheDocument()
   })
 
   it('muestra el mensaje del servidor ante credenciales inválidas', async () => {
-    const entrar = vi.fn().mockRejectedValue(new ErrorApi(401, 'Usuario o contraseña incorrectos'))
+    const entrar = vi.fn().mockRejectedValue(new ErrorApi(401, 'Correo o contraseña incorrectos'))
     renderizar(entrar)
 
-    await ingresar('tecnico1', 'mala')
+    await ingresar('tecnico1@ejemplo.com', 'mala')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Usuario o contraseña incorrectos')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos')
     expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled()
   })
 
@@ -55,10 +55,20 @@ describe('InicioSesion', () => {
     const entrar = vi.fn().mockRejectedValue(new ErrorApi(500, 'Traza interna'))
     renderizar(entrar)
 
-    await ingresar('tecnico1', 'clave')
+    await ingresar('tecnico1@ejemplo.com', 'clave')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No se pudo iniciar sesión. Intente de nuevo.',
     )
+  })
+
+  it('muestra el aviso del servidor ante demasiados intentos', async () => {
+    const aviso = 'Demasiados intentos. Intente de nuevo en unos minutos.'
+    const entrar = vi.fn().mockRejectedValue(new ErrorApi(429, aviso))
+    renderizar(entrar)
+
+    await ingresar('tecnico1@ejemplo.com', 'clave')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(aviso)
   })
 })

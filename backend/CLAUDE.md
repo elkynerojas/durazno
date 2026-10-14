@@ -46,7 +46,7 @@ tests/
 
 - `docker compose exec api pytest --cov` (usa la base del contenedor; cada prueba corre en una
   transacción que se revierte).
-- Fixtures en `tests/conftest.py`: `session`, `cliente`, `crear_usuario(nombre, rol=, activo=)`;
+- Fixtures en `tests/conftest.py`: `session`, `cliente`, `crear_usuario(correo, rol=, activo=)`;
   `encabezados(usuario)` y `CLAVE` en `tests/utilidades.py`. Fixtures nuevas del dominio van ahí.
 - Casos mínimos por endpoint: 401, 403 por rol, 404, 409, 422, idempotencia por `id` y borrado lógico.
 - El cálculo de MTD se prueba con casos calculados a mano, incluido el caso `T × D = 0`.

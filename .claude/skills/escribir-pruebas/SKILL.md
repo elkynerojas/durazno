@@ -20,7 +20,7 @@ Primero revisa las pruebas y ayudas existentes para no duplicar:
 
 ## Backend (pytest)
 - Usa las fixtures de `conftest.py`: `session` (transacción revertida, no deja datos), `cliente`
-  (httpx contra la app) y `crear_usuario(nombre, rol=..., activo=...)`; `encabezados(usuario)` de
+  (httpx contra la app) y `crear_usuario(correo, rol=..., activo=...)`; `encabezados(usuario)` de
   `tests/utilidades.py` para el token. Crea fixtures nuevas del dominio (p. ej. `crear_lote`) en
   `conftest.py` cuando las use más de un archivo.
 - Casos mínimos por endpoint: éxito; 401 sin token; 403 con un rol sin permiso; 404 de un recurso
@@ -44,7 +44,7 @@ Primero revisa las pruebas y ayudas existentes para no duplicar:
 
 ## E2E (Playwright)
 - Solo flujos que crucen frontend + API + base. Selectores accesibles (`getByRole`, `getByLabel`).
-- El usuario de prueba lo crea `app.scripts.sembrar_e2e` (variables `E2E_USUARIO`, `E2E_CLAVE`).
+- El usuario de prueba lo crea `app.scripts.sembrar_e2e` (variables `E2E_CORREO`, `E2E_CLAVE`).
   Los datos que cree una prueba deben llevar un prefijo `e2e-` y borrarse (lógicamente) al final.
 
 ## Ejecutar

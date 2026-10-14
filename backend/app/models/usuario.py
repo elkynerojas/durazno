@@ -10,7 +10,7 @@ class Usuario(EntidadSincronizable, Base):
     __tablename__ = "usuario"
     __table_args__ = (CheckConstraint(f"rol IN {ROLES}", name="rol_valido"),)
 
-    nombre_usuario: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    correo: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
     nombre_completo: Mapped[str] = mapped_column(String(150), nullable=False)
     clave_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False)

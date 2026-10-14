@@ -103,7 +103,7 @@ services:
     command: ["npx", "playwright", "test"]
     environment:
       E2E_BASE_URL: http://frontend:5173
-      E2E_USUARIO: ${E2E_USUARIO:-e2e-agronomo}
+      E2E_CORREO: ${E2E_CORREO:-e2e-agronomo@example.com}
       E2E_CLAVE: ${E2E_CLAVE:-}
     volumes:
       - ./frontend:/app
