@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     postgres_host: str = "db"
     postgres_port: int = 5432
 
+    # Firma de los tokens JWT. El valor por defecto solo sirve en desarrollo.
+    secret_key: str = "solo-desarrollo-cambie-esta-clave"
+    jwt_algoritmo: str = "HS256"
+    token_minutos: int = 720
+
     # Orígenes permitidos para CORS, separados por coma.
     cors_origins: str = "http://localhost:5173"
 
