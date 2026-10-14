@@ -13,6 +13,13 @@ __pycache__/
 node_modules/
 dist/
 
+# Reportes de pruebas
+coverage/
+.coverage
+htmlcov/
+test-results/
+playwright-report/
+
 # Editores y sistema
 .idea/
 .DS_Store

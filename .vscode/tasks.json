@@ -57,6 +57,20 @@
       "type": "shell",
       "command": "docker compose exec frontend npm run lint",
       "problemMatcher": []
+    },
+    {
+      "label": "Frontend: pruebas (vitest)",
+      "type": "shell",
+      "command": "docker compose exec frontend npm test",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "E2E: pruebas (Playwright)",
+      "type": "shell",
+      "command": "docker compose exec api python -m app.scripts.sembrar_e2e && docker compose --profile e2e run --rm e2e",
+      "problemMatcher": [],
+      "group": "test"
     }
   ],
   "inputs": [

@@ -12,8 +12,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       TZ: America/Bogota
     ports:
-      # Expuesto al equipo anfitrión para clientes SQL de VS Code o QGIS.
-      - "${POSTGRES_PORT_HOST:-5432}:5432"
+      # Solo para clientes SQL o QGIS del mismo equipo; no se publica en la red.
+      - "127.0.0.1:${POSTGRES_PORT_HOST:-5432}:5432"
     volumes:
       # PostgreSQL 18 guarda los datos en /var/lib/postgresql/<versión>/...
       - pgdata:/var/lib/postgresql
@@ -84,7 +84,8 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      # pgAdmin corre sin contraseña maestra: solo accesible desde este equipo.
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./db/pgadmin/servers.json:/pgadmin4/servers.json:ro
@@ -92,7 +93,27 @@ services:
       db:
         condition: service_healthy
 
+  # Pruebas E2E con Playwright. No arranca con `up`; se ejecuta con:
+  #   docker compose --profile e2e run --rm e2e
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    profiles: ["e2e"]
+    working_dir: /app
+    entrypoint: ["sh", "/app/docker-entrypoint.sh"]
+    command: ["npx", "playwright", "test"]
+    environment:
+      E2E_BASE_URL: http://frontend:5173
+      E2E_USUARIO: ${E2E_USUARIO:-e2e-agronomo}
+      E2E_CLAVE: ${E2E_CLAVE:-}
+    volumes:
+      - ./frontend:/app
+      # node_modules propio: la imagen de Playwright es glibc y la del frontend, alpine.
+      - e2e_node_modules:/app/node_modules
+    depends_on:
+      - frontend
+
 volumes:
   pgdata:
   pgadmin_data:
   frontend_node_modules:
+  e2e_node_modules:

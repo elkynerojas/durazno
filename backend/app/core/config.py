@@ -1,6 +1,10 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+CLAVES_DE_EJEMPLO = {"solo-desarrollo-cambie-esta-clave", "cambie_esta_clave_secreta"}
+ENTORNOS_LOCALES = {"development", "test"}
 
 
 class Settings(BaseSettings):
@@ -13,18 +17,29 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     postgres_user: str = "icota"
-    postgres_password: str = "icota"
+    postgres_password: str = "icota"  # noqa: S105 - solo desarrollo; se toma de .env
     postgres_db: str = "durazno_icota"
     postgres_host: str = "db"
     postgres_port: int = 5432
 
     # Firma de los tokens JWT. El valor por defecto solo sirve en desarrollo.
-    secret_key: str = "solo-desarrollo-cambie-esta-clave"
+    secret_key: str = "solo-desarrollo-cambie-esta-clave"  # noqa: S105 - ver validación
     jwt_algoritmo: str = "HS256"
     token_minutos: int = 720
 
     # Orígenes permitidos para CORS, separados por coma.
     cors_origins: str = "http://localhost:5173"
+
+    @model_validator(mode="after")
+    def _exigir_clave_segura(self) -> "Settings":
+        if self.environment not in ENTORNOS_LOCALES and (
+            self.secret_key in CLAVES_DE_EJEMPLO or len(self.secret_key) < 32
+        ):
+            raise ValueError(
+                "SECRET_KEY insegura: fuera de desarrollo use al menos 32 caracteres "
+                "aleatorios (openssl rand -hex 32)."
+            )
+        return self
 
     @property
     def database_url(self) -> str:

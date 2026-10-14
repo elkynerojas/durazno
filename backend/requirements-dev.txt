@@ -2,6 +2,8 @@
 
 pytest>=8.3
 pytest-asyncio>=0.24
+pytest-cov>=6.0
 httpx>=0.28
 ruff>=0.8
+pip-audit>=2.7
 debugpy>=1.8
