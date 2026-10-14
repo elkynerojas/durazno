@@ -26,7 +26,7 @@ docker compose up -d --build
 | Aplicativo web     | http://localhost:5173        | React + Vite con recarga en caliente |
 | API (Swagger)      | http://localhost/docs   | Documentación OpenAPI |
 | pgAdmin            | http://localhost:5050        | El servidor ya aparece registrado; pide la clave de `POSTGRES_PASSWORD` |
-| PostgreSQL/PostGIS | `localhost:5432`             | Para SQLTools, QGIS u otros clientes |
+| PostgreSQL/PostGIS | `localhost:5432`             | Para SQLTools, QGIS u otros clientes (solo desde este equipo) |
 
 En la barra superior del aplicativo debe aparecer **API ok · PostGIS 3.6…**; eso confirma que los
 cuatro contenedores se comunican.
@@ -46,7 +46,10 @@ cuatro contenedores se comunican.
 docker compose up -d                       # levantar
 docker compose stop                        # detener (conserva los datos)
 docker compose logs -f api                 # ver logs
-docker compose exec api pytest             # pruebas del backend
+docker compose exec api pytest --cov       # pruebas del backend
+docker compose exec frontend npm test      # pruebas del frontend (Vitest)
+docker compose exec api python -m app.scripts.sembrar_e2e   # usuario de pruebas E2E
+docker compose --profile e2e run --rm e2e  # pruebas E2E (Playwright)
 docker compose exec api alembic revision --autogenerate -m "crear lote"
 docker compose exec api alembic upgrade head
 docker compose exec frontend npm install <paquete>
@@ -68,7 +71,10 @@ Las mismas acciones están en VS Code como tareas (`Ctrl+Shift+P` → *Tasks: Ru
   convenciones. Mantenerlo actualizado cuando cambie una decisión de diseño.
 - `.claude/settings.json`: permisos compartidos (permite pruebas y linters; pide confirmación
   para migraciones y `git push`; bloquea leer `.env` y borrar volúmenes).
-- Skills del proyecto: `/nuevo-modulo <entidad>` y `/revisar-mtd`.
+- `BACKLOG.md`: historias de usuario, criterios de aceptación y sprints; Claude trabaja a partir de él.
+- Skills y agentes del proyecto en `.claude/skills/` y `.claude/agents/`; la tabla de cuándo usar
+  cada uno está en `CLAUDE.md` (sección "Flujo de trabajo con IA"). Las más usadas:
+  `/estado-sprint`, `/trabajar-hu HU-xx` y `/cerrar-hu HU-xx`.
 - Preferencias personales: `CLAUDE.local.md` y `.claude/settings.local.json` (no se suben a Git).
 
 ## Solución de problemas

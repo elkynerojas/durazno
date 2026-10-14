@@ -1,4 +1,8 @@
-# Durazno Icota — Trazabilidad geolocalizada del trampeo de moscas de la fruta
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Durazno Icota — Trazabilidad geolocalizada del trampeo de moscas de la fruta
 
 Aplicativo web para registrar y georreferenciar los lotes y las trampas de un predio
 productor de durazno, generar un código QR por trampa, visualizar el predio en un mapa,
@@ -18,7 +22,9 @@ según el Manual Técnico de Trampeo del ICA (Plan Nacional de Moscas de la Frut
 | `db`       | PostgreSQL 18 + PostGIS 3.6                     | `localhost:5432`                  |
 | `api`      | Python 3.13, FastAPI, SQLAlchemy 2 async, GeoAlchemy2, Alembic, psycopg 3 | http://localhost/docs |
 | `frontend` | Node 22, React 19, Vite, Leaflet + react-leaflet, Leaflet-Geoman | http://localhost:5173 |
+| `nginx`    | Proxy inverso: publica la API (la API no tiene puerto propio en el equipo) | http://localhost (`:80`) |
 | `pgadmin`  | pgAdmin 4 (web)                                 | http://localhost:5050             |
+| `e2e`      | Playwright (perfil `e2e`; no arranca con `up`)  | —                                 |
 
 Contexto específico de cada parte: @backend/CLAUDE.md y @frontend/CLAUDE.md.
 
@@ -30,18 +36,55 @@ Todo se ejecuta dentro de los contenedores; no se requiere Python ni Node instal
 docker compose up -d --build          # levantar todo (primera vez: cp .env.example .env)
 docker compose ps                     # estado de los servicios
 docker compose logs -f api            # logs de un servicio
-docker compose exec api pytest        # pruebas del backend
+docker compose exec api pytest --cov  # pruebas del backend con cobertura
 docker compose exec api ruff check . && docker compose exec api ruff format .
 docker compose exec api alembic revision --autogenerate -m "descripcion"
 docker compose exec api alembic upgrade head
 docker compose exec frontend npm run lint
+docker compose exec frontend npm test                # Vitest
 docker compose exec frontend npm install <paquete>
 docker compose exec frontend npm ci                  # automático al iniciar si cambió package-lock.json
 docker compose exec db psql -U icota -d durazno_icota
 ```
 
+Pruebas E2E (Playwright, servicio `e2e` con perfil propio; no arranca con `up`):
+
+```bash
+docker compose exec api python -m app.scripts.sembrar_e2e   # usuario E2E_USUARIO / E2E_CLAVE
+docker compose --profile e2e run --rm e2e
+```
+
+Una sola prueba:
+
+```bash
+docker compose exec api pytest tests/test_auth.py::test_login_clave_incorrecta -q
+docker compose exec frontend npx vitest run src/api/client.test.js -t "cierra la sesión"
+docker compose --profile e2e run --rm e2e npx playwright test e2e/sesion.spec.js
+```
+
+Depuración de la API: `docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d api`
+levanta debugpy en el puerto 5678 **sin recarga automática** (reiniciar la API tras cada cambio);
+luego en VS Code "API: adjuntar depurador (Docker)".
+
 La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose down -v`
 (borra la base de datos) sin que el usuario lo pida explícitamente.
+
+## Cómo encaja todo
+
+- **Peticiones:** el navegador entra a Vite (`:5173`), que redirige `/api` a `api:8000`
+  (`frontend/vite.config.js`); por eso el frontend nunca usa URLs absolutas. Swagger y los
+  clientes externos entran por nginx (`:80` → `api:8000`, `nginx/default.conf`).
+- **Sesión (frontend):** el token vive en `features/auth/sesion.js`; `api/client.js` lo envía en
+  cada petición y, ante un 401, lo borra y emite `EVENTO_SESION_CERRADA`; `ProveedorSesion` escucha
+  ese evento y `RutaProtegida` protege las vistas.
+- **Sesión (backend):** `UsuarioActualDep` (`app/api/deps.py`) decodifica el JWT y recarga el usuario
+  de la base en cada petición (debe estar activo y sin `deleted_at`).
+- **Migraciones:** un modelo que no se importe en `app/models/__init__.py` no lo ve Alembic.
+  `migrations/env.py` ignora las tablas de PostGIS y usa los ayudantes de GeoAlchemy2; `db/base.py`
+  fija nombres predecibles de restricciones. El `server_default=uuidv7()` exige PostgreSQL 18; las
+  extensiones se crean en `db/init/01-extensiones.sql` (solo al crear el volumen).
+- **Pruebas del backend:** necesitan `db` arriba; usan la base de desarrollo dentro de una
+  transacción que se revierte.
 
 ## Dominio
 
@@ -110,14 +153,63 @@ D = días promedio de exposición de las trampas
 - Mensajes al usuario en español. Zona horaria de presentación: America/Bogota.
 - Cambios pequeños y verificables. Ejecutar pruebas y linters antes de dar algo por terminado.
 
+## Flujo de trabajo con IA
+
+`BACKLOG.md` es la fuente única del alcance: épicas, historias (`HU-xx`) y sprints S0–S5. Léelo
+antes de implementar; los **criterios de aceptación** de cada historia son la definición de terminado.
+
+- Una historia a la vez, en el orden del sprint actual. Nada fuera del backlog sin preguntar;
+  las de prioridad *Podría* solo si se piden.
+- Rama `hu-xx-slug` (p. ej. `hu-09-poligono-lote`); commits `HU-xx: <resumen en infinitivo>`.
+- Marca cada tarea `- [x]` al terminarla y actualiza el estado (`Por hacer` → `En curso` →
+  `En revisión` → `Hecho`). Recuerda al usuario actualizar `Backlog_Durazno_Icota.xlsx`.
+- Si un criterio choca con este archivo o con el código existente, detente y pregunta.
+
+| Skill | Cuándo |
+|---|---|
+| `/estado-sprint` | Ver avance del sprint y qué sigue. |
+| `/trabajar-hu HU-xx` | Arrancar o continuar una historia de punta a punta. |
+| `/cerrar-hu HU-xx` | Verificar criterios y convenciones antes de pasarla a revisión. |
+| `/nuevo-modulo` | Entidad del backend: modelo, migración, esquemas, endpoints y pruebas. |
+| `/nueva-vista-mapa` | Vista o capa del frontend con react-leaflet y Geoman. |
+| `/revisar-mtd` | Cualquier código del cálculo o historial MTD. |
+| `/documentar-api` | Completar OpenAPI y exportar `openapi.json` (HU-31). |
+| `/escribir-pruebas` | Pruebas pytest, Vitest o Playwright de un archivo, módulo o HU. |
+| `/auditar-seguridad` | ruff `S`, pip-audit, npm audit, gitleaks y revisión de seguridad. |
+
+| Agente | Cuándo |
+|---|---|
+| `experto-geoespacial` | Antes de escribir consultas o validaciones espaciales. |
+| `revisor-convenciones` | Revisar un diff contra estas convenciones (antes de commit). |
+| `verificador-criterios` | Mapear los criterios de una HU a código, pruebas y resultados. |
+| `auditor-seguridad` | Revisar autenticación, permisos, archivos o datos personales (OWASP API). |
+| `redactor-tecnico` | Tareas [Doc] (SRS, diagramas, guías, manual), solo si se piden. Escribe en `docs/`. |
+
 ## Fuera de alcance (no implementar salvo que se pida)
 
 - App móvil, trabajo sin conexión y sincronización (fase 2; solo dejar la API preparada).
 - Múltiples predios o clientes (multi-tenancy).
 - Registro fenológico, de enfermedades u hongos, y variables agroclimáticas (trabajo futuro).
 
+## Pruebas
+
+- Toda tarea [API] o [Web] se entrega con sus pruebas; una historia no se cierra con pruebas en rojo.
+- Backend: pytest con fixtures de `backend/tests/conftest.py` (transacción revertida, no deja datos).
+- Frontend: Vitest + Testing Library junto a cada archivo (`*.test.jsx`), con la API simulada.
+- E2E: Playwright en `frontend/e2e/`, perfil de teléfono Android, solo flujos completos.
+- Detalle y casos mínimos por endpoint: skill `/escribir-pruebas`.
+
 ## Seguridad
 
-- No leer ni modificar `.env`; usar `.env.example` como referencia.
+- No leer ni modificar `.env`; usar `.env.example` como referencia. Nunca secretos en el código.
 - Datos personales del personal técnico: Ley 1581 de 2012 (habeas data). No exponerlos en
   endpoints públicos ni en logs.
+- Todo endpoint del dominio exige sesión y rol; los esquemas de entrada no aceptan campos
+  privilegiados (`rol`, `activo`, `clave_hash`, `deleted_at`) salvo en los endpoints del rol que
+  los administra (p. ej. usuarios, HU-06). SQL siempre con parámetros.
+- Fuera de `development`/`test` la API no arranca con una `SECRET_KEY` débil.
+- PostgreSQL y pgAdmin solo escuchan en `127.0.0.1`; nginx envía cabeceras de seguridad
+  (CSP y HSTS llegan con HTTPS en HU-08).
+- Ruff incluye las reglas de seguridad `S` (bandit): un `# noqa: S…` siempre con su motivo.
+- Antes de cerrar historias que toquen autenticación, permisos, archivos o datos personales:
+  agente `auditor-seguridad` o `/auditar-seguridad`.

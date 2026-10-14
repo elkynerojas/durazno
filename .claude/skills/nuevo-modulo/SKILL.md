@@ -7,6 +7,8 @@ argument-hint: [entidad] [descripción de campos]
 Crea el módulo **$ARGUMENTS** siguiendo `CLAUDE.md` y `backend/CLAUDE.md`.
 
 Antes de escribir código:
+0. Ubica en `BACKLOG.md` la historia que pide este módulo: sus criterios de aceptación definen
+   campos, validaciones y pruebas. Si no hay historia, pregunta antes de seguir.
 1. Lee `backend/app/db/base.py` y los modelos existentes en `backend/app/models/`.
 2. Propón en una lista breve los campos, tipos, geometría (si aplica), relaciones y
    restricciones, y los endpoints. Si algún campo no está claro (p. ej. campos del formulario
@@ -23,9 +25,13 @@ Luego, en este orden:
 4. Lógica no trivial en `backend/app/services/<entidad>.py`.
 5. Router en `backend/app/api/v1/endpoints/<grupo>.py`, registrado en `router.py`: listar
    (filtrando `deleted_at`), obtener, crear (idempotente por `id`), actualizar y borrado lógico.
-   Cada endpoint con `summary` y respuestas de error documentadas.
+   Cada endpoint con `summary` y respuestas de error documentadas. Protege con `UsuarioActualDep`
+   (`backend/app/api/deps.py`) y restringe por rol según la historia (técnico registra, agrónomo
+   administra, productor consulta).
 6. Pruebas en `backend/tests/`, incluidas las validaciones geoespaciales (polígono inválido,
-   trampa fuera de su lote).
+   trampa fuera de su lote), idempotencia por `id`, borrado lógico y acceso por rol (401/403).
+   Para consultas espaciales no triviales consulta antes al agente `experto-geoespacial`.
 7. Ejecuta `docker compose exec api ruff check .` y `docker compose exec api pytest`.
 
-Termina con un resumen de lo creado y lo que queda pendiente.
+Marca en `BACKLOG.md` las tareas de la historia que quedaron hechas y termina con una línea de
+lo creado y lo que queda pendiente.

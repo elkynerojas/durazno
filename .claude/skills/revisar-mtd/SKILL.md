@@ -11,12 +11,16 @@ de una especie en el periodo, T = trampas revisadas y D = días promedio de expo
 Verifica:
 1. Se calcula por especie o tipo de trampa (Jackson/*C. capitata* separado de
    McPhail/*Anastrepha*), nunca mezclado.
-2. Solo cuentan trampas activas y lecturas sin `deleted_at`.
+2. Solo cuentan trampas activas y lecturas sin `deleted_at`; las lecturas `rechazada` se excluyen
+   (HU-26).
 3. Los días de exposición salen de la lectura (fecha de revisión menos la de la revisión o
    el cebado anterior), no se asumen.
 4. `T × D = 0` devuelve `null`, sin dividir por cero.
 5. El consolidado es a nivel de predio; los historiales por lote y por trampa son de consulta.
 6. Redondeo: el valor se guarda sin redondear; se redondea solo al presentar (4 decimales).
+7. El resultado expone M, T y D usados junto al MTD (HU-28), agrupado por especie y semana ISO
+   (ojo con los años de 53 semanas). `calcular_mtd` vive en `backend/app/services/mtd.py` como
+   función pura, sin acceso a la base.
 
 Pruebas mínimas (crea las que falten en `backend/tests/test_mtd.py`), cada una con el cálculo a
 mano en un comentario:
@@ -25,5 +29,6 @@ mano en un comentario:
 - Caso sin trampas revisadas → `null`.
 - Caso con dos especies → dos MTD independientes.
 - Caso con días de exposición distintos entre trampas → usa el promedio.
+- Caso con una lectura rechazada → no suma en M ni en T.
 
 Ejecuta `docker compose exec api pytest tests/test_mtd.py` y reporta el resultado.
