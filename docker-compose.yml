@@ -58,6 +58,10 @@ services:
   frontend:
     build: ./frontend
     restart: unless-stopped
+    # Instala dependencias si cambió package-lock.json y arranca Vite. Se ejecuta desde
+    # el código montado para que funcione aunque la imagen no se haya reconstruido.
+    entrypoint: ["sh", "/app/docker-entrypoint.sh"]
+    command: ["npm", "run", "dev"]
     environment:
       VITE_API_PROXY: http://api:8000
       VITE_USE_POLLING: ${VITE_USE_POLLING:-true}
