@@ -36,7 +36,7 @@ docker compose exec api alembic revision --autogenerate -m "descripcion"
 docker compose exec api alembic upgrade head
 docker compose exec frontend npm run lint
 docker compose exec frontend npm install <paquete>
-docker compose exec frontend npm ci                  # tras un git pull que cambie package-lock.json
+docker compose exec frontend npm ci                  # automático al iniciar si cambió package-lock.json
 docker compose exec db psql -U icota -d durazno_icota
 ```
 
