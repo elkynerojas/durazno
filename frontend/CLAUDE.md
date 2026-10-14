@@ -32,7 +32,7 @@ src/
 docker compose exec frontend npm run lint
 docker compose exec frontend npm run build
 docker compose exec frontend npm install <paquete>
-docker compose exec frontend npm ci                  # tras un git pull que cambie package-lock.json
+docker compose exec frontend npm ci                  # automático al iniciar si cambió package-lock.json
 ```
 
 `node_modules` vive en un volumen de Docker (no en tu carpeta), por eso los paquetes se instalan

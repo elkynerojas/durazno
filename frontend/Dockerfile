@@ -5,10 +5,16 @@ WORKDIR /app
 # Las dependencias se instalan en la imagen; docker-compose monta el código
 # encima pero conserva node_modules en un volumen propio del contenedor.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci \
+    && sha256sum package-lock.json | cut -d' ' -f1 > node_modules/.huella-package-lock
+
+# Al iniciar, reinstala las dependencias si package-lock.json cambió.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY . .
 
 EXPOSE 5173
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["npm", "run", "dev"]
