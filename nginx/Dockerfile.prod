@@ -13,7 +13,7 @@ FROM nginx:1.27-alpine
 RUN apk add --no-cache openssl
 COPY --from=compilacion /app/dist /usr/share/nginx/html
 COPY nginx/prod/default.conf.template /etc/nginx/templates/default.conf.template
-COPY nginx/prod/seguridad.conf nginx/prod/seguridad-docs.conf nginx/prod/proxy-api.conf /etc/nginx/snippets/
+COPY nginx/prod/seguridad.conf nginx/prod/proxy-api.conf /etc/nginx/snippets/
 COPY nginx/prod/certificado.sh /usr/local/bin/certificado.sh
 COPY nginx/prod/40-certificado.sh nginx/prod/50-recargar.sh /docker-entrypoint.d/
 RUN chmod +x /usr/local/bin/certificado.sh /docker-entrypoint.d/40-certificado.sh \

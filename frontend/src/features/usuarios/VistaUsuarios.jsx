@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 
 import { actualizarUsuario, listarUsuarios } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
@@ -10,7 +11,8 @@ import { ROLES } from './roles'
 const porNombre = (a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')
 
 export default function VistaUsuarios() {
-  const { usuario: actual } = useSesion()
+  const { usuario: actual, salir } = useSesion()
+  const navegar = useNavigate()
   const [usuarios, setUsuarios] = useState(null)
   const [error, setError] = useState(null)
   // null: lista; 'nuevo': crear; objeto: editar ese usuario.
@@ -54,7 +56,15 @@ export default function VistaUsuarios() {
               key={edicion === 'nuevo' ? 'nuevo' : edicion.id}
               usuario={edicion === 'nuevo' ? null : edicion}
               esPropio={edicion !== 'nuevo' && edicion.id === actual.id}
-              alGuardar={(guardado) => {
+              alGuardar={(guardado, { claveCambiada } = {}) => {
+                if (claveCambiada) {
+                  navegar('/', {
+                    replace: true,
+                    state: { aviso: 'Contraseña cambiada. Ingrese con la nueva contraseña.' },
+                  })
+                  salir()
+                  return
+                }
                 reemplazar(guardado)
                 setEdicion(null)
               }}

@@ -11,7 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.api.v1.endpoints.auth import limite_intentos
+from app.api.v1.endpoints.auth import limite_cuenta, limite_intentos
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.main import app
@@ -23,8 +23,10 @@ from tests.utilidades import CLAVE
 @pytest.fixture(autouse=True)
 def _reiniciar_intentos():
     limite_intentos.reiniciar()
+    limite_cuenta.reiniciar()
     yield
     limite_intentos.reiniciar()
+    limite_cuenta.reiniciar()
 
 
 @pytest.fixture

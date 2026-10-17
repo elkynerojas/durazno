@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { guardarToken, leerToken, leerTokenRenovacion } from '../features/auth/sesion'
+import { guardarToken, leerToken } from '../features/auth/sesion'
 import { respuestaBinaria, respuestaJson, simularFetch } from '../test/utilidades'
-import { api, ErrorApi, EVENTO_SESION_CERRADA, iniciarSesion } from './client'
+import {
+  api,
+  cerrarSesion,
+  ErrorApi,
+  EVENTO_SESION_CERRADA,
+  iniciarSesion,
+  restaurarSesion,
+} from './client'
 
 describe('cliente de la API', () => {
   it('usa rutas relativas a /api/v1 y envía el token de la sesión', async () => {
@@ -41,7 +48,10 @@ describe('cliente de la API', () => {
 
   it('cierra la sesión cuando la API rechaza el token y no hay renovación', async () => {
     guardarToken('vencido')
-    simularFetch(respuestaJson(401, { detail: 'Sesión inválida o expirada' }))
+    simularFetch(
+      respuestaJson(401, { detail: 'Sesión inválida o expirada' }),
+      respuestaJson(401, { detail: 'Sesión inválida o expirada' }),
+    )
     const alCerrar = vi.fn()
     window.addEventListener(EVENTO_SESION_CERRADA, alCerrar)
 
@@ -53,25 +63,27 @@ describe('cliente de la API', () => {
   })
 
   it('renueva el token tras un 401 y repite la petición', async () => {
-    guardarToken('vencido', 'renovacion-1')
+    guardarToken('vencido')
     const fetchSimulado = simularFetch(
       respuestaJson(401, { detail: 'Sesión inválida o expirada' }),
-      respuestaJson(200, { access_token: 'nuevo', refresh_token: 'renovacion-2' }),
+      respuestaJson(200, { access_token: 'nuevo', refresh_token: null }),
       respuestaJson(200, { correo: 'a@ejemplo.com' }),
     )
 
     await expect(api('/auth/yo')).resolves.toEqual({ correo: 'a@ejemplo.com' })
 
+    // La renovación va sin cuerpo: el navegador envía la cookie HttpOnly.
     const [urlRenovar, opcionesRenovar] = fetchSimulado.mock.calls[1]
     expect(urlRenovar).toBe('/api/v1/auth/renovar')
-    expect(JSON.parse(opcionesRenovar.body)).toEqual({ refresh_token: 'renovacion-1' })
+    expect(opcionesRenovar.body).toBeUndefined()
+    expect(opcionesRenovar.credentials).toBe('same-origin')
     expect(fetchSimulado.mock.calls[2][1].headers.Authorization).toBe('Bearer nuevo')
     expect(leerToken()).toBe('nuevo')
-    expect(leerTokenRenovacion()).toBe('renovacion-2')
+    expect(localStorage.length).toBe(0)
   })
 
   it('comparte una sola renovación entre peticiones simultáneas', async () => {
-    guardarToken('vencido', 'renovacion-1')
+    guardarToken('vencido')
     const fetchSimulado = simularFetch(
       respuestaJson(401, {}),
       respuestaJson(401, {}),
@@ -87,7 +99,7 @@ describe('cliente de la API', () => {
   })
 
   it('cierra la sesión si la renovación falla', async () => {
-    guardarToken('vencido', 'renovacion-vencida')
+    guardarToken('vencido')
     const fetchSimulado = simularFetch(respuestaJson(401, {}), respuestaJson(401, {}))
     const alCerrar = vi.fn()
     window.addEventListener(EVENTO_SESION_CERRADA, alCerrar)
@@ -97,7 +109,7 @@ describe('cliente de la API', () => {
     expect(error.estado).toBe(401)
     expect(fetchSimulado).toHaveBeenCalledTimes(2)
     expect(alCerrar).toHaveBeenCalledOnce()
-    expect(leerTokenRenovacion()).toBeNull()
+    expect(leerToken()).toBeNull()
     window.removeEventListener(EVENTO_SESION_CERRADA, alCerrar)
   })
 
@@ -113,7 +125,7 @@ describe('cliente de la API', () => {
   })
 
   it('renueva el token también en descargas binarias', async () => {
-    guardarToken('vencido', 'renovacion-1')
+    guardarToken('vencido')
     simularFetch(
       respuestaJson(401, {}),
       respuestaJson(200, { access_token: 'nuevo', refresh_token: 'renovacion-2' }),
@@ -121,5 +133,25 @@ describe('cliente de la API', () => {
     )
 
     await expect(api('/trampas/t-1/qr.png', { binario: true })).resolves.toBeInstanceOf(Blob)
+  })
+
+  it('recupera la sesión con la cookie al abrir la página', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(200, { access_token: 'recuperado' }))
+    await expect(restaurarSesion()).resolves.toBe(true)
+    expect(fetchSimulado.mock.calls[0][0]).toBe('/api/v1/auth/renovar')
+    expect(leerToken()).toBe('recuperado')
+  })
+
+  it('sin cookie no hay sesión que recuperar', async () => {
+    simularFetch(respuestaJson(401, { detail: 'Sesión inválida o expirada' }))
+    await expect(restaurarSesion()).resolves.toBe(false)
+    expect(leerToken()).toBeNull()
+  })
+
+  it('al salir pide al servidor borrar la cookie', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(204, null))
+    await cerrarSesion()
+    expect(fetchSimulado.mock.calls[0][0]).toBe('/api/v1/auth/salir')
+    expect(fetchSimulado.mock.calls[0][1].method).toBe('POST')
   })
 })

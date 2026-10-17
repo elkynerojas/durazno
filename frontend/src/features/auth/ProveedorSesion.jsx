@@ -1,35 +1,45 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { EVENTO_SESION_CERRADA, iniciarSesion, obtenerUsuarioActual } from '../../api/client'
-import { borrarToken, guardarToken, leerToken } from './sesion'
+import {
+  EVENTO_SESION_CERRADA,
+  cerrarSesion,
+  iniciarSesion,
+  obtenerUsuarioActual,
+  restaurarSesion,
+} from '../../api/client'
+import { borrarToken, guardarToken } from './sesion'
 import { ContextoSesion } from './useSesion'
 
 export function ProveedorSesion({ children }) {
   const [usuario, setUsuario] = useState(null)
-  const [cargando, setCargando] = useState(() => Boolean(leerToken()))
+  // La cookie de renovación no se puede leer: siempre se intenta recuperar la sesión al abrir.
+  const [cargando, setCargando] = useState(true)
 
-  const salir = useCallback(() => {
+  const olvidar = useCallback(() => {
     borrarToken()
     setUsuario(null)
   }, [])
 
-  // Recupera la sesión guardada al recargar la página.
-  useEffect(() => {
-    if (!leerToken()) return
-    obtenerUsuarioActual()
-      .then(setUsuario)
-      .catch(salir)
-      .finally(() => setCargando(false))
-  }, [salir])
+  const salir = useCallback(() => {
+    olvidar()
+    cerrarSesion()
+  }, [olvidar])
 
   useEffect(() => {
-    window.addEventListener(EVENTO_SESION_CERRADA, salir)
-    return () => window.removeEventListener(EVENTO_SESION_CERRADA, salir)
-  }, [salir])
+    restaurarSesion()
+      .then((recuperada) => (recuperada ? obtenerUsuarioActual().then(setUsuario) : null))
+      .catch(olvidar)
+      .finally(() => setCargando(false))
+  }, [olvidar])
+
+  useEffect(() => {
+    window.addEventListener(EVENTO_SESION_CERRADA, olvidar)
+    return () => window.removeEventListener(EVENTO_SESION_CERRADA, olvidar)
+  }, [olvidar])
 
   const entrar = useCallback(async (correo, clave) => {
-    const { access_token, refresh_token } = await iniciarSesion(correo, clave)
-    guardarToken(access_token, refresh_token)
+    const { access_token } = await iniciarSesion(correo, clave)
+    guardarToken(access_token)
     setUsuario(await obtenerUsuarioActual())
   }, [])
 

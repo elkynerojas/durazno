@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 import jwt
 import pytest
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from httpx import AsyncClient
 
 from app.api.deps import requiere_rol
 from app.api.v1.endpoints.auth import iniciar_sesion
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.main import app
 from app.services.auth import (
     crear_token,
@@ -20,6 +20,7 @@ from app.services.auth import (
     decodificar_renovacion,
     decodificar_token,
     hashear_clave,
+    sesion_vigente,
     verificar_clave,
 )
 from tests.utilidades import CLAVE, encabezados
@@ -36,7 +37,9 @@ def test_hash_y_verificacion_de_clave():
 
 def test_token_valido_devuelve_id():
     usuario_id = uuid.uuid4()
-    assert decodificar_token(crear_token(usuario_id, "tecnico")) == usuario_id
+    datos = decodificar_token(crear_token(usuario_id, "tecnico"))
+    assert datos.usuario_id == usuario_id
+    assert abs((datetime.now(UTC) - datos.emitido).total_seconds()) < 5
 
 
 def test_token_expirado_o_alterado_es_invalido():
@@ -61,7 +64,7 @@ def test_tokens_de_acceso_y_renovacion_no_se_intercambian():
     renovacion = crear_token_renovacion(usuario_id)
     assert decodificar_token(renovacion) is None
     assert decodificar_renovacion(acceso) is None
-    assert decodificar_renovacion(renovacion)[0] == usuario_id
+    assert decodificar_renovacion(renovacion)[0].usuario_id == usuario_id
     assert decodificar_renovacion(crear_token_renovacion(usuario_id, dias=-1)) is None
 
 
@@ -94,7 +97,13 @@ async def test_login_correcto_y_usuario_actual(cliente, crear_usuario):
     assert respuesta.status_code == 200
     datos = respuesta.json()
     assert datos["token_type"] == "bearer"
-    assert datos["refresh_token"]
+    # En el navegador la renovación no viaja en el cuerpo sino en una cookie HttpOnly.
+    assert datos["refresh_token"] is None
+    cookie = respuesta.headers["set-cookie"]
+    assert cookie.startswith("icota_renovacion=")
+    assert "HttpOnly" in cookie
+    assert "SameSite=strict" in cookie
+    assert "Path=/api/v1/auth" in cookie
     assert datos["expires_in"] > 0
 
     yo = await cliente.get(
@@ -138,20 +147,70 @@ async def test_token_emitido_permite_consultar_usuario(cliente, crear_usuario):
     assert respuesta.json()["rol"] == "agronomo"
 
 
-async def test_renovar_emite_nuevo_par_de_tokens(cliente, crear_usuario):
+async def test_renovar_con_la_cookie_rota_el_token_y_conserva_el_inicio(cliente, crear_usuario):
     await crear_usuario("prueba.renovar@ejemplo.com")
-    tokens = (await _login(cliente, "prueba.renovar@ejemplo.com", CLAVE)).json()
+    login = await _login(cliente, "prueba.renovar@ejemplo.com", CLAVE)
+    original = login.cookies["icota_renovacion"]
 
-    respuesta = await cliente.post(
-        "/api/v1/auth/renovar", json={"refresh_token": tokens["refresh_token"]}
-    )
+    # El navegador no manda cuerpo: la cookie viaja sola.
+    respuesta = await cliente.post("/api/v1/auth/renovar")
     assert respuesta.status_code == 200
+    rotada = respuesta.cookies["icota_renovacion"]
+    assert respuesta.json()["refresh_token"] is None
+    assert decodificar_renovacion(rotada)[1] == decodificar_renovacion(original)[1]
     nuevo = respuesta.json()["access_token"]
-    _, inicio_original = decodificar_renovacion(tokens["refresh_token"])
-    _, inicio_renovado = decodificar_renovacion(respuesta.json()["refresh_token"])
-    assert inicio_renovado == inicio_original
     yo = await cliente.get("/api/v1/auth/yo", headers={"Authorization": f"Bearer {nuevo}"})
     assert yo.status_code == 200
+
+
+async def test_cliente_movil_recibe_y_envia_la_renovacion_en_el_cuerpo(cliente, crear_usuario):
+    await crear_usuario("prueba.movil@ejemplo.com")
+    movil = {"X-Cliente": "movil"}
+    login = await cliente.post(
+        "/api/v1/auth/token",
+        data={"username": "prueba.movil@ejemplo.com", "password": CLAVE},
+        headers=movil,
+    )
+    assert "set-cookie" not in login.headers
+    renovacion = login.json()["refresh_token"]
+    assert decodificar_renovacion(renovacion) is not None
+
+    respuesta = await cliente.post(
+        "/api/v1/auth/renovar", json={"refresh_token": renovacion}, headers=movil
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.json()["refresh_token"]
+    assert "set-cookie" not in respuesta.headers
+
+
+async def test_salir_borra_la_cookie(cliente, crear_usuario):
+    await crear_usuario("prueba.salir@ejemplo.com")
+    await _login(cliente, "prueba.salir@ejemplo.com", CLAVE)
+    respuesta = await cliente.post("/api/v1/auth/salir")
+    assert respuesta.status_code == 204
+    assert 'icota_renovacion=""' in respuesta.headers["set-cookie"]
+    assert (await cliente.post("/api/v1/auth/renovar")).status_code == 401
+
+
+def test_cookie_segura_fuera_de_desarrollo():
+    assert not Settings(environment="development").cookie_segura
+    produccion = Settings(
+        environment="production", secret_key="x" * 40, qr_url_base="https://icota.co"
+    )
+    assert produccion.cookie_segura
+
+
+def test_sesion_vigente_compara_contra_el_instante_de_la_revocacion():
+    revocada = datetime(2026, 10, 17, 12, 0, 0, 700_000, tzinfo=UTC)
+    assert sesion_vigente(None, revocada)
+    assert sesion_vigente(revocada, revocada + timedelta(milliseconds=1))
+    # Emitido en el mismo segundo pero antes del cambio: ya no vale.
+    assert not sesion_vigente(revocada, revocada - timedelta(milliseconds=100))
+
+
+def test_iat_conserva_la_fraccion_de_segundo():
+    datos = jwt.decode(crear_token(uuid.uuid4(), "tecnico"), options={"verify_signature": False})
+    assert isinstance(datos["iat"], float)
 
 
 async def test_renovar_rechaza_token_de_acceso_vencido_o_usuario_desactivado(
@@ -175,8 +234,9 @@ async def test_renovar_rechaza_token_de_acceso_vencido_o_usuario_desactivado(
     assert respuesta.status_code == 401
 
 
-async def test_renovar_sin_cuerpo_responde_422(cliente):
-    assert (await cliente.post("/api/v1/auth/renovar", json={})).status_code == 422
+async def test_renovar_sin_cookie_ni_cuerpo_responde_401(cliente):
+    assert (await cliente.post("/api/v1/auth/renovar")).status_code == 401
+    assert (await cliente.post("/api/v1/auth/renovar", json={})).status_code == 401
 
 
 async def test_limite_de_intentos_bloquea_y_se_reinicia_tras_exito(cliente, crear_usuario):
@@ -206,12 +266,15 @@ class _SesionLenta:
         await asyncio.sleep(0.01)
 
 
+_PETICION = SimpleNamespace(client=SimpleNamespace(host="203.0.113.7"))
+
+
 async def test_limite_de_intentos_resiste_rafagas_concurrentes():
     formulario = SimpleNamespace(username=f"{uuid.uuid4().hex}@ejemplo.com", password="mala")
 
     async def intentar() -> int:
         try:
-            await iniciar_sesion(formulario, _SesionLenta())
+            await iniciar_sesion(formulario, _SesionLenta(), _PETICION, Response())
         except HTTPException as error:
             return error.status_code
         return 200

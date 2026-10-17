@@ -56,7 +56,9 @@ export async function dibujarLote(page, codigo, [x0, y0, x1, y1] = [0.3, 0.3, 0.
 // de E2E, para que una prueba fallida no deje polígonos que estorben al dibujar.
 export async function limpiarDatosE2E(page) {
   await page.evaluate(async () => {
-    const cabeceras = { Authorization: `Bearer ${localStorage.getItem('icota.token')}` }
+    // El token de acceso vive en memoria: se pide uno con la cookie de renovación.
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = { Authorization: `Bearer ${(await renovar.json()).access_token}` }
     const leer = async (ruta) => (await fetch(`/api/v1${ruta}`, { headers: cabeceras })).json()
     const borrar = (ruta) => fetch(`/api/v1${ruta}`, { method: 'DELETE', headers: cabeceras })
     for (const trampa of await leer('/trampas')) {

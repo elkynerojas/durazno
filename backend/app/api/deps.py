@@ -1,6 +1,5 @@
 """Dependencias reutilizables de FastAPI (estilo Annotated)."""
 
-import uuid
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
@@ -12,24 +11,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.models.usuario import Usuario
-from app.services.auth import decodificar_token
+from app.services.auth import DatosToken, decodificar_token, sesion_vigente
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 oauth2_esquema = OAuth2PasswordBearer(tokenUrl=f"{get_settings().api_v1_prefix}/auth/token")
 
 
-async def cargar_usuario_activo(
-    session: AsyncSession, usuario_id: uuid.UUID | None
-) -> Usuario | None:
-    """Usuario activo y no eliminado, o `None`. Se recarga en cada petición."""
-    if usuario_id is None:
+async def cargar_usuario_activo(session: AsyncSession, token: DatosToken | None) -> Usuario | None:
+    """Usuario activo y no eliminado cuya sesión no fue revocada, o `None`. Se recarga en cada
+    petición."""
+    if token is None:
         return None
-    return await session.scalar(
+    usuario = await session.scalar(
         select(Usuario).where(
-            Usuario.id == usuario_id, Usuario.deleted_at.is_(None), Usuario.activo
+            Usuario.id == token.usuario_id, Usuario.deleted_at.is_(None), Usuario.activo
         )
     )
+    if usuario is None or not sesion_vigente(usuario.sesion_valida_desde, token.emitido):
+        return None
+    return usuario
 
 
 async def obtener_usuario_actual(

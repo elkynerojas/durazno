@@ -18,7 +18,8 @@ function destinoSeguro(desde) {
 export default function InicioSesion() {
   const { usuario, cargando, entrar } = useSesion()
   const navegar = useNavigate()
-  const destino = destinoSeguro(useLocation().state?.desde)
+  const { state } = useLocation()
+  const destino = destinoSeguro(state?.desde)
   const [correo, setCorreo] = useState('')
   const [clave, setClave] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -67,6 +68,11 @@ export default function InicioSesion() {
         <form className="acceso__formulario formulario" onSubmit={enviar}>
           <h2>Iniciar sesión</h2>
           <p>Ingrese con la cuenta asignada por el agrónomo del predio.</p>
+          {state?.aviso && (
+            <p className="formulario__exito" role="status">
+              {state.aviso}
+            </p>
+          )}
 
           <label htmlFor="correo">Correo electrónico</label>
           <input

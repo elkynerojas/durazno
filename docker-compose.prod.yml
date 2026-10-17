@@ -31,6 +31,8 @@ services:
       args:
         REQUISITOS: requirements.txt
     restart: unless-stopped
+    # Sin privilegios de root dentro del contenedor (la API no escribe en disco).
+    user: "10001:10001"
     # ARCHIVO_ENV permite probar este stack en un equipo con otro archivo de variables.
     env_file: ${ARCHIVO_ENV:-.env}
     environment:

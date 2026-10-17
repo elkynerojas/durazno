@@ -50,7 +50,7 @@ for (const [nombre, ancho, alto] of [
 async function sembrarMuestra(page) {
   await page.evaluate(async () => {
     const cabeceras = {
-      Authorization: `Bearer ${localStorage.getItem('icota.token')}`,
+      Authorization: `Bearer ${(await (await fetch('/api/v1/auth/renovar', { method: 'POST' })).json()).access_token}`,
       'Content-Type': 'application/json',
     }
     const crear = async (ruta, cuerpo) =>

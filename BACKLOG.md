@@ -242,7 +242,21 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 - [x] `HU-08.4` [DevOps] Copia diaria de la base y prueba de restauración
 - [x] `HU-08.5` [DevOps] Cabeceras CSP y HSTS en el Nginx de producción
 - [x] `HU-08.6` [DevOps] `limit_req` por IP en Nginx para `/api/v1/auth/` y `forwarded-allow-ips` restringido al proxy (bloqueo de cuentas ajenas y rociado de contraseñas, auditoría HU-05)
-- [ ] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05; revocar también al restablecer la clave o reactivar la cuenta, rechazar claves triviales y exigir la clave actual para cambiar la propia (auditoría HU-06)
+- [x] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05; revocar también al restablecer la clave o reactivar la cuenta, rechazar claves triviales y exigir la clave actual para cambiar la propia (auditoría HU-06)
+
+> Listo y probado en local (stack de producción con certificado autofirmado, E2E por HTTPS):
+> `docker-compose.prod.yml`, Nginx con frontend compilado, CSP/HSTS, `default_server` que
+> descarta Host ajenos, `limit_req` en `/auth/token`, API sin recarga y sin root que solo confía en
+> el Nginx, Swagger/ReDoc apagados (queda `/api/v1/openapi.json`), copias diarias de 14 días con
+> restauración probada (`deploy/respaldo/`). Sesión: renovación en cookie `HttpOnly; Secure;
+> SameSite=Strict` (cliente nativo: `X-Cliente: movil`, cada uno por su canal), acceso solo en
+> memoria, revocación con `sesion_valida_desde`, claves triviales rechazadas, clave actual con
+> límite de intentos, límite de login por correo+IP y por cuenta, rechazo de `Origin` ajeno.
+> **Falta para cerrar:** servidor y dominio, `.env` de producción y `sh deploy/obtener-certificado.sh`.
+> Pendientes de la auditoría HU-08 (decidir): detección de reuso de tokens de renovación con `jti`
+> (M1); rol de base de datos sin superusuario para la API y de solo lectura para las copias (M5);
+> releer `sesion_valida_desde` con bloqueo al emitir tokens (B1); agrupar IPv6 por /64 en
+> `limit_req` (B6); cifrar las copias y enviarlas fuera del servidor (B4).
 
 ## E2 · Lotes y trampas georreferenciados
 

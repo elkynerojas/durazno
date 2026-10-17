@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
@@ -7,9 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, requiere_rol
+from app.api.v1.endpoints.auth import limite_intentos
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioActualizar, UsuarioAdminLeer, UsuarioCrear
-from app.services.auth import hashear_clave
+from app.services.auth import hashear_clave, verificar_clave
+from app.services.claves import motivo_clave_debil
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
@@ -45,6 +48,11 @@ async def _guardar(session: SessionDep, usuario: Usuario) -> Usuario:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle) from None
     await session.refresh(usuario)
     return usuario
+
+
+def _exigir_clave_fuerte(clave: str, correo: str) -> None:
+    if motivo := motivo_clave_debil(clave, correo):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=motivo)
 
 
 async def _agronomos_activos(session: SessionDep) -> int:
@@ -113,6 +121,7 @@ async def crear_usuario(
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ID_EN_USO)
             response.status_code = status.HTTP_200_OK
             return existente
+    _exigir_clave_fuerte(entrada.clave, entrada.correo)
     usuario = Usuario(
         correo=entrada.correo,
         nombre_completo=entrada.nombre_completo,
@@ -133,8 +142,16 @@ async def crear_usuario(
     description="Solo cambia los campos enviados. `activo: false` desactiva la cuenta sin "
     "borrarla: no puede iniciar sesión y sus sesiones abiertas dejan de valer, pero conserva la "
     "autoría de sus registros. El agrónomo no puede desactivarse ni quitarse el rol a sí mismo, y "
-    "el predio siempre conserva al menos un agrónomo activo. Los campos no admiten `null`.",
-    responses={**ERRORES_ACCESO, **ERROR_404, **ERROR_409},
+    "el predio siempre conserva al menos un agrónomo activo. Cambiar la clave, el rol o el "
+    "estado cierra las sesiones abiertas de la cuenta; para cambiar la propia clave se exige "
+    "`clave_actual`. Se rechazan claves triviales. Los campos no admiten `null`.",
+    responses={
+        **ERRORES_ACCESO,
+        **ERROR_404,
+        **ERROR_409,
+        422: {"description": "Datos inválidos o contraseña trivial"},
+        429: {"description": "Demasiados intentos con la contraseña actual"},
+    },
 )
 async def actualizar_usuario(
     usuario_id: uuid.UUID, entrada: UsuarioActualizar, agronomo: AgronomoDep, session: SessionDep
@@ -154,8 +171,37 @@ async def actualizar_usuario(
             status_code=status.HTTP_409_CONFLICT,
             detail="El predio debe conservar al menos un agrónomo activo",
         )
+    clave_actual = cambios.pop("clave_actual", None)
     if (clave := cambios.pop("clave", None)) is not None:
+        if usuario.id == agronomo.id:
+            # Una sesión abierta ajena no basta para quedarse con la cuenta del agrónomo, ni para
+            # adivinar su clave: los fallos cuentan en el mismo límite del inicio de sesión.
+            clave_limite = f"clave_actual:{usuario.id}"
+            if espera := limite_intentos.segundos_bloqueo(clave_limite):
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Demasiados intentos. Intente de nuevo en unos minutos.",
+                    headers={"Retry-After": str(espera)},
+                )
+            limite_intentos.registrar_fallo(clave_limite)
+            correcta = clave_actual is not None and await asyncio.to_thread(
+                verificar_clave, clave_actual, usuario.clave_hash
+            )
+            if not correcta:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Para cambiar su propia contraseña escriba la contraseña actual",
+                )
+            limite_intentos.reiniciar(clave_limite)
+        _exigir_clave_fuerte(clave, cambios.get("correo", usuario.correo))
         usuario.clave_hash = hashear_clave(clave)
+    # Cambiar la clave, el rol o el estado cierra todas las sesiones abiertas de la cuenta
+    # (incluida la del propio agrónomo si cambia su clave).
+    if clave is not None or any(
+        campo in cambios and cambios[campo] != getattr(usuario, campo)
+        for campo in ("rol", "activo")
+    ):
+        usuario.sesion_valida_desde = datetime.now(UTC)
     for campo, valor in cambios.items():
         setattr(usuario, campo, valor)
     return await _guardar(session, usuario)

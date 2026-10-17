@@ -66,6 +66,11 @@ class Settings(BaseSettings):
         )
 
     @property
+    def cookie_segura(self) -> bool:
+        """`Secure` en la cookie de renovación fuera de desarrollo (allí se usa http)."""
+        return self.environment not in ENTORNOS_LOCALES
+
+    @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

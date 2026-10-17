@@ -44,7 +44,9 @@ describe('FormularioUsuario', () => {
       autorizacion_datos: true,
     })
     expect(cuerpo.id).toMatch(/^[0-9a-f-]{36}$/)
-    expect(alGuardar).toHaveBeenCalledWith(expect.objectContaining({ id: 'nuevo' }))
+    expect(alGuardar).toHaveBeenCalledWith(expect.objectContaining({ id: 'nuevo' }), {
+      claveCambiada: false,
+    })
   })
 
   it('no envía sin la autorización del titular', async () => {
@@ -96,5 +98,53 @@ describe('FormularioUsuario', () => {
       'Ya existe un usuario con ese correo',
     )
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled()
+  })
+
+  it('para cambiar la propia contraseña pide la actual y avisa que se cerrarán las sesiones', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(200, { id: 'yo', nombre_completo: 'Ana' }))
+    const alGuardar = vi.fn()
+    const usuarioEvento = userEvent.setup()
+    render(
+      <FormularioUsuario
+        usuario={{ id: 'yo', nombre_completo: 'Ana', correo: 'ana@ejemplo.com', rol: 'agronomo' }}
+        esPropio
+        alGuardar={alGuardar}
+        alCancelar={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByLabelText('Contraseña actual')).not.toBeInTheDocument()
+    await usuarioEvento.type(
+      screen.getByLabelText('Nueva contraseña (opcional)'),
+      'Durazno-en-flor-26',
+    )
+    expect(screen.getByText(/se cerrarán todas sus sesiones/)).toBeInTheDocument()
+    await usuarioEvento.type(screen.getByLabelText('Contraseña actual'), 'clave-vieja-123')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(JSON.parse(fetchSimulado.mock.calls[0][1].body)).toMatchObject({
+      clave: 'Durazno-en-flor-26',
+      clave_actual: 'clave-vieja-123',
+    })
+    expect(alGuardar).toHaveBeenCalledWith(expect.anything(), { claveCambiada: true })
+  })
+
+  it('muestra el motivo si el servidor rechaza una contraseña trivial', async () => {
+    simularFetch(
+      respuestaJson(422, {
+        detail: 'La contraseña es demasiado común; use una frase o combinación propia',
+      }),
+    )
+    const usuarioEvento = userEvent.setup()
+    render(
+      <FormularioUsuario
+        usuario={{ id: 't', nombre_completo: 'Téc', correo: 't@ejemplo.com', rol: 'tecnico' }}
+        alGuardar={vi.fn()}
+        alCancelar={vi.fn()}
+      />,
+    )
+    await usuarioEvento.type(screen.getByLabelText('Nueva contraseña (opcional)'), '12345678')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('demasiado común')
   })
 })

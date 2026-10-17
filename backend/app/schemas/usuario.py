@@ -55,6 +55,11 @@ class UsuarioActualizar(BaseModel):
     rol: Rol | None = None
     activo: bool | None = Field(default=None, description="`false` desactiva la cuenta")
     clave: Clave | None = Field(default=None, description="Restablece la contraseña")
+    clave_actual: str | None = Field(
+        default=None,
+        max_length=128,
+        description="Obligatoria cuando el agrónomo cambia su propia contraseña",
+    )
 
     @field_validator("correo")
     @classmethod

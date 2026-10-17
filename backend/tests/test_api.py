@@ -14,7 +14,7 @@ client = TestClient(app)
 def test_raiz_responde():
     respuesta = client.get("/")
     assert respuesta.status_code == 200
-    assert respuesta.json()["docs"] == "/docs"
+    assert respuesta.json()["openapi"] == "/api/v1/openapi.json"
 
 
 def test_openapi_publicado_bajo_v1():

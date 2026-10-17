@@ -5,7 +5,10 @@ import AvisoDatos from './AvisoDatos'
 import { ROLES } from './roles'
 
 function mensajeDeError(error) {
-  if (error.estado === 409) return error.message
+  // 403 (clave actual), 409 (correo repetido) y 422 (clave trivial) traen un mensaje claro.
+  if ([403, 409, 422].includes(error.estado) && typeof error.detalle === 'string') {
+    return error.message
+  }
   if (error.estado === 422) return 'Revise los datos del formulario.'
   return 'No se pudo guardar. Intente de nuevo.'
 }
@@ -21,6 +24,7 @@ export default function FormularioUsuario({ usuario, esPropio = false, alGuardar
     correo: usuario?.correo ?? '',
     rol: usuario?.rol ?? 'tecnico',
     clave: '',
+    clave_actual: '',
     autorizacion_datos: false,
   })
   const [enviando, setEnviando] = useState(false)
@@ -35,12 +39,17 @@ export default function FormularioUsuario({ usuario, esPropio = false, alGuardar
     evento.preventDefault()
     setEnviando(true)
     setError(null)
-    const { clave, autorizacion_datos, ...resto } = datos
+    const { clave, clave_actual, autorizacion_datos, ...resto } = datos
     try {
       const guardado = editando
-        ? await actualizarUsuario(usuario.id, { ...resto, ...(clave && { clave }) })
+        ? await actualizarUsuario(usuario.id, {
+            ...resto,
+            ...(clave && { clave }),
+            ...(clave && esPropio && { clave_actual }),
+          })
         : await crearUsuario({ ...(id && { id }), ...resto, clave, autorizacion_datos })
-      alGuardar(guardado)
+      // Cambiar la propia clave cierra todas las sesiones de la cuenta, incluida esta.
+      alGuardar(guardado, { claveCambiada: Boolean(clave) && esPropio })
     } catch (e) {
       setError(mensajeDeError(e))
       setEnviando(false)
@@ -92,6 +101,24 @@ export default function FormularioUsuario({ usuario, esPropio = false, alGuardar
         maxLength={128}
         required={!editando}
       />
+
+      {esPropio && datos.clave && (
+        <>
+          <label htmlFor="clave_actual">Contraseña actual</label>
+          <input
+            id="clave_actual"
+            type="password"
+            autoComplete="current-password"
+            value={datos.clave_actual}
+            onChange={cambiar('clave_actual')}
+            maxLength={128}
+            required
+          />
+          <p className="formulario__nota">
+            Al cambiar su contraseña se cerrarán todas sus sesiones y deberá ingresar de nuevo.
+          </p>
+        </>
+      )}
 
       {!editando && (
         <>

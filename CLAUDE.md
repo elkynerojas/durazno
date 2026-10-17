@@ -66,6 +66,14 @@ Depuración de la API: `docker compose -f docker-compose.yml -f docker-compose.d
 levanta debugpy en el puerto 5678 **sin recarga automática** (reiniciar la API tras cada cambio);
 luego en VS Code "API: adjuntar depurador (Docker)".
 
+Producción (HU-08; variables en `.env.prod.example`, copiar como `.env` en el servidor):
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+sh deploy/obtener-certificado.sh          # primera vez, con el dominio apuntando al servidor
+docker compose -f docker-compose.prod.yml exec respaldo sh /respaldo/probar-restauracion.sh
+```
+
 La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose down -v`
 (borra la base de datos) sin que el usuario lo pida explícitamente.
 
@@ -74,14 +82,19 @@ La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose dow
 - **Peticiones:** el navegador entra a Vite (`:5173`), que redirige `/api` a `api:8000`
   (`frontend/vite.config.js`); por eso el frontend nunca usa URLs absolutas. Swagger y los
   clientes externos entran por nginx (`:80` → `api:8000`, `nginx/default.conf`).
-- **Sesión (frontend):** los tokens de acceso y de renovación viven en `features/auth/sesion.js`;
-  `api/client.js` envía el de acceso y, ante un 401, intenta una vez `/auth/renovar`; si falla, borra
-  la sesión y emite `EVENTO_SESION_CERRADA`; `ProveedorSesion` escucha ese evento y `RutaProtegida`
-  protege las vistas.
+- **Sesión (frontend):** el token de acceso vive solo en memoria (`features/auth/sesion.js`); el de
+  renovación, en la cookie `HttpOnly` `icota_renovacion`, que JavaScript no lee. `api/client.js`
+  envía el de acceso y, ante un 401, intenta una vez `/auth/renovar` (la cookie viaja sola); si
+  falla, borra la sesión y emite `EVENTO_SESION_CERRADA`. Al abrir la página `ProveedorSesion`
+  recupera la sesión con `restaurarSesion()`; `RutaProtegida` protege las vistas y recuerda la ruta
+  pedida (p. ej. `/t/<código>`) para volver tras iniciar sesión.
 - **Sesión (backend):** inicio con correo en `POST /auth/token` (acceso de 15 min + renovación de
-  7 días, límite de intentos en `services/intentos.py`). `UsuarioActualDep` (`app/api/deps.py`)
-  decodifica el JWT y recarga el usuario en cada petición (activo y sin `deleted_at`);
-  `requiere_rol("agronomo", ...)` añade el 403 por rol.
+  7 días con rotación, límite de intentos en `services/intentos.py`). La renovación va en cookie
+  (`SameSite=Strict`, `Secure` fuera de desarrollo); un cliente nativo la recibe en el cuerpo con
+  `X-Cliente: movil`. `UsuarioActualDep` (`app/api/deps.py`) decodifica el JWT y recarga el
+  usuario en cada petición (activo, sin `deleted_at` y con el token emitido después de
+  `sesion_valida_desde`, que sube al cambiar clave, rol o estado); `requiere_rol("agronomo", ...)`
+  añade el 403 por rol.
 - **Migraciones:** un modelo que no se importe en `app/models/__init__.py` no lo ve Alembic.
   `migrations/env.py` ignora las tablas de PostGIS y usa los ayudantes de GeoAlchemy2; `db/base.py`
   fija nombres predecibles de restricciones. El `server_default=uuidv7()` exige PostgreSQL 18; las
@@ -211,8 +224,9 @@ antes de implementar; los **criterios de aceptación** de cada historia son la d
   privilegiados (`rol`, `activo`, `clave_hash`, `deleted_at`) salvo en los endpoints del rol que
   los administra (p. ej. usuarios, HU-06). SQL siempre con parámetros.
 - Fuera de `development`/`test` la API no arranca con una `SECRET_KEY` débil.
-- PostgreSQL y pgAdmin solo escuchan en `127.0.0.1`; nginx envía cabeceras de seguridad
-  (CSP y HSTS llegan con HTTPS en HU-08).
+- PostgreSQL y pgAdmin solo escuchan en `127.0.0.1`; nginx envía cabeceras de seguridad. En
+  producción (`nginx/prod/`) además CSP, HSTS y límite por IP en `/api/v1/auth/token`.
+- Contraseñas: se rechazan las triviales (`services/claves.py`) y cambiar la propia exige la actual.
 - Ruff incluye las reglas de seguridad `S` (bandit): un `# noqa: S…` siempre con su motivo.
 - Antes de cerrar historias que toquen autenticación, permisos, archivos o datos personales:
   agente `auditor-seguridad` o `/auditar-seguridad`.

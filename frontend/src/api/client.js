@@ -1,4 +1,4 @@
-import { borrarToken, guardarToken, leerToken, leerTokenRenovacion } from '../features/auth/sesion'
+import { borrarToken, guardarToken, leerToken } from '../features/auth/sesion'
 
 // Cliente HTTP único para la API. Todas las rutas son relativas a /api/v1;
 // en desarrollo Vite las redirige al contenedor de la API (ver vite.config.js).
@@ -18,18 +18,16 @@ export class ErrorApi extends Error {
 // Una sola renovación en curso, compartida por las peticiones que reciban 401 a la vez.
 let renovacionEnCurso = null
 
+// El token de renovación viaja en una cookie HttpOnly (mismo sitio): no se lee ni se envía a mano.
 function renovarTokens() {
   renovacionEnCurso ??= (async () => {
-    const renovacion = leerTokenRenovacion()
-    if (!renovacion) return false
     const respuesta = await fetch(`${BASE}/auth/renovar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: renovacion }),
+      credentials: 'same-origin',
     }).catch(() => null)
     if (!respuesta?.ok) return false
-    const { access_token, refresh_token } = await respuesta.json()
-    guardarToken(access_token, refresh_token)
+    const { access_token } = await respuesta.json()
+    guardarToken(access_token)
     return true
   })().finally(() => {
     renovacionEnCurso = null
@@ -37,7 +35,13 @@ function renovarTokens() {
   return renovacionEnCurso
 }
 
-// Con `binario: true` devuelve el cuerpo como Blob (imágenes, PDF) en lugar de JSON.
+// Al abrir o recargar la página: recupera la sesión con la cookie, si existe.
+export const restaurarSesion = () => renovarTokens()
+
+// Borra la cookie de renovación en el servidor.
+export const cerrarSesion = () =>
+  fetch(`${BASE}/auth/salir`, { method: 'POST', credentials: 'same-origin' }).catch(() => null)
+
 export async function api(
   ruta,
   { metodo = 'GET', cuerpo, reintento = true, binario = false, ...opciones } = {},

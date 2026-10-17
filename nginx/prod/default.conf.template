@@ -7,6 +7,20 @@ limit_req_status 429;
 
 server_tokens off;
 
+# Peticiones a la IP o con un Host ajeno: se cierran sin respuesta (no se sirve la app ni se
+# refleja el Host en redirecciones).
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    ssl_reject_handshake on;
+}
+
 # HTTP: solo el desafío de Let's Encrypt; todo lo demás va a HTTPS.
 server {
     listen 80;
@@ -18,7 +32,7 @@ server {
     }
 
     location / {
-        return 301 https://$host$request_uri;
+        return 301 https://${DOMINIO}$request_uri;
     }
 }
 
@@ -54,12 +68,7 @@ server {
         include /etc/nginx/snippets/proxy-api.conf;
     }
 
-    # Documentación OpenAPI (entregable para la app móvil). Swagger y ReDoc cargan sus
-    # scripts desde cdn.jsdelivr.net, así que tienen su propia CSP.
-    location ~ ^/(docs|redoc)$ {
-        include /etc/nginx/snippets/seguridad-docs.conf;
-        include /etc/nginx/snippets/proxy-api.conf;
-    }
+    # Swagger y ReDoc no se publican en producción; el esquema está en /api/v1/openapi.json.
 
     # Archivos con huella en el nombre (Vite): se guardan en caché un año.
     location /assets/ {

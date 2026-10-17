@@ -22,3 +22,8 @@ class Usuario(EntidadSincronizable, Base):
     autorizacion_datos_en: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Revocación de sesiones: se rechaza todo token emitido antes de este momento. Sube al
+    # cambiar la clave, el rol o el estado de la cuenta (auditorías HU-05 y HU-06).
+    sesion_valida_desde: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

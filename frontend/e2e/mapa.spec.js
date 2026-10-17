@@ -78,7 +78,7 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   expect(pdf.suggestedFilename()).toBe(`etiquetas-lote-${codigoLote}.pdf`)
 
   // HU-16: escanear el QR sin sesión lleva a la ficha después de iniciar sesión.
-  await page.evaluate(() => localStorage.clear())
+  await page.context().clearCookies()
   await page.goto(`/t/${codigoQr}`)
   await expect(page).toHaveURL('/')
   await ingresar(page)

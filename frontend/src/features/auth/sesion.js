@@ -1,44 +1,22 @@
-// Tokens de sesión (acceso y renovación) en localStorage. El acceso puede fallar (modo privado
-// o almacenamiento bloqueado); en ese caso la sesión solo dura mientras la pestaña esté abierta.
-const CLAVE_ACCESO = 'icota.token'
-const CLAVE_RENOVACION = 'icota.renovacion'
-const enMemoria = {}
+// El token de acceso vive solo en memoria: un script inyectado no lo encuentra guardado y vence
+// en minutos. Al recargar, la sesión se recupera con la cookie HttpOnly de renovación, que
+// JavaScript no puede leer (HU-08.7).
+let tokenAcceso = null
 
-function leer(clave) {
-  try {
-    return localStorage.getItem(clave) ?? enMemoria[clave] ?? null
-  } catch {
-    return enMemoria[clave] ?? null
-  }
+// Versiones anteriores guardaban los tokens en localStorage: se borran si quedaron.
+try {
+  localStorage.removeItem('icota.token')
+  localStorage.removeItem('icota.renovacion')
+} catch {
+  // Almacenamiento bloqueado: no hay nada que borrar.
 }
 
-function guardar(clave, valor) {
-  enMemoria[clave] = valor
-  try {
-    localStorage.setItem(clave, valor)
-  } catch {
-    // Se conserva en memoria.
-  }
-}
+export const leerToken = () => tokenAcceso
 
-function borrar(clave) {
-  delete enMemoria[clave]
-  try {
-    localStorage.removeItem(clave)
-  } catch {
-    // Nada que borrar.
-  }
-}
-
-export const leerToken = () => leer(CLAVE_ACCESO)
-export const leerTokenRenovacion = () => leer(CLAVE_RENOVACION)
-
-export function guardarToken(acceso, renovacion) {
-  guardar(CLAVE_ACCESO, acceso)
-  if (renovacion) guardar(CLAVE_RENOVACION, renovacion)
+export function guardarToken(acceso) {
+  tokenAcceso = acceso
 }
 
 export function borrarToken() {
-  borrar(CLAVE_ACCESO)
-  borrar(CLAVE_RENOVACION)
+  tokenAcceso = null
 }
