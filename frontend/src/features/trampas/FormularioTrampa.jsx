@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { actualizarTrampa, crearTrampa } from '../../api/client'
 import { latLngAPunto, puntoALeaflet, puntoEnPoligono } from '../../utils/geo'
+import { UMBRAL_PRECISION_M, obtenerUbicacion } from '../../utils/ubicacion'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA, hoyEnBogota } from './catalogo'
 
 function mensajeDeError(error) {
@@ -38,6 +39,10 @@ export default function FormularioTrampa({
   })
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
+  // Última lectura del GPS ({ lat, lng, precision }) y medición en curso (precisión parcial).
+  const [gps, setGps] = useState(null)
+  const [midiendo, setMidiendo] = useState(null)
+  const [errorGps, setErrorGps] = useState(null)
 
   const lat = aNumero(coordenadas.lat)
   const lng = aNumero(coordenadas.lng)
@@ -46,6 +51,26 @@ export default function FormularioTrampa({
   const dentro = hayPunto && lote && puntoEnPoligono([lat, lng], lote.geom)
   const [latOriginal, lngOriginal] = trampa ? puntoALeaflet(trampa.geom) : []
   const movida = !nueva && (lat !== latOriginal || lng !== lngOriginal)
+  // La precisión solo vale mientras el punto sea el que dio el GPS (no si se tocó el mapa).
+  const gpsVigente = gps !== null && gps.lat === lat && gps.lng === lng
+  const precisionM = gpsVigente ? Math.round(gps.precision * 100) / 100 : null
+
+  async function usarUbicacion() {
+    setErrorGps(null)
+    setMidiendo(Infinity)
+    const aplicar = (lectura) => {
+      setGps(lectura)
+      setMidiendo(lectura.precision)
+      alCambiarCoordenadas({ lat: String(lectura.lat), lng: String(lectura.lng) })
+    }
+    try {
+      aplicar(await obtenerUbicacion({ alAvanzar: aplicar }))
+    } catch (e) {
+      setErrorGps(e.message)
+    } finally {
+      setMidiendo(null)
+    }
+  }
 
   const cambiar = (campo) => (evento) => {
     const valor = evento.target.value
@@ -72,13 +97,14 @@ export default function FormularioTrampa({
             lote_id: loteId,
             ...comunes,
             geom: latLngAPunto(lat, lng),
+            ...(precisionM !== null && { precision_m: precisionM }),
           })
         : await actualizarTrampa(trampa.id, {
             lote_id: loteId,
             ...comunes,
             estado,
-            // Ubicada a mano: la precisión del GPS anterior ya no aplica.
-            ...(movida && { geom: latLngAPunto(lat, lng), precision_m: null }),
+            // Ubicada a mano, la precisión del GPS anterior ya no aplica.
+            ...(movida && { geom: latLngAPunto(lat, lng), precision_m: precisionM }),
           })
       alGuardar(guardada)
     } catch (e) {
@@ -159,6 +185,25 @@ export default function FormularioTrampa({
         />
 
         <h2 className="formulario__seccion">2 · Ubicación</h2>
+        {editable && (
+          <button
+            type="button"
+            className="boton-secundario boton-gps"
+            onClick={usarUbicacion}
+            disabled={midiendo !== null}
+          >
+            {midiendo === null
+              ? 'Usar mi ubicación'
+              : midiendo === Infinity
+                ? 'Buscando señal GPS…'
+                : `Midiendo… ±${Math.round(midiendo)} m`}
+          </button>
+        )}
+        {errorGps && (
+          <p className="formulario__error" role="alert">
+            {errorGps}
+          </p>
+        )}
         <div className="formulario__fila">
           <div>
             <label htmlFor="latitud">Latitud</label>
@@ -198,6 +243,18 @@ export default function FormularioTrampa({
               : `El punto no cae dentro de ${lote.codigo}: el servidor lo rechazará.`}
           </p>
         )}
+        {gpsVigente &&
+          (gps.precision <= UMBRAL_PRECISION_M ? (
+            <p className="formulario__exito" role="status">
+              Ubicación del GPS con precisión de ±{Math.round(gps.precision)} m.
+            </p>
+          ) : (
+            <p className="formulario__aviso" role="alert">
+              La precisión del GPS (±{Math.round(gps.precision)} m) supera los {UMBRAL_PRECISION_M}{' '}
+              m recomendados. Espere unos segundos a cielo abierto y vuelva a medir, o ubique la
+              trampa en el mapa.
+            </p>
+          ))}
         {trampa?.precision_m != null && !movida && (
           <p className="formulario__nota">Precisión del GPS: ±{trampa.precision_m} m</p>
         )}

@@ -1242,3 +1242,8 @@ button {
 .ficha__etiquetas {
   margin-top: 0.75rem;
 }
+
+.boton-gps {
+  align-self: flex-start;
+  margin-bottom: 0.9rem;
+}

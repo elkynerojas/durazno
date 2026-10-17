@@ -44,6 +44,13 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   await dibujarLote(page, codigoLote)
 
   await page.goto('/trampas')
+
+  // HU-12: la ubicación del teléfono llena las coordenadas y muestra su precisión.
+  await page.context().grantPermissions(['geolocation'])
+  await page.context().setGeolocation({ latitude: 7.2667, longitude: -72.6417, accuracy: 4 })
+  await page.getByRole('button', { name: 'Usar mi ubicación' }).click()
+  await expect(page.getByLabel('Latitud')).toHaveValue('7.2667')
+  await expect(page.getByText('Ubicación del GPS con precisión de ±4 m.')).toBeVisible()
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigoLote })
   // El mapa encuadra el lote: su centro queda en el centro del mapa.
   await page.waitForTimeout(400)

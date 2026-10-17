@@ -4,7 +4,14 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { respuestaJson, simularFetch } from '../../test/utilidades'
+import { obtenerUbicacion } from '../../utils/ubicacion'
 import FormularioTrampa from './FormularioTrampa'
+
+// El GPS se simula: la utilidad tiene sus propias pruebas.
+vi.mock('../../utils/ubicacion', () => ({
+  UMBRAL_PRECISION_M: 10,
+  obtenerUbicacion: vi.fn(),
+}))
 
 const cuadro = (x0, y0, x1, y1) => ({
   type: 'Polygon',
@@ -176,5 +183,61 @@ describe('FormularioTrampa', () => {
     expect(screen.getByLabelText('Código ICA (oficial)')).toBeDisabled()
     expect(screen.queryByRole('button', { name: /Guardar/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ubicar en el mapa' })).not.toBeInTheDocument()
+  })
+
+  it('usa la ubicación del teléfono y envía su precisión', async () => {
+    obtenerUbicacion.mockImplementation(async ({ alAvanzar }) => {
+      alAvanzar({ lat: 7.2705, lng: -72.6295, precision: 23 })
+      return { lat: 7.2705, lng: -72.6295, precision: 4.567 }
+    })
+    const fetchSimulado = simularFetch(respuestaJson(201, TRAMPA))
+    const usuarioEvento = userEvent.setup()
+    render(<ConEstado lote="l-b" alGuardar={vi.fn()} />)
+
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Usar mi ubicación' }))
+
+    expect(screen.getByLabelText('Latitud')).toHaveValue(7.2705)
+    expect(screen.getByText('Ubicación del GPS con precisión de ±5 m.')).toBeInTheDocument()
+    await usuarioEvento.type(screen.getByLabelText('Código ICA (oficial)'), 'ICA-GPS')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar y generar QR' }))
+
+    expect(cuerpoEnviado(fetchSimulado)).toMatchObject({
+      geom: { type: 'Point', coordinates: [-72.6295, 7.2705] },
+      precision_m: 4.57,
+    })
+  })
+
+  it('advierte si la precisión supera el umbral', async () => {
+    obtenerUbicacion.mockResolvedValue({ lat: 7.2705, lng: -72.6295, precision: 35 })
+    render(<ConEstado lote="l-b" alGuardar={vi.fn()} />)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Usar mi ubicación' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La precisión del GPS (±35 m) supera los 10 m recomendados',
+    )
+  })
+
+  it('si después se cambia el punto a mano, ya no envía la precisión del GPS', async () => {
+    obtenerUbicacion.mockResolvedValue({ lat: 7.2705, lng: -72.6295, precision: 4 })
+    const fetchSimulado = simularFetch(respuestaJson(201, TRAMPA))
+    const usuarioEvento = userEvent.setup()
+    render(<ConEstado lote="l-b" alGuardar={vi.fn()} />)
+
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Usar mi ubicación' }))
+    const latitud = screen.getByLabelText('Latitud')
+    await usuarioEvento.clear(latitud)
+    await usuarioEvento.type(latitud, '7.2707')
+    await usuarioEvento.type(screen.getByLabelText('Código ICA (oficial)'), 'ICA-MANO')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar y generar QR' }))
+
+    expect(cuerpoEnviado(fetchSimulado)).not.toHaveProperty('precision_m')
+  })
+
+  it('muestra el error del GPS', async () => {
+    obtenerUbicacion.mockRejectedValue(new Error('No dio permiso para usar la ubicación.'))
+    render(<ConEstado lote="l-b" alGuardar={vi.fn()} />)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Usar mi ubicación' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('No dio permiso')
   })
 })

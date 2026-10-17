@@ -101,8 +101,10 @@ services:
     working_dir: /app
     entrypoint: ["sh", "/app/docker-entrypoint.sh"]
     command: ["npx", "playwright", "test"]
+    # Comparte la red del frontend: la app se abre en http://localhost:5173, contexto seguro que
+    # el navegador exige para la geolocalización y la cámara.
+    network_mode: "service:frontend"
     environment:
-      E2E_BASE_URL: http://frontend:5173
       E2E_CORREO: ${E2E_CORREO:-e2e-agronomo@example.com}
       E2E_CLAVE: ${E2E_CLAVE:-}
     volumes:

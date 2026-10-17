@@ -353,7 +353,7 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 ### HU-12 · Tomar coordenadas con el GPS del teléfono
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Ingry
 - **Historia:** Como técnico de campo, quiero usar la ubicación del teléfono al registrar una trampa, para no digitar las coordenadas.
 
 **Criterios de aceptación**
@@ -365,9 +365,16 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 **Tareas**
 
-- [ ] `HU-12.1` [Web] Botón «Usar mi ubicación» con indicador de precisión
-- [ ] `HU-12.2` [Web] Advertencia por precisión insuficiente
+- [x] `HU-12.1` [Web] Botón «Usar mi ubicación» con indicador de precisión
+- [x] `HU-12.2` [Web] Advertencia por precisión insuficiente
 - [ ] `HU-12.3` [Campo] Prueba en el predio con dos teléfonos Android
+
+> «Usar mi ubicación» en Trampas y QR (`utils/ubicacion.js`): `watchPosition` con alta precisión
+> durante 15 s, se queda con la mejor lectura, muestra la precisión en vivo y la envía como
+> `precision_m` (solo si el punto sigue siendo el del GPS). Advierte si supera
+> `UMBRAL_PRECISION_M` = 10 m — **valor provisional, pendiente de acordar con Icota**. Exige HTTPS
+> (contexto seguro). E2E con geolocalización simulada (el contenedor e2e comparte la red del
+> frontend para abrir la app en localhost, contexto seguro).
 
 ### HU-13 · Exportar lotes y trampas
 
