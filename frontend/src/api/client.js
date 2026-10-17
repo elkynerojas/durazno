@@ -82,3 +82,7 @@ export const crearUsuario = (datos) => api('/usuarios', { metodo: 'POST', cuerpo
 
 export const actualizarUsuario = (id, cambios) =>
   api(`/usuarios/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+export const obtenerPredio = () => api('/predio')
+
+export const guardarPredio = (datos) => api('/predio', { metodo: 'PUT', cuerpo: datos })

@@ -16,6 +16,9 @@ export default function BarraSuperior() {
         <NavLink to="/mapa" className="barra__enlace">
           Mapa
         </NavLink>
+        <NavLink to="/predio" className="barra__enlace">
+          Predio
+        </NavLink>
         {usuario.rol === 'agronomo' && (
           <NavLink to="/usuarios" className="barra__enlace">
             Usuarios

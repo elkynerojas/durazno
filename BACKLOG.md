@@ -200,7 +200,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-07 · Registrar el predio
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 2 · **Sprint:** S1 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 2 · **Sprint:** S1 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero registrar los datos del predio, para que los reportes lo identifiquen ante el ICA.
 
 **Criterios de aceptación**
@@ -211,9 +211,16 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 **Tareas**
 
-- [ ] `HU-07.1` [BD] Modelo predio y migración
-- [ ] `HU-07.2` [API] GET y PUT /predio
-- [ ] `HU-07.3` [Web] Formulario de datos del predio
+- [x] `HU-07.1` [BD] Modelo predio y migración
+- [x] `HU-07.2` [API] GET y PUT /predio
+- [x] `HU-07.3` [Web] Formulario de datos del predio
+
+> Un solo predio garantizado en la base (índice único parcial `uq_predio_unico` sobre las filas
+> sin `deleted_at`). `GET /predio` para cualquier rol con sesión; `PUT /predio` solo el agrónomo
+> (201 al registrar, 200 al actualizar, idempotente por `id`). `registro_ica` es opcional y
+> `area_ha` la declara el agrónomo. El `limite` se recibe en GeoJSON y se valida con `ST_IsValid`
+> (`services/geo.py`, reutilizable en HU-09); en la web se conserva, pero dibujarlo queda para
+> cuando exista la capa con Geoman (HU-09.5).
 
 ### HU-08 · Desplegar en servidor con HTTPS
 

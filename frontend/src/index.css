@@ -308,6 +308,30 @@ button {
   border-radius: 6px;
 }
 
+.formulario fieldset {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.formulario__nota {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.formulario__exito {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--ok);
+  background: #e6f4ea;
+  border-radius: 6px;
+}
+
 .formulario__acciones {
   display: flex;
   justify-content: flex-end;
