@@ -486,7 +486,7 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 ### HU-17 · Reponer una etiqueta deteriorada
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S2 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S2 · **Responsable:** Luis
 - **Historia:** Como técnico de campo, quiero reimprimir o reemplazar el QR de una trampa, para que una etiqueta dañada no la deje sin identificar.
 
 **Criterios de aceptación**
@@ -497,8 +497,15 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 **Tareas**
 
-- [ ] `HU-17.1` [API] Reemplazo de código con historial
-- [ ] `HU-17.2` [Web] Acciones de reimprimir y reemplazar en la ficha
+- [x] `HU-17.1` [API] Reemplazo de código con historial
+- [x] `HU-17.2` [Web] Acciones de reimprimir y reemplazar en la ficha
+
+> Reimprimir: `GET /trampas/{id}/etiqueta.pdf` (mismo código). Reemplazar: `POST
+> /trampas/{id}/qr/reemplazar` (técnico o agrónomo; idempotente por `id`; trampa retirada → 409)
+> genera un código nuevo; leer el anterior responde 410 con el aviso. Historial en la tabla
+> `reemplazo_qr` (`GET /trampas/{id}/qr/reemplazos`: códigos, motivo, responsable y fecha). Los
+> códigos retirados no se reutilizan. Web: «¿Etiqueta dañada?» en Trampas y QR y en la ficha
+> `/t/{código}` (al reemplazar navega al código nuevo).
 
 ## E4 · Mapa y rutas de monitoreo
 

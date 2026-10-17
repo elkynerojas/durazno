@@ -9,6 +9,7 @@ import { formatoCoordenada } from '../../utils/formato'
 import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from './catalogo'
+import ReponerEtiqueta from './ReponerEtiqueta'
 
 // Lo que se abre al escanear el QR de una trampa: <dominio>/t/<código>.
 export default function VistaFichaTrampa() {
@@ -24,8 +25,9 @@ export default function VistaFichaTrampa() {
           vigente &&
           setEstado({
             codigo,
-            error:
-              e.estado === 404 ? e.message : 'No se pudo consultar la trampa. Intente de nuevo.',
+            error: [404, 410].includes(e.estado)
+              ? e.message
+              : 'No se pudo consultar la trampa. Intente de nuevo.',
           }),
       )
     return () => {
@@ -47,6 +49,7 @@ export default function VistaFichaTrampa() {
 
 function Ficha({ trampa, lote, ultima_lectura }) {
   const { usuario } = useSesion()
+  const navegar = useNavigate()
   const [lat, lng] = puntoALeaflet(trampa.geom)
   const tipo = TIPOS_TRAMPA[trampa.tipo]
   const registra = usuario.rol !== 'productor'
@@ -119,6 +122,11 @@ function Ficha({ trampa, lote, ultima_lectura }) {
             <dt>Código QR</dt>
             <dd>{trampa.codigo_qr}</dd>
           </dl>
+          <ReponerEtiqueta
+            trampa={trampa}
+            puedeReemplazar={registra}
+            alReemplazar={(nueva) => navegar(`/t/${nueva.codigo_qr}`, { replace: true })}
+          />
         </section>
 
         <section className="tarjeta" aria-labelledby="titulo-lectura">

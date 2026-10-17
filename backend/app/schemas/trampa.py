@@ -113,3 +113,24 @@ class TrampaResuelta(BaseModel):
         description="Última lectura registrada de la trampa. Siempre `null` hasta que existan "
         "las lecturas (HU-25).",
     )
+
+
+class ReemplazoQrCrear(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID | None = Field(
+        default=None, description="Opcional: reenviar el mismo `id` no genera otro código"
+    )
+    motivo: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+        | None
+    ) = Field(default=None, description="p. ej. etiqueta rota, borrosa o perdida")
+
+
+class ReemplazoQrLeer(BaseModel):
+    id: uuid.UUID
+    codigo_anterior: str
+    codigo_nuevo: str
+    motivo: str | None
+    responsable: str = Field(description="Nombre de quien hizo el reemplazo")
+    created_at: datetime

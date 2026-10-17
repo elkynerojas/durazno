@@ -124,3 +124,10 @@ export const exportarPredio = (formato, loteId) =>
   api(`/export/${formato}${loteId ? `?lote_id=${encodeURIComponent(loteId)}` : ''}`, {
     binario: true,
   })
+
+export const obtenerEtiquetaTrampa = (id) => api(`/trampas/${id}/etiqueta.pdf`, { binario: true })
+
+export const reemplazarQr = (id, datos) =>
+  api(`/trampas/${id}/qr/reemplazar`, { metodo: 'POST', cuerpo: datos })
+
+export const listarReemplazosQr = (id) => api(`/trampas/${id}/qr/reemplazos`)

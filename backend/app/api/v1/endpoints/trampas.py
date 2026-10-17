@@ -2,6 +2,7 @@ import re
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.concurrency import run_in_threadpool
@@ -11,11 +12,14 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.predio import Predio
+from app.models.reemplazo_qr import ReemplazoQr
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
 from app.schemas.trampa import (
     EstadoTrampa,
+    ReemplazoQrCrear,
+    ReemplazoQrLeer,
     TrampaActualizar,
     TrampaCrear,
     TrampaLeer,
@@ -27,7 +31,11 @@ from app.services.trampas import punto_en_lote
 
 router = APIRouter(tags=["trampas"])
 
+ZONA_PREDIO = ZoneInfo("America/Bogota")
+
 AgronomoDep = Annotated[Usuario, Depends(requiere_rol("agronomo"))]
+# Reponer una etiqueta en campo (HU-17): técnico o agrónomo; el productor solo consulta.
+CampoDep = Annotated[Usuario, Depends(requiere_rol("tecnico", "agronomo"))]
 
 ERROR_401 = {401: {"description": "Sin sesión o sesión inválida"}}
 ERROR_403 = {403: {"description": "Solo el agrónomo administra las trampas"}}
@@ -68,7 +76,12 @@ async def _codigo_qr_libre(session: SessionDep) -> str:
     # 31^8 ≈ 8,5 × 10^11 combinaciones: un choque es casi imposible, pero se descarta igual.
     while True:
         codigo = generar_codigo()
-        if await session.scalar(select(Trampa.id).where(Trampa.codigo_qr == codigo)) is None:
+        en_uso = await session.scalar(select(Trampa.id).where(Trampa.codigo_qr == codigo))
+        # Los códigos de etiquetas reemplazadas tampoco se reutilizan.
+        retirado = await session.scalar(
+            select(ReemplazoQr.id).where(ReemplazoQr.codigo_anterior == codigo)
+        )
+        if en_uso is None and retirado is None:
             return codigo
 
 
@@ -134,6 +147,7 @@ async def listar_trampas_del_lote(
     responses={
         **ERROR_401,
         404: {"description": "No hay ninguna trampa con ese código QR"},
+        410: {"description": "La etiqueta fue reemplazada por otra (HU-17)"},
     },
 )
 async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionDep) -> dict:
@@ -153,6 +167,20 @@ async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionD
         )
     ).first()
     if fila is None:
+        reemplazo = (
+            await session.execute(
+                select(ReemplazoQr.created_at, Trampa.codigo_ica)
+                .join(Trampa, Trampa.id == ReemplazoQr.trampa_id)
+                .where(ReemplazoQr.codigo_anterior == codigo, Trampa.deleted_at.is_(None))
+            )
+        ).first()
+        if reemplazo is not None:
+            fecha = reemplazo[0].astimezone(ZONA_PREDIO).strftime("%d/%m/%Y")
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail=f"La etiqueta {codigo} fue reemplazada el {fecha}: use la etiqueta nueva "
+                f"de la trampa {reemplazo[1]}.",
+            )
         raise no_existe
     trampa, lote = fila
     return {"trampa": trampa, "lote": lote}
@@ -304,6 +332,15 @@ def _archivo_qr(contenido: bytes, trampa: Trampa, extension: str) -> Response:
 NOMBRES_TIPO = {"jackson": "Jackson", "mcphail": "McPhail"}
 
 
+def _etiqueta(trampa: Trampa, lote_codigo: str) -> Etiqueta:
+    return Etiqueta(
+        codigo_ica=trampa.codigo_ica,
+        codigo_qr=trampa.codigo_qr,
+        lote=lote_codigo,
+        tipo=f"{NOMBRES_TIPO[trampa.tipo]} + {trampa.atrayente.lower()}",
+    )
+
+
 @router.get(
     "/lotes/{lote_id}/etiquetas.pdf",
     summary="PDF de etiquetas QR de un lote",
@@ -341,15 +378,7 @@ async def descargar_etiquetas(
             detail=f"El lote {lote.codigo} no tiene trampas instaladas para imprimir",
         )
     predio = await session.scalar(select(Predio.nombre).where(Predio.id == lote.predio_id))
-    etiquetas = [
-        Etiqueta(
-            codigo_ica=t.codigo_ica,
-            codigo_qr=t.codigo_qr,
-            lote=lote.codigo,
-            tipo=f"{NOMBRES_TIPO[t.tipo]} + {t.atrayente.lower()}",
-        )
-        for t in trampas
-    ]
+    etiquetas = [_etiqueta(t, lote.codigo) for t in trampas]
     pdf = await run_in_threadpool(generar_pdf, etiquetas, predio or "Predio", lote.codigo)
     # El código del lote lo escribe el usuario: solo caracteres seguros en el nombre del archivo.
     nombre = re.sub(r"[^A-Za-z0-9_-]", "_", lote.codigo)
@@ -358,3 +387,95 @@ async def descargar_etiquetas(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="etiquetas-lote-{nombre}.pdf"'},
     )
+
+
+@router.get(
+    "/trampas/{trampa_id}/etiqueta.pdf",
+    summary="Reimprimir la etiqueta de una trampa",
+    description="PDF con la etiqueta de una sola trampa, con su código QR actual (no cambia).",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}, **ERROR_QR},
+)
+async def descargar_etiqueta(
+    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+) -> Response:
+    trampa = await _obtener(session, trampa_id)
+    lote = await session.get(Lote, trampa.lote_id)
+    predio = await session.scalar(select(Predio.nombre).where(Predio.id == lote.predio_id))
+    pdf = await run_in_threadpool(
+        generar_pdf, [_etiqueta(trampa, lote.codigo)], predio or "Predio", lote.codigo
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="etiqueta-{trampa.codigo_qr}.pdf"'},
+    )
+
+
+@router.post(
+    "/trampas/{trampa_id}/qr/reemplazar",
+    response_model=TrampaLeer,
+    summary="Reemplazar la etiqueta QR de una trampa",
+    description="Genera un código QR nuevo para la trampa e invalida el anterior: leerlo "
+    "responde 410 con el aviso de reemplazo. El cambio queda en el historial. Reenviar el mismo "
+    "`id` no genera otro código. Técnico o agrónomo.",
+    responses={
+        **ERROR_401,
+        403: {"description": "El productor no reemplaza etiquetas"},
+        404: {"description": "Trampa no encontrada"},
+        409: {"description": "La trampa está retirada"},
+    },
+)
+async def reemplazar_qr(
+    trampa_id: uuid.UUID, entrada: ReemplazoQrCrear, usuario: CampoDep, session: SessionDep
+) -> Trampa:
+    trampa = await _obtener(session, trampa_id)
+    if entrada.id is not None and await session.get(ReemplazoQr, entrada.id) is not None:
+        return trampa
+    if trampa.estado == "retirada":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="La trampa está retirada: no necesita etiqueta nueva",
+        )
+    reemplazo = ReemplazoQr(
+        trampa_id=trampa.id,
+        codigo_anterior=trampa.codigo_qr,
+        codigo_nuevo=await _codigo_qr_libre(session),
+        motivo=entrada.motivo,
+        usuario_id=usuario.id,
+    )
+    if entrada.id is not None:
+        reemplazo.id = entrada.id
+    trampa.codigo_qr = reemplazo.codigo_nuevo
+    session.add(reemplazo)
+    return await _guardar(session, trampa)
+
+
+@router.get(
+    "/trampas/{trampa_id}/qr/reemplazos",
+    response_model=list[ReemplazoQrLeer],
+    summary="Historial de reemplazos de la etiqueta",
+    description="Reemplazos del código QR de la trampa, del más reciente al más antiguo.",
+    responses={**ERROR_401, 404: {"description": "Trampa no encontrada"}},
+)
+async def listar_reemplazos_qr(
+    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+) -> list[dict]:
+    await _obtener(session, trampa_id)
+    filas = await session.execute(
+        select(ReemplazoQr, Usuario.nombre_completo)
+        .join(Usuario, Usuario.id == ReemplazoQr.usuario_id)
+        .where(ReemplazoQr.trampa_id == trampa_id, ReemplazoQr.deleted_at.is_(None))
+        .order_by(ReemplazoQr.created_at.desc(), ReemplazoQr.id.desc())
+    )
+    return [
+        {
+            "id": r.id,
+            "codigo_anterior": r.codigo_anterior,
+            "codigo_nuevo": r.codigo_nuevo,
+            "motivo": r.motivo,
+            "responsable": nombre,
+            "created_at": r.created_at,
+        }
+        for r, nombre in filas
+    ]

@@ -102,6 +102,15 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   await expect(page.getByText(`${codigoLote}`, { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Registrar lectura' })).toBeDisabled()
 
+  // HU-17: reemplazar la etiqueta desde la ficha invalida el código anterior.
+  await page.getByRole('button', { name: 'Reemplazar etiqueta' }).click()
+  await page.getByLabel('Motivo (opcional)').fill('Prueba E2E')
+  await page.getByRole('button', { name: 'Confirmar reemplazo' }).click()
+  await expect(page).not.toHaveURL(`/t/${codigoQr}`)
+  await expect(page.getByText(/→/)).toBeVisible()
+  await page.goto(`/t/${codigoQr}`)
+  await expect(page.getByRole('alert')).toContainText(`La etiqueta ${codigoQr} fue reemplazada`)
+
   await page.goto('/t/ZZZZ2345')
   await expect(page.getByRole('alert')).toContainText('No hay ninguna trampa con el código QR')
 })

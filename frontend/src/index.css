@@ -1247,3 +1247,24 @@ button {
   align-self: flex-start;
   margin-bottom: 0.9rem;
 }
+
+.reponer {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--borde);
+}
+
+.reponer__titulo {
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+
+.reponer__confirmar {
+  margin-top: 0.75rem;
+}
+
+.reponer__historial li {
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.85rem;
+}

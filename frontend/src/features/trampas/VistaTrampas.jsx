@@ -11,6 +11,7 @@ import { useDatosPredio } from '../mapa/useDatosPredio'
 import BotonEtiquetas from './BotonEtiquetas'
 import CapaTrampas, { CapturaClic } from './CapaTrampas'
 import EtiquetaQr from './EtiquetaQr'
+import ReponerEtiqueta from './ReponerEtiqueta'
 import FormularioTrampa from './FormularioTrampa'
 import TablaTrampas from './TablaTrampas'
 
@@ -177,7 +178,19 @@ export default function VistaTrampas() {
         </section>
 
         <section className="tarjeta">
-          <EtiquetaQr key={trampa?.id ?? 'nueva'} trampa={trampa} lote={lote} />
+          <EtiquetaQr
+            key={trampa ? `${trampa.id}-${trampa.codigo_qr}` : 'nueva'}
+            trampa={trampa}
+            lote={lote}
+          />
+          {trampa && (
+            <ReponerEtiqueta
+              key={trampa.id}
+              trampa={trampa}
+              puedeReemplazar={usuario.rol !== 'productor'}
+              alReemplazar={datos.guardarTrampa}
+            />
+          )}
         </section>
       </div>
 
