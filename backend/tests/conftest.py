@@ -32,7 +32,11 @@ async def session() -> AsyncIterator[AsyncSession]:
     engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
     async with engine.connect() as conexion:
         transaccion = await conexion.begin()
-        async with AsyncSession(bind=conexion, join_transaction_mode="create_savepoint") as sesion:
+        # expire_on_commit=False igual que SessionLocal, para que los commits de los endpoints
+        # no expiren los objetos que la prueba ya tiene cargados.
+        async with AsyncSession(
+            bind=conexion, join_transaction_mode="create_savepoint", expire_on_commit=False
+        ) as sesion:
             yield sesion
         await transaccion.rollback()
     await engine.dispose()

@@ -171,7 +171,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-06 · Gestionar usuarios del predio
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S1 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S1 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero crear, editar y desactivar las cuentas del personal, para controlar quién registra datos.
 
 **Criterios de aceptación**
@@ -183,10 +183,20 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 **Tareas**
 
-- [ ] `HU-06.1` [API] CRUD /usuarios restringido al agrónomo
-- [ ] `HU-06.2` [Web] Lista y formulario de usuarios
+- [x] `HU-06.1` [API] CRUD /usuarios restringido al agrónomo
+- [x] `HU-06.2` [Web] Lista y formulario de usuarios
 - [ ] `HU-06.3` [Doc] Texto de aviso de tratamiento de datos
-- [ ] `HU-06.4` [Pruebas] Permisos por rol y usuario desactivado
+- [x] `HU-06.4` [Pruebas] Permisos por rol y usuario desactivado
+
+> `GET/POST/PATCH /usuarios` solo para el agrónomo; desactivar es `PATCH activo:false` (sin
+> DELETE) y corta las sesiones abiertas. El alta exige `autorizacion_datos` y guarda
+> `autorizacion_datos_en`. El predio conserva siempre al menos un agrónomo activo (conteo con
+> `FOR UPDATE`). HU-06.3: `AvisoDatos.jsx` es borrador; falta que lo valide el director con el
+> predio. La conservación de la autoría de lecturas se prueba cuando exista `lectura_trampa`
+> (HU-25). Pendientes de la auditoría, pasados a HU-08.7: restablecer la clave no revoca los
+> tokens ya emitidos (y reactivar una cuenta revive los anteriores); política de claves solo por
+> longitud; el agrónomo cambia su propia clave sin dar la actual. Para decidir con el director
+> (Ley 1581): guardar quién registró la autorización y la versión del aviso.
 
 ### HU-07 · Registrar el predio
 
@@ -225,7 +235,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 - [ ] `HU-08.4` [DevOps] Copia diaria de la base y prueba de restauración
 - [ ] `HU-08.5` [DevOps] Cabeceras CSP y HSTS en el Nginx de producción
 - [ ] `HU-08.6` [DevOps] `limit_req` por IP en Nginx para `/api/v1/auth/` y `forwarded-allow-ips` restringido al proxy (bloqueo de cuentas ajenas y rociado de contraseñas, auditoría HU-05)
-- [ ] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05
+- [ ] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05; revocar también al restablecer la clave o reactivar la cuenta, rechazar claves triviales y exigir la clave actual para cambiar la propia (auditoría HU-06)
 
 ## E2 · Lotes y trampas georreferenciados
 

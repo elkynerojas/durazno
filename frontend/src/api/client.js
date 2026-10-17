@@ -75,3 +75,10 @@ export const iniciarSesion = (correo, clave) =>
   })
 
 export const obtenerUsuarioActual = () => api('/auth/yo')
+
+export const listarUsuarios = () => api('/usuarios')
+
+export const crearUsuario = (datos) => api('/usuarios', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarUsuario = (id, cambios) =>
+  api(`/usuarios/${id}`, { metodo: 'PATCH', cuerpo: cambios })

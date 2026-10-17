@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, CheckConstraint, String, true
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, String, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, EntidadSincronizable
@@ -15,3 +17,8 @@ class Usuario(EntidadSincronizable, Base):
     clave_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
+    # Ley 1581 de 2012: momento en que el agrónomo registró que el titular fue informado del
+    # tratamiento de sus datos y lo autorizó. Nulo en cuentas creadas antes de HU-06.
+    autorizacion_datos_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
