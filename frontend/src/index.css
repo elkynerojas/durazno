@@ -429,7 +429,7 @@ button {
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 60%;
+    max-height: 45%;
     border-radius: 10px 10px 0 0;
   }
 }
@@ -475,4 +475,65 @@ button {
 .leaflet-pm-toolbar .button-container a.leaflet-buttons-control-button {
   width: 44px;
   height: 44px;
+}
+
+.formulario__fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.formulario__fila > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.boton-flotante {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 1000;
+  min-height: 44px;
+  padding: 0.6rem 1.25rem;
+  transform: translateX(-50%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+}
+
+/* Marcadores de trampa: letra por tipo y color por estado */
+.marcador-trampa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+}
+
+.marcador-trampa--activa {
+  background: var(--ok);
+}
+
+.marcador-trampa--inactiva {
+  background: var(--aviso);
+}
+
+.marcador-trampa--retirada {
+  background: #757575;
+}
+
+.marcador-trampa--seleccionada {
+  border-color: #ffd166;
+  transform: scale(1.2);
+}
+
+.marcador-trampa--nueva {
+  color: var(--texto);
+  background: #ffd166;
+  border-style: dashed;
+  border-color: var(--texto);
 }

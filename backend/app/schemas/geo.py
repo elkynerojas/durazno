@@ -1,5 +1,6 @@
 """Geometrías en GeoJSON (RFC 7946): posiciones `[longitud, latitud]` en WGS 84."""
 
+from collections.abc import Iterable
 from typing import Annotated, Any, Literal
 
 from geoalchemy2 import WKBElement
@@ -16,6 +17,16 @@ Anillo = Annotated[list[Posicion], Field(min_length=4)]
 # (p. ej. [7.27, -72.64] cae en la Antártida, con coordenadas que en sí son válidas).
 LONGITUD_COLOMBIA = (-79.1, -66.8)
 LATITUD_COLOMBIA = (-4.3, 13.5)
+
+
+def _exigir_colombia(posiciones: Iterable[Posicion]) -> None:
+    (lng_min, lng_max), (lat_min, lat_max) = LONGITUD_COLOMBIA, LATITUD_COLOMBIA
+    if any(
+        not (lng_min <= lng <= lng_max and lat_min <= lat <= lat_max) for lng, lat in posiciones
+    ):
+        raise ValueError(
+            "Hay coordenadas fuera de Colombia: revise que el orden sea [longitud, latitud]"
+        )
 
 
 class PoligonoGeoJSON(BaseModel):
@@ -39,20 +50,27 @@ class PoligonoGeoJSON(BaseModel):
     def _anillos_cerrados(cls, anillos: list[list[Posicion]]) -> list[list[Posicion]]:
         if any(anillo[0] != anillo[-1] for anillo in anillos):
             raise ValueError("Cada anillo debe terminar en el mismo punto en que empieza")
-        (lng_min, lng_max), (lat_min, lat_max) = LONGITUD_COLOMBIA, LATITUD_COLOMBIA
-        fuera = any(
-            not (lng_min <= lng <= lng_max and lat_min <= lat <= lat_max)
-            for anillo in anillos
-            for lng, lat in anillo
-        )
-        if fuera:
-            raise ValueError(
-                "Hay coordenadas fuera de Colombia: revise que el orden sea [longitud, latitud]"
-            )
+        _exigir_colombia(posicion for anillo in anillos for posicion in anillo)
         return anillos
 
 
-def a_geometria(geojson: PoligonoGeoJSON) -> WKBElement:
+class PuntoGeoJSON(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"example": {"type": "Point", "coordinates": [-72.6395, 7.2705]}},
+    )
+
+    type: Literal["Point"]
+    coordinates: Posicion = Field(description="`[longitud, latitud]`")
+
+    @field_validator("coordinates")
+    @classmethod
+    def _en_colombia(cls, posicion: Posicion) -> Posicion:
+        _exigir_colombia([posicion])
+        return posicion
+
+
+def a_geometria(geojson: PoligonoGeoJSON | PuntoGeoJSON) -> WKBElement:
     return from_shape(shape(geojson.model_dump()), srid=4326)
 
 

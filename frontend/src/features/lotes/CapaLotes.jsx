@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Polygon, Tooltip, useMap } from 'react-leaflet'
 
 import { geojsonALeaflet } from '../../utils/geo'
@@ -10,6 +10,7 @@ const ESTILO_SELECCIONADO = { color: '#ffd166', weight: 3, fillOpacity: 0.3 }
 // expone su forma actual a través de `refCapas` (id → capa de Leaflet).
 export default function CapaLotes({
   lotes,
+  lotesIniciales,
   seleccionadoId,
   editandoId,
   alSeleccionar,
@@ -17,14 +18,14 @@ export default function CapaLotes({
   version = 0,
 }) {
   const map = useMap()
-  const ajustado = useRef(false)
 
+  // Encuadra el predio una sola vez, con los lotes que había al cargar: crear o editar un lote
+  // después no debe mover la vista.
   useEffect(() => {
-    if (ajustado.current || lotes.length === 0) return
-    ajustado.current = true
-    const limites = lotes.flatMap((lote) => geojsonALeaflet(lote.geom)[0])
+    if (!lotesIniciales?.length) return
+    const limites = lotesIniciales.flatMap((lote) => geojsonALeaflet(lote.geom)[0])
     map.fitBounds(limites, { padding: [24, 24], maxZoom: 18 })
-  }, [map, lotes])
+  }, [map, lotesIniciales])
 
   useEffect(() => {
     const capa = editandoId && refCapas.current.get(editandoId)

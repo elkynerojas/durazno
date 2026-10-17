@@ -20,3 +20,22 @@ export function leafletAGeojson(anillos) {
     }),
   }
 }
+
+// Point GeoJSON [lng, lat] → [lat, lng] de Leaflet.
+export const puntoALeaflet = ({ coordinates: [lng, lat] }) => [lat, lng]
+
+// Latitud y longitud decimales (como las escribe una persona) → Point GeoJSON.
+export const latLngAPunto = (lat, lng) => ({ type: 'Point', coordinates: [lng, lat] })
+
+// Ayuda visual: ¿el punto [lat, lng] cae dentro del anillo exterior del polígono GeoJSON?
+// El servidor es quien decide (ST_Contains); esto solo sugiere el lote en el formulario.
+export function puntoEnPoligono([lat, lng], poligono) {
+  const anillo = poligono.coordinates[0]
+  let dentro = false
+  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+    const [xi, yi] = anillo[i]
+    const [xj, yj] = anillo[j]
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) dentro = !dentro
+  }
+  return dentro
+}

@@ -95,3 +95,10 @@ export const actualizarLote = (id, cambios) =>
   api(`/lotes/${id}`, { metodo: 'PATCH', cuerpo: cambios })
 
 export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
+
+export const listarTrampas = () => api('/trampas')
+
+export const crearTrampa = (datos) => api('/trampas', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarTrampa = (id, cambios) =>
+  api(`/trampas/${id}`, { metodo: 'PATCH', cuerpo: cambios })

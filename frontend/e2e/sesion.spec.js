@@ -1,14 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const CORREO = process.env.E2E_CORREO ?? 'e2e-agronomo@example.com'
-const CLAVE = process.env.E2E_CLAVE
-
-async function ingresar(page, correo, clave) {
-  await page.goto('/')
-  await page.getByLabel('Correo').fill(correo)
-  await page.getByLabel('Contraseña').fill(clave)
-  await page.getByRole('button', { name: 'Ingresar' }).click()
-}
+import { CLAVE, CORREO, ingresar } from './ayudas'
 
 test('credenciales inválidas muestran un mensaje genérico', async ({ page }) => {
   // Correo distinto en cada corrida para no acumular intentos fallidos en el límite.

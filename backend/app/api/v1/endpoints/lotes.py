@@ -9,11 +9,13 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.predio import Predio
+from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
 from app.schemas.lote import LoteActualizar, LoteCrear, LoteGuardado, LoteLeer
 from app.services.geo import motivo_invalidez
 from app.services.lotes import calcular_area_ha, lotes_traslapados
+from app.services.trampas import trampas_fuera
 
 router = APIRouter(prefix="/lotes", tags=["lotes"])
 
@@ -22,7 +24,12 @@ AgronomoDep = Annotated[Usuario, Depends(requiere_rol("agronomo"))]
 ERROR_401 = {401: {"description": "Sin sesión o sesión inválida"}}
 ERROR_403 = {403: {"description": "Solo el agrónomo administra los lotes"}}
 ERROR_404 = {404: {"description": "Lote no encontrado"}}
-ERROR_409 = {409: {"description": "Código repetido, `id` en uso o predio sin registrar"}}
+ERROR_409 = {
+    409: {
+        "description": "Código repetido, `id` en uso, predio sin registrar o trampas que "
+        "quedarían fuera del lote"
+    }
+}
 ERROR_422 = {422: {"description": "Datos inválidos o polígono que se cruza consigo mismo"}}
 
 CODIGO_REPETIDO = "Ya existe un lote con ese código"
@@ -45,6 +52,11 @@ async def _aplicar_geometria(session: SessionDep, lote: Lote, geojson: PoligonoG
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="El polígono es demasiado pequeño: su área no alcanza 0,01 ha",
+        )
+    if lote.id is not None and (fuera := await trampas_fuera(session, lote.id, geometria)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Con esa forma quedarían por fuera del lote las trampas " + ", ".join(fuera),
         )
     lote.geom = geometria
     lote.area_ha = area_ha
@@ -160,9 +172,22 @@ async def actualizar_lote(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar un lote",
     description="Borrado lógico: el lote deja de aparecer, pero se conserva en la base.",
-    responses={**ERROR_401, **ERROR_403, **ERROR_404},
+    responses={
+        **ERROR_401,
+        **ERROR_403,
+        **ERROR_404,
+        409: {"description": "El lote tiene trampas registradas"},
+    },
 )
 async def eliminar_lote(lote_id: uuid.UUID, _agronomo: AgronomoDep, session: SessionDep) -> None:
     lote = await _obtener(session, lote_id)
+    tiene_trampas = await session.scalar(
+        select(Trampa.id).where(Trampa.lote_id == lote.id, Trampa.deleted_at.is_(None)).limit(1)
+    )
+    if tiene_trampas is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El lote tiene trampas registradas: muévalas o elimínelas antes de borrarlo",
+        )
     lote.deleted_at = datetime.now(UTC)
     await session.commit()

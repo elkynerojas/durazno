@@ -300,7 +300,7 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 ### HU-11 · Registrar una trampa dentro de su lote
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S1 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S1 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero ubicar cada trampa en el mapa o por coordenadas, para saber exactamente dónde está cada una.
 
 **Criterios de aceptación**
@@ -313,11 +313,21 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 **Tareas**
 
-- [ ] `HU-11.1` [BD] Modelo trampa con Geometry(POINT, 4326), tipo, estado y codigo_ica único
-- [ ] `HU-11.2` [API] CRUD /trampas y /lotes/{id}/trampas
-- [ ] `HU-11.3` [API] Validación ST_Contains con mensaje en español
-- [ ] `HU-11.4` [Web] Marcadores por tipo de trampa y formulario
-- [ ] `HU-11.5` [Pruebas] Punto fuera del lote y código ICA duplicado
+- [x] `HU-11.1` [BD] Modelo trampa con Geometry(POINT, 4326), tipo, estado y codigo_ica único
+- [x] `HU-11.2` [API] CRUD /trampas y /lotes/{id}/trampas
+- [x] `HU-11.3` [API] Validación ST_Contains con mensaje en español
+- [x] `HU-11.4` [Web] Marcadores por tipo de trampa y formulario
+- [x] `HU-11.5` [Pruebas] Punto fuera del lote y código ICA duplicado
+
+> `/trampas` y `/lotes/{id}/trampas`: consulta cualquier rol; registra, edita, mueve y elimina
+> (borrado lógico) el agrónomo. Punto GeoJSON validado con `ST_Contains(lote.geom, punto)` (el
+> borde no cuenta) → 422 en español; código ICA único sin distinguir mayúsculas → 409. Mover es
+> un `PATCH` sobre el mismo `id`, así las lecturas (HU-25) siguen ligadas a la trampa. Además: un
+> lote con trampas no se elimina y no se le puede cambiar la forma si alguna quedaría por fuera
+> (409). Web: marcadores J/M con color por estado, botón «Nueva trampa» (tocar el mapa o escribir
+> latitud y longitud, con el lote sugerido) y «Mover en el mapa». `precision_m` lo acepta la API;
+> la captura con GPS en la web es HU-12; un `geom` nuevo sin `precision_m` la borra.
+> `fecha_instalacion` es `date` (fecha de calendario, no un instante). E2E: `e2e/mapa.spec.js`.
 
 ### HU-12 · Tomar coordenadas con el GPS del teléfono
 

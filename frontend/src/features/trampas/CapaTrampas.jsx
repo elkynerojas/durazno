@@ -1,0 +1,60 @@
+import L from 'leaflet'
+import { Marker, Tooltip, useMapEvents } from 'react-leaflet'
+
+import { puntoALeaflet } from '../../utils/geo'
+import { TIPOS_TRAMPA } from './catalogo'
+
+// Íconos propios: los de Leaflet por defecto no cargan con Vite.
+const iconos = new Map()
+function icono(tipo, estado, seleccionada) {
+  const clave = `${tipo}-${estado}-${seleccionada}`
+  if (!iconos.has(clave)) {
+    iconos.set(
+      clave,
+      L.divIcon({
+        className: '',
+        html: `<span class="marcador-trampa marcador-trampa--${estado}${
+          seleccionada ? ' marcador-trampa--seleccionada' : ''
+        }">${TIPOS_TRAMPA[tipo].sigla}</span>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      }),
+    )
+  }
+  return iconos.get(clave)
+}
+
+const ICONO_NUEVA = L.divIcon({
+  className: '',
+  html: '<span class="marcador-trampa marcador-trampa--nueva">+</span>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+})
+
+// Marcadores de las trampas y, si se está ubicando una, el punto propuesto.
+export default function CapaTrampas({ trampas, seleccionadaId, ubicacion, alSeleccionar }) {
+  return (
+    <>
+      {trampas.map((trampa) => (
+        <Marker
+          key={trampa.id}
+          position={puntoALeaflet(trampa.geom)}
+          icon={icono(trampa.tipo, trampa.estado, trampa.id === seleccionadaId)}
+          eventHandlers={{ click: () => alSeleccionar(trampa) }}
+          opacity={ubicacion && trampa.id === seleccionadaId ? 0.4 : 1}
+        >
+          <Tooltip direction="top" offset={[0, -14]}>
+            {trampa.codigo_ica}
+          </Tooltip>
+        </Marker>
+      ))}
+      {ubicacion && <Marker position={ubicacion} icon={ICONO_NUEVA} interactive={false} />}
+    </>
+  )
+}
+
+// Entrega las coordenadas [lat, lng] de cada toque en el mapa mientras está activo.
+export function CapturaClic({ alTocar }) {
+  useMapEvents({ click: (evento) => alTocar([evento.latlng.lat, evento.latlng.lng]) })
+  return null
+}
