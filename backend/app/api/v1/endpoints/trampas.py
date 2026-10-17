@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
@@ -9,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
+from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
@@ -19,6 +21,7 @@ from app.schemas.trampa import (
     TrampaLeer,
     TrampaResuelta,
 )
+from app.services.etiquetas import Etiqueta, generar_pdf
 from app.services.qr import ALFABETO, LONGITUD, generar_codigo, qr_png, qr_svg
 from app.services.trampas import punto_en_lote
 
@@ -295,4 +298,63 @@ def _archivo_qr(contenido: bytes, trampa: Trampa, extension: str) -> Response:
         content=contenido,
         media_type=tipo,
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+NOMBRES_TIPO = {"jackson": "Jackson", "mcphail": "McPhail"}
+
+
+@router.get(
+    "/lotes/{lote_id}/etiquetas.pdf",
+    summary="PDF de etiquetas QR de un lote",
+    description="Hoja carta con 8 etiquetas por página (QR de 3,6 cm, código ICA, lote, tipo y "
+    "código corto para escribirlo a mano), con márgenes para papel adhesivo y líneas de corte. "
+    "Incluye las trampas activas e inactivas del lote, no las retiradas.",
+    response_class=Response,
+    responses={
+        200: {"content": {"application/pdf": {}}},
+        **ERROR_401,
+        404: {"description": "Lote no encontrado"},
+        409: {"description": "El lote no tiene trampas instaladas"},
+    },
+)
+async def descargar_etiquetas(
+    lote_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+) -> Response:
+    lote = await session.scalar(select(Lote).where(Lote.id == lote_id, Lote.deleted_at.is_(None)))
+    if lote is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
+    trampas = list(
+        await session.scalars(
+            select(Trampa)
+            .where(
+                Trampa.lote_id == lote.id,
+                Trampa.deleted_at.is_(None),
+                Trampa.estado != "retirada",
+            )
+            .order_by(Trampa.codigo_ica)
+        )
+    )
+    if not trampas:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El lote {lote.codigo} no tiene trampas instaladas para imprimir",
+        )
+    predio = await session.scalar(select(Predio.nombre).where(Predio.id == lote.predio_id))
+    etiquetas = [
+        Etiqueta(
+            codigo_ica=t.codigo_ica,
+            codigo_qr=t.codigo_qr,
+            lote=lote.codigo,
+            tipo=f"{NOMBRES_TIPO[t.tipo]} + {t.atrayente.lower()}",
+        )
+        for t in trampas
+    ]
+    pdf = await run_in_threadpool(generar_pdf, etiquetas, predio or "Predio", lote.codigo)
+    # El código del lote lo escribe el usuario: solo caracteres seguros en el nombre del archivo.
+    nombre = re.sub(r"[^A-Za-z0-9_-]", "_", lote.codigo)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="etiquetas-lote-{nombre}.pdf"'},
     )

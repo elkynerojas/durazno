@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { obtenerQrTrampa } from '../../api/client'
+import { descargar } from '../../utils/descargas'
 import { TIPOS_TRAMPA } from './catalogo'
-
-function descargar(blob, nombre) {
-  const url = URL.createObjectURL(blob)
-  const enlace = Object.assign(document.createElement('a'), { href: url, download: nombre })
-  enlace.click()
-  URL.revokeObjectURL(url)
-}
 
 // «Etiqueta QR»: vista de la etiqueta como se imprimirá y descarga en PNG o SVG.
 // Las imágenes se piden con la sesión, por eso no basta un <img src> a la API.

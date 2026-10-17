@@ -8,6 +8,7 @@ import { geojsonALeaflet, puntoALeaflet, puntoEnPoligono } from '../../utils/geo
 import { useSesion } from '../auth/useSesion'
 import CapaLotes from '../lotes/CapaLotes'
 import { useDatosPredio } from '../mapa/useDatosPredio'
+import BotonEtiquetas from './BotonEtiquetas'
 import CapaTrampas, { CapturaClic } from './CapaTrampas'
 import EtiquetaQr from './EtiquetaQr'
 import FormularioTrampa from './FormularioTrampa'
@@ -101,6 +102,7 @@ export default function VistaTrampas() {
   return (
     <Plantilla>
       <Encabezado migas={migas} titulo={titulo}>
+        {lote && <BotonEtiquetas lote={lote} />}
         {editable && trampa && (
           <button type="button" className="boton-secundario" onClick={nuevaTrampa}>
             Nueva trampa

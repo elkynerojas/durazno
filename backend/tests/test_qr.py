@@ -92,7 +92,7 @@ def test_el_qr_codifica_solo_la_url_corta(monkeypatch):
 
 
 def test_correccion_de_errores_nivel_q_o_superior():
-    assert qr._qr("ABCD2345").error in {"Q", "H"}
+    assert qr.crear_qr("ABCD2345").error in {"Q", "H"}
 
 
 # --- API ---

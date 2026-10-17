@@ -398,7 +398,7 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 ### HU-15 · Imprimir las etiquetas de un lote
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
 - **Historia:** Como técnico de campo, quiero imprimir las etiquetas QR de todas las trampas de un lote, para instalarlas en un solo recorrido.
 
 **Criterios de aceptación**
@@ -409,9 +409,18 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 **Tareas**
 
-- [ ] `HU-15.1` [API] Generación del PDF de etiquetas con reportlab
-- [ ] `HU-15.2` [Web] Botón «Imprimir etiquetas» por lote
+- [x] `HU-15.1` [API] Generación del PDF de etiquetas con reportlab
+- [x] `HU-15.2` [Web] Botón «Imprimir etiquetas» por lote
 - [ ] `HU-15.3` [Campo] Prueba de lectura de etiquetas impresas con dos teléfonos
+
+> `GET /lotes/{id}/etiquetas.pdf` (cualquier rol con sesión): carta, 8 etiquetas por hoja (2 × 4)
+> con margen de 1,5 cm y 6 mm entre etiquetas con líneas de corte; QR vectorial de 3,6 cm (nivel
+> Q, zona en blanco ≥ 4 módulos), nombre del predio, código ICA, lote, tipo + atrayente y código
+> corto para escribirlo a mano. Incluye trampas activas e inactivas, no retiradas (lote sin
+> trampas instaladas → 409). Las pruebas imprimen el PDF a 200 ppp y decodifican cada QR (lado
+> ≥ 3 cm). Web: «Imprimir etiquetas del lote» en Trampas y QR y en la ficha del lote del mapa.
+> Pendiente HU-15.3 [Campo]: imprimir en el papel adhesivo real y leer a 30 cm con dos teléfonos
+> (requiere el dominio público de HU-08 en `QR_URL_BASE`).
 
 ### HU-16 · Resolver un QR leído
 

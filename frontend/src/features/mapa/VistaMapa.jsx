@@ -9,6 +9,7 @@ import { formatoCoordenada, formatoHa } from '../../utils/formato'
 import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import CapaLotes from '../lotes/CapaLotes'
+import BotonEtiquetas from '../trampas/BotonEtiquetas'
 import CapaTrampas from '../trampas/CapaTrampas'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from '../trampas/catalogo'
 import { useDatosPredio } from './useDatosPredio'
@@ -227,6 +228,11 @@ function FichaLote({ lote, trampas, editable }) {
           {editable ? 'Registrar trampa' : 'Ver trampas'}
         </Link>
       </div>
+      {trampas.some((t) => t.estado !== 'retirada') && (
+        <div className="ficha__etiquetas">
+          <BotonEtiquetas lote={lote} />
+        </div>
+      )}
     </section>
   )
 }

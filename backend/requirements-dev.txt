@@ -8,6 +8,7 @@ ruff>=0.8
 pip-audit>=2.7
 debugpy>=1.8
 
-# Decodificar en las pruebas los QR generados
+# Decodificar en las pruebas los QR generados (también los del PDF de etiquetas)
 zxing-cpp>=2.2
 pillow>=11.0
+pypdfium2>=4.30

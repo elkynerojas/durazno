@@ -16,5 +16,6 @@ uuid6>=2024.7.10
 pyjwt>=2.9,<3.0
 pwdlib[argon2]>=0.2,<1.0
 
-# QR
+# QR y etiquetas en PDF
 segno>=1.6,<2.0
+reportlab>=4.2,<6.0

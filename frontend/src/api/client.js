@@ -112,3 +112,6 @@ export const obtenerQrTrampa = (id, formato) =>
   api(`/trampas/${id}/qr.${formato}`, { binario: true })
 
 export const resolverQr = (codigo) => api(`/trampas/qr/${encodeURIComponent(codigo)}`)
+
+export const obtenerEtiquetasLote = (loteId) =>
+  api(`/lotes/${loteId}/etiquetas.pdf`, { binario: true })

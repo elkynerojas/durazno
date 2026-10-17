@@ -70,6 +70,13 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   ])
   expect(descarga.suggestedFilename()).toBe(`qr-${codigoQr}.png`)
 
+  // HU-15: PDF de etiquetas del lote.
+  const [pdf] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Imprimir etiquetas del lote' }).click(),
+  ])
+  expect(pdf.suggestedFilename()).toBe(`etiquetas-lote-${codigoLote}.pdf`)
+
   // HU-16: escanear el QR sin sesión lleva a la ficha después de iniciar sesión.
   await page.evaluate(() => localStorage.clear())
   await page.goto(`/t/${codigoQr}`)
