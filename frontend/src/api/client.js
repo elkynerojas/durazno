@@ -119,3 +119,8 @@ export const resolverQr = (codigo) => api(`/trampas/qr/${encodeURIComponent(codi
 
 export const obtenerEtiquetasLote = (loteId) =>
   api(`/lotes/${loteId}/etiquetas.pdf`, { binario: true })
+
+export const exportarPredio = (formato, loteId) =>
+  api(`/export/${formato}${loteId ? `?lote_id=${encodeURIComponent(loteId)}` : ''}`, {
+    binario: true,
+  })

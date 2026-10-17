@@ -12,6 +12,7 @@ import CapaLotes from '../lotes/CapaLotes'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
 import CapaTrampas from '../trampas/CapaTrampas'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from '../trampas/catalogo'
+import BotonesExportar from './BotonesExportar'
 import { useDatosPredio } from './useDatosPredio'
 
 // Vista general del predio: indicadores, mapa de consulta y ficha de lo seleccionado.
@@ -37,6 +38,7 @@ export default function VistaMapa() {
         migas={[{ texto: 'Predio Icota · vereda Icota, Cácota (N. de S.)' }]}
         titulo="Mapa del predio"
       >
+        <BotonesExportar />
         {editable && (
           <>
             <Link to="/trampas" className="boton-secundario">
@@ -227,6 +229,9 @@ function FichaLote({ lote, trampas, editable }) {
         <Link to={`/trampas?lote=${lote.id}`} className="boton-primario">
           {editable ? 'Registrar trampa' : 'Ver trampas'}
         </Link>
+      </div>
+      <div className="grupo-botones ficha__etiquetas">
+        <BotonesExportar lote={lote} />
       </div>
       {trampas.some((t) => t.estado !== 'retirada') && (
         <div className="ficha__etiquetas">

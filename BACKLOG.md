@@ -378,7 +378,7 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 ### HU-13 · Exportar lotes y trampas
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero descargar lotes y trampas en GeoJSON y KML, para abrirlos en Google Earth o QGIS.
 
 **Criterios de aceptación**
@@ -389,10 +389,17 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 **Tareas**
 
-- [ ] `HU-13.1` [API] GET /export/geojson con ST_AsGeoJSON
-- [ ] `HU-13.2` [API] GET /export/kml con ST_AsKML
-- [ ] `HU-13.3` [Web] Botón de descarga en el mapa
+- [x] `HU-13.1` [API] GET /export/geojson con ST_AsGeoJSON
+- [x] `HU-13.2` [API] GET /export/kml con ST_AsKML
+- [x] `HU-13.3` [Web] Botón de descarga en el mapa
 - [ ] `HU-13.4` [Pruebas] Validar la salida en Google Earth y QGIS
+
+> `GET /export/geojson` y `/export/kml` (cualquier rol con sesión; `?lote_id=` para un lote):
+> FeatureCollection RFC 7946 con `ST_AsGeoJSON` (7 decimales, sin `crs`, `properties.elemento`
+> lote/trampa) y KML 2.2 con `ST_AsKML` (carpetas Lotes y Trampas, estilo por tipo, texto
+> escapado). Excluye borrados. Web: «Exportar GeoJSON/KML» en el mapa y «Lote en …» en la ficha
+> del lote. HU-13.4: ambos archivos abren con GDAL `ogrinfo` (el lector que usa QGIS) con
+> geometrías y propiedades correctas; falta abrir el KML en Google Earth (manual).
 
 ## E3 · Identificación de trampas con QR
 

@@ -84,6 +84,14 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   ])
   expect(pdf.suggestedFilename()).toBe(`etiquetas-lote-${codigoLote}.pdf`)
 
+  // HU-13: exportar el predio para Google Earth.
+  await page.goto('/mapa')
+  const [kml] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Exportar KML' }).click(),
+  ])
+  expect(kml.suggestedFilename()).toBe('predio-icota.kml')
+
   // HU-16: escanear el QR sin sesión lleva a la ficha después de iniciar sesión.
   await page.context().clearCookies()
   await page.goto(`/t/${codigoQr}`)
