@@ -110,3 +110,5 @@ export const actualizarTrampa = (id, cambios) =>
 
 export const obtenerQrTrampa = (id, formato) =>
   api(`/trampas/${id}/qr.${formato}`, { binario: true })
+
+export const resolverQr = (codigo) => api(`/trampas/qr/${encodeURIComponent(codigo)}`)

@@ -69,4 +69,17 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
     page.getByRole('button', { name: 'Descargar PNG' }).click(),
   ])
   expect(descarga.suggestedFilename()).toBe(`qr-${codigoQr}.png`)
+
+  // HU-16: escanear el QR sin sesión lleva a la ficha después de iniciar sesión.
+  await page.evaluate(() => localStorage.clear())
+  await page.goto(`/t/${codigoQr}`)
+  await expect(page).toHaveURL('/')
+  await ingresar(page)
+  await expect(page).toHaveURL(`/t/${codigoQr}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(codigo)
+  await expect(page.getByText(`${codigoLote}`, { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Registrar lectura' })).toBeDisabled()
+
+  await page.goto('/t/ZZZZ2345')
+  await expect(page.getByRole('alert')).toContainText('No hay ninguna trampa con el código QR')
 })

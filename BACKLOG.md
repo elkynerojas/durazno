@@ -415,7 +415,7 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 ### HU-16 · Resolver un QR leído
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
 - **Historia:** Como técnico de campo, quiero que al escanear el QR se abra la ficha de la trampa, para registrar su lectura sin buscarla.
 
 **Criterios de aceptación**
@@ -427,9 +427,17 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 **Tareas**
 
-- [ ] `HU-16.1` [API] Endpoint de resolución del código
-- [ ] `HU-16.2` [Web] Página de ficha de la trampa
-- [ ] `HU-16.3` [Pruebas] Código inexistente y trampa retirada
+- [x] `HU-16.1` [API] Endpoint de resolución del código
+- [x] `HU-16.2` [Web] Página de ficha de la trampa
+- [x] `HU-16.3` [Pruebas] Código inexistente y trampa retirada
+
+> `GET /trampas/qr/{código}` (cualquier rol con sesión; sin distinguir mayúsculas; un código mal
+> formado responde 404 sin consultar la base) devuelve `trampa` y `lote`. `ruta` y
+> `ultima_lectura` ya están en el contrato pero llegan en `null` hasta HU-19 (rutas) y HU-25
+> (lecturas): completarlos allí. Página `/t/{código}`: ficha con lote, tipo, coordenadas y
+> estado; aviso si está retirada o inactiva; «Registrar lectura» visible pero deshabilitado hasta
+> HU-25 (oculto al productor); si el código no existe, permite escribir el de la etiqueta. Sin
+> sesión, el inicio de sesión vuelve a la ficha (solo rutas internas).
 
 ### HU-17 · Reponer una etiqueta deteriorada
 

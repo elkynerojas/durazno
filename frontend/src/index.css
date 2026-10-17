@@ -1210,3 +1210,18 @@ button {
   background: #e7e9e6;
   border-color: var(--gris-retirada);
 }
+
+.rejilla--ficha {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.ficha__nota-boton {
+  margin-top: 0.6rem;
+}
+
+@media (max-width: 860px) {
+  .rejilla--ficha {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

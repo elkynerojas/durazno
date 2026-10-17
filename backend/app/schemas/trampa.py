@@ -88,3 +88,28 @@ class TrampaLeer(BaseModel):
     @classmethod
     def _geom_a_geojson(cls, valor: object) -> object:
         return a_geojson(valor)
+
+
+class LoteResumen(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    codigo: str
+    nombre: str | None
+
+
+class TrampaResuelta(BaseModel):
+    """Lo que necesita el técnico al leer el QR de una trampa en campo."""
+
+    trampa: TrampaLeer
+    lote: LoteResumen
+    ruta: None = Field(
+        default=None,
+        description="Ruta de monitoreo del lote y posición de la trampa en ella. Siempre `null` "
+        "hasta que existan las rutas (HU-19).",
+    )
+    ultima_lectura: None = Field(
+        default=None,
+        description="Última lectura registrada de la trampa. Siempre `null` hasta que existan "
+        "las lecturas (HU-25).",
+    )

@@ -10,13 +10,14 @@ import { ContextoSesion } from './useSesion'
 // EstadoApi consulta /health; aquí no interesa.
 vi.mock('../../components/EstadoApi', () => ({ default: () => null }))
 
-function renderizar(entrar) {
+function renderizar(entrar, desde) {
   render(
     <ContextoSesion.Provider value={{ usuario: null, cargando: false, entrar }}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[{ pathname: '/', state: desde && { desde } }]}>
         <Routes>
           <Route path="/" element={<InicioSesion />} />
           <Route path="/mapa" element={<p>Vista del mapa</p>} />
+          <Route path="/t/:codigo" element={<p>Ficha de la trampa</p>} />
         </Routes>
       </MemoryRouter>
     </ContextoSesion.Provider>,
@@ -71,4 +72,19 @@ describe('InicioSesion', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(aviso)
   })
+
+  it('vuelve a la ficha del QR escaneado antes de iniciar sesión', async () => {
+    renderizar(vi.fn().mockResolvedValue(), '/t/ABCD2345')
+    await ingresar('tecnico1@ejemplo.com', 'clave-segura')
+    expect(await screen.findByText('Ficha de la trampa')).toBeInTheDocument()
+  })
+
+  it.each(['//otro-sitio.com/robar', 'https://otro-sitio.com', '/'])(
+    'ignora un destino externo o vacío (%s) y va al mapa',
+    async (desde) => {
+      renderizar(vi.fn().mockResolvedValue(), desde)
+      await ingresar('tecnico1@ejemplo.com', 'clave-segura')
+      expect(await screen.findByText('Vista del mapa')).toBeInTheDocument()
+    },
+  )
 })

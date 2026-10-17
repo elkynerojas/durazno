@@ -1,20 +1,31 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 
 import EstadoApi from '../../components/EstadoApi'
 import Logo from '../../components/Logo'
 import { useSesion } from './useSesion'
 
+// Solo rutas internas de la app: evita redirigir a otro sitio con un enlace preparado.
+function destinoSeguro(desde) {
+  return typeof desde === 'string' &&
+    desde.startsWith('/') &&
+    !desde.startsWith('//') &&
+    desde !== '/'
+    ? desde
+    : '/mapa'
+}
+
 export default function InicioSesion() {
   const { usuario, cargando, entrar } = useSesion()
   const navegar = useNavigate()
+  const destino = destinoSeguro(useLocation().state?.desde)
   const [correo, setCorreo] = useState('')
   const [clave, setClave] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
 
   if (cargando) return <p className="cargando">Cargando…</p>
-  if (usuario) return <Navigate to="/mapa" replace />
+  if (usuario) return <Navigate to={destino} replace />
 
   async function enviar(evento) {
     evento.preventDefault()
@@ -22,7 +33,7 @@ export default function InicioSesion() {
     setError(null)
     try {
       await entrar(correo.trim(), clave)
-      navegar('/mapa', { replace: true })
+      navegar(destino, { replace: true })
     } catch (e) {
       setError(
         [401, 429].includes(e.estado) ? e.message : 'No se pudo iniciar sesión. Intente de nuevo.',

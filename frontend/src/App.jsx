@@ -6,6 +6,7 @@ import RutaProtegida from './features/auth/RutaProtegida'
 import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
 import VistaPredio from './features/predio/VistaPredio'
+import VistaFichaTrampa from './features/trampas/VistaFichaTrampa'
 import VistaTrampas from './features/trampas/VistaTrampas'
 import VistaUsuarios from './features/usuarios/VistaUsuarios'
 
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/mapa" element={<VistaMapa />} />
             <Route path="/lotes" element={<VistaLotes />} />
             <Route path="/trampas" element={<VistaTrampas />} />
+            <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
             <Route path="/predio" element={<VistaPredio />} />
           </Route>
           <Route element={<RutaProtegida roles={['agronomo']} />}>

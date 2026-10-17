@@ -12,8 +12,14 @@ from app.models.lote import Lote
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
-from app.schemas.trampa import EstadoTrampa, TrampaActualizar, TrampaCrear, TrampaLeer
-from app.services.qr import generar_codigo, qr_png, qr_svg
+from app.schemas.trampa import (
+    EstadoTrampa,
+    TrampaActualizar,
+    TrampaCrear,
+    TrampaLeer,
+    TrampaResuelta,
+)
+from app.services.qr import ALFABETO, LONGITUD, generar_codigo, qr_png, qr_svg
 from app.services.trampas import punto_en_lote
 
 router = APIRouter(tags=["trampas"])
@@ -112,6 +118,41 @@ async def listar_trampas_del_lote(
         .order_by(Trampa.codigo_ica)
     )
     return list(await session.scalars(consulta))
+
+
+@router.get(
+    "/trampas/qr/{codigo}",
+    response_model=TrampaResuelta,
+    summary="Resolver el código QR de una trampa",
+    description="Servicio que usa la app móvil al leer una etiqueta: recibe el código corto del "
+    "QR (`<QR_URL_BASE>/t/<código>`, sin distinguir mayúsculas) y devuelve la trampa con su "
+    "lote. Una trampa retirada se resuelve igual y lo indica en `trampa.estado`; una trampa "
+    "eliminada ya no se resuelve.",
+    responses={
+        **ERROR_401,
+        404: {"description": "No hay ninguna trampa con ese código QR"},
+    },
+)
+async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionDep) -> dict:
+    codigo = codigo.strip().upper()
+    no_existe = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"No hay ninguna trampa con el código QR {codigo[:LONGITUD]}",
+    )
+    # Un código mal formado no puede existir: se responde sin consultar la base.
+    if len(codigo) != LONGITUD or any(c not in ALFABETO for c in codigo):
+        raise no_existe
+    fila = (
+        await session.execute(
+            select(Trampa, Lote)
+            .join(Lote, Lote.id == Trampa.lote_id)
+            .where(Trampa.codigo_qr == codigo, Trampa.deleted_at.is_(None))
+        )
+    ).first()
+    if fila is None:
+        raise no_existe
+    trampa, lote = fila
+    return {"trampa": trampa, "lote": lote}
 
 
 @router.get(
