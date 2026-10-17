@@ -15,7 +15,7 @@ from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services.etiquetas import Etiqueta, generar_pdf
 from app.services.qr import generar_codigo, url_trampa
-from tests.utilidades import encabezados
+from tests.utilidades import encabezados, predio_de_lote
 
 PPP = 200  # resolución a la que se "imprime" el PDF para leerlo
 LOTE = {
@@ -116,8 +116,12 @@ async def _trampa(session, lote, codigo_ica, estado="activa", tipo="jackson"):
 
 
 @pytest.fixture
-async def tecnico(crear_usuario):
-    return await crear_usuario(f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="tecnico")
+async def tecnico(crear_usuario, session, lote):
+    return await crear_usuario(
+        f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="tecnico",
+        predios=[await predio_de_lote(session, lote.id)],
+    )
 
 
 async def test_sin_sesion_responde_401(cliente, lote):
@@ -129,7 +133,11 @@ async def test_pdf_del_lote_sin_trampas_retiradas(cliente, crear_usuario, lote, 
     activa = await _trampa(session, lote, "ICA-0031")
     inactiva = await _trampa(session, lote, "ICA-0032", estado="inactiva", tipo="mcphail")
     await _trampa(session, lote, "ICA-0033", estado="retirada")
-    usuario = await crear_usuario(f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol)
+    usuario = await crear_usuario(
+        f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol=rol,
+        predios=[await predio_de_lote(session, lote.id)],
+    )
 
     respuesta = await cliente.get(
         f"/api/v1/lotes/{lote.id}/etiquetas.pdf", headers=encabezados(usuario)

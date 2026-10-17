@@ -9,6 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.acceso import ADMINISTRADOR, ROLES_GESTION, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.predio import Predio
@@ -33,13 +34,14 @@ router = APIRouter(tags=["trampas"])
 
 ZONA_PREDIO = ZoneInfo("America/Bogota")
 
-AgronomoDep = Annotated[Usuario, Depends(requiere_rol("agronomo"))]
-# Reponer una etiqueta en campo (HU-17): técnico o agrónomo; el productor solo consulta.
-CampoDep = Annotated[Usuario, Depends(requiere_rol("tecnico", "agronomo"))]
+GestionDep = Annotated[Usuario, Depends(requiere_rol(*ROLES_GESTION))]
+# Reponer una etiqueta en campo (HU-17): técnico, agrónomo o administrador; el productor consulta.
+ROLES_CAMPO = ("tecnico", "agronomo", ADMINISTRADOR)
+CampoDep = Annotated[Usuario, Depends(requiere_rol(*ROLES_CAMPO))]
 
 ERROR_401 = {401: {"description": "Sin sesión o sesión inválida"}}
-ERROR_403 = {403: {"description": "Solo el agrónomo administra las trampas"}}
-ERROR_404 = {404: {"description": "Trampa o lote no encontrado"}}
+ERROR_403 = {403: {"description": "Solo el agrónomo o el administrador gestionan las trampas"}}
+ERROR_404 = {404: {"description": "Trampa o lote no encontrado (o de un predio no asignado)"}}
 ERROR_409 = {409: {"description": "Código ICA repetido o `id` en uso"}}
 ERROR_422 = {422: {"description": "Datos inválidos o punto fuera del polígono de su lote"}}
 
@@ -48,21 +50,31 @@ ID_EN_USO = "El id ya pertenece a otra trampa"
 FUERA_DEL_LOTE = "La ubicación de la trampa debe quedar dentro del polígono de su lote"
 
 
-async def _obtener(session: SessionDep, trampa_id: uuid.UUID) -> Trampa:
-    trampa = await session.scalar(
-        select(Trampa).where(Trampa.id == trampa_id, Trampa.deleted_at.is_(None))
+async def _obtener(
+    session: SessionDep,
+    usuario: Usuario,
+    trampa_id: uuid.UUID,
+    *,
+    escribir: bool = False,
+    roles_escritura: tuple[str, ...] = ROLES_GESTION,
+) -> Trampa:
+    """La trampa vigente si el usuario ve su predio (a través del lote); si no, 404."""
+    fila = (
+        await session.execute(
+            select(Trampa, Lote.predio_id)
+            .join(Lote, Lote.id == Trampa.lote_id)
+            .where(Trampa.id == trampa_id, Trampa.deleted_at.is_(None))
+        )
+    ).first()
+    await exigir_predio(
+        session,
+        usuario,
+        fila[1] if fila else None,
+        escribir=escribir,
+        roles_escritura=roles_escritura,
+        detalle_404="Trampa no encontrada",
     )
-    if trampa is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trampa no encontrada")
-    return trampa
-
-
-async def _exigir_lote(session: SessionDep, lote_id: uuid.UUID) -> None:
-    existe = await session.scalar(
-        select(Lote.id).where(Lote.id == lote_id, Lote.deleted_at.is_(None))
-    )
-    if existe is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
+    return fila[0]
 
 
 async def _exigir_ubicacion(session: SessionDep, trampa: Trampa) -> None:
@@ -101,16 +113,23 @@ async def _guardar(session: SessionDep, trampa: Trampa) -> Trampa:
     "/trampas",
     response_model=list[TrampaLeer],
     summary="Listar trampas",
-    description="Trampas vigentes ordenadas por código ICA. Filtros opcionales por lote y estado.",
-    responses=ERROR_401,
+    description="Trampas vigentes del predio ordenadas por código ICA. Filtros opcionales por "
+    "lote y estado.",
+    responses={**ERROR_401, 404: {"description": "Predio no encontrado o no asignado"}},
 )
 async def listar_trampas(
-    _usuario: UsuarioActualDep,
+    predio_id: uuid.UUID,
+    usuario: UsuarioActualDep,
     session: SessionDep,
     lote_id: uuid.UUID | None = None,
     estado: EstadoTrampa | None = None,
 ) -> list[Trampa]:
-    consulta = select(Trampa).where(Trampa.deleted_at.is_(None))
+    await exigir_predio(session, usuario, predio_id)
+    consulta = (
+        select(Trampa)
+        .join(Lote, Lote.id == Trampa.lote_id)
+        .where(Lote.predio_id == predio_id, Trampa.deleted_at.is_(None))
+    )
     if lote_id is not None:
         consulta = consulta.where(Trampa.lote_id == lote_id)
     if estado is not None:
@@ -125,9 +144,9 @@ async def listar_trampas(
     responses={**ERROR_401, 404: {"description": "Lote no encontrado"}},
 )
 async def listar_trampas_del_lote(
-    lote_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    lote_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> list[Trampa]:
-    await _exigir_lote(session, lote_id)
+    await exigir_lote(session, usuario, lote_id)
     consulta = (
         select(Trampa)
         .where(Trampa.lote_id == lote_id, Trampa.deleted_at.is_(None))
@@ -150,7 +169,7 @@ async def listar_trampas_del_lote(
         410: {"description": "La etiqueta fue reemplazada por otra (HU-17)"},
     },
 )
-async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionDep) -> dict:
+async def resolver_qr(codigo: str, usuario: UsuarioActualDep, session: SessionDep) -> dict:
     codigo = codigo.strip().upper()
     no_existe = HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -169,12 +188,14 @@ async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionD
     if fila is None:
         reemplazo = (
             await session.execute(
-                select(ReemplazoQr.created_at, Trampa.codigo_ica)
+                select(ReemplazoQr.created_at, Trampa.codigo_ica, Lote.predio_id)
                 .join(Trampa, Trampa.id == ReemplazoQr.trampa_id)
+                .join(Lote, Lote.id == Trampa.lote_id)
                 .where(ReemplazoQr.codigo_anterior == codigo, Trampa.deleted_at.is_(None))
             )
         ).first()
         if reemplazo is not None:
+            await exigir_predio(session, usuario, reemplazo[2], detalle_404=no_existe.detail)
             fecha = reemplazo[0].astimezone(ZONA_PREDIO).strftime("%d/%m/%Y")
             raise HTTPException(
                 status_code=status.HTTP_410_GONE,
@@ -183,6 +204,8 @@ async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionD
             )
         raise no_existe
     trampa, lote = fila
+    # Un código de otro predio responde igual que uno inexistente.
+    await exigir_predio(session, usuario, lote.predio_id, detalle_404=no_existe.detail)
     return {"trampa": trampa, "lote": lote}
 
 
@@ -193,9 +216,9 @@ async def resolver_qr(codigo: str, _usuario: UsuarioActualDep, session: SessionD
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_trampa(
-    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    trampa_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> Trampa:
-    return await _obtener(session, trampa_id)
+    return await _obtener(session, usuario, trampa_id)
 
 
 @router.post(
@@ -218,17 +241,21 @@ async def obtener_trampa(
     },
 )
 async def crear_trampa(
-    entrada: TrampaCrear, _agronomo: AgronomoDep, session: SessionDep, response: Response
+    entrada: TrampaCrear, usuario: GestionDep, session: SessionDep, response: Response
 ) -> Trampa:
+    await exigir_lote(session, usuario, entrada.lote_id, escribir=True)
     if entrada.id is not None:
         existente = await session.get(Trampa, entrada.id)
         if existente is not None:
-            if existente.deleted_at is not None or existente.codigo_ica != entrada.codigo_ica:
+            if (
+                existente.deleted_at is not None
+                or existente.codigo_ica != entrada.codigo_ica
+                or existente.lote_id != entrada.lote_id
+            ):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ID_EN_USO)
             response.status_code = status.HTTP_200_OK
             return existente
 
-    await _exigir_lote(session, entrada.lote_id)
     trampa = Trampa(
         **entrada.model_dump(exclude={"id", "geom"}),
         geom=a_geometria(entrada.geom),
@@ -252,12 +279,18 @@ async def crear_trampa(
     responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_409, **ERROR_422},
 )
 async def actualizar_trampa(
-    trampa_id: uuid.UUID, entrada: TrampaActualizar, _agronomo: AgronomoDep, session: SessionDep
+    trampa_id: uuid.UUID, entrada: TrampaActualizar, usuario: GestionDep, session: SessionDep
 ) -> Trampa:
-    trampa = await _obtener(session, trampa_id)
+    trampa = await _obtener(session, usuario, trampa_id, escribir=True)
     cambios = entrada.model_dump(exclude_unset=True, exclude={"geom"})
-    if "lote_id" in cambios:
-        await _exigir_lote(session, cambios["lote_id"])
+    if "lote_id" in cambios and cambios["lote_id"] != trampa.lote_id:
+        actual = await session.get(Lote, trampa.lote_id)
+        nuevo = await exigir_lote(session, usuario, cambios["lote_id"], escribir=True)
+        if nuevo.predio_id != actual.predio_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="La trampa solo puede moverse a otro lote del mismo predio",
+            )
     for campo, valor in cambios.items():
         setattr(trampa, campo, valor)
     if entrada.geom is not None:
@@ -278,10 +311,8 @@ async def actualizar_trampa(
     "campo se marca `estado: retirada` y conserva su historial.",
     responses={**ERROR_401, **ERROR_403, **ERROR_404},
 )
-async def eliminar_trampa(
-    trampa_id: uuid.UUID, _agronomo: AgronomoDep, session: SessionDep
-) -> None:
-    trampa = await _obtener(session, trampa_id)
+async def eliminar_trampa(trampa_id: uuid.UUID, usuario: GestionDep, session: SessionDep) -> None:
+    trampa = await _obtener(session, usuario, trampa_id, escribir=True)
     trampa.deleted_at = datetime.now(UTC)
     await session.commit()
 
@@ -298,9 +329,9 @@ ERROR_QR = {**ERROR_401, 404: {"description": "Trampa no encontrada"}}
     responses={200: {"content": {"image/svg+xml": {}}}, **ERROR_QR},
 )
 async def descargar_qr_svg(
-    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    trampa_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> Response:
-    trampa = await _obtener(session, trampa_id)
+    trampa = await _obtener(session, usuario, trampa_id)
     return _archivo_qr(await run_in_threadpool(qr_svg, trampa.codigo_qr), trampa, "svg")
 
 
@@ -312,9 +343,9 @@ async def descargar_qr_svg(
     responses={200: {"content": {"image/png": {}}}, **ERROR_QR},
 )
 async def descargar_qr_png(
-    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    trampa_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> Response:
-    trampa = await _obtener(session, trampa_id)
+    trampa = await _obtener(session, usuario, trampa_id)
     return _archivo_qr(await run_in_threadpool(qr_png, trampa.codigo_qr), trampa, "png")
 
 
@@ -356,11 +387,9 @@ def _etiqueta(trampa: Trampa, lote_codigo: str) -> Etiqueta:
     },
 )
 async def descargar_etiquetas(
-    lote_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    lote_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> Response:
-    lote = await session.scalar(select(Lote).where(Lote.id == lote_id, Lote.deleted_at.is_(None)))
-    if lote is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
+    lote = await exigir_lote(session, usuario, lote_id)
     trampas = list(
         await session.scalars(
             select(Trampa)
@@ -397,9 +426,9 @@ async def descargar_etiquetas(
     responses={200: {"content": {"application/pdf": {}}}, **ERROR_QR},
 )
 async def descargar_etiqueta(
-    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    trampa_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> Response:
-    trampa = await _obtener(session, trampa_id)
+    trampa = await _obtener(session, usuario, trampa_id)
     lote = await session.get(Lote, trampa.lote_id)
     predio = await session.scalar(select(Predio.nombre).where(Predio.id == lote.predio_id))
     pdf = await run_in_threadpool(
@@ -429,7 +458,7 @@ async def descargar_etiqueta(
 async def reemplazar_qr(
     trampa_id: uuid.UUID, entrada: ReemplazoQrCrear, usuario: CampoDep, session: SessionDep
 ) -> Trampa:
-    trampa = await _obtener(session, trampa_id)
+    trampa = await _obtener(session, usuario, trampa_id, escribir=True, roles_escritura=ROLES_CAMPO)
     if entrada.id is not None and await session.get(ReemplazoQr, entrada.id) is not None:
         return trampa
     if trampa.estado == "retirada":
@@ -459,9 +488,9 @@ async def reemplazar_qr(
     responses={**ERROR_401, 404: {"description": "Trampa no encontrada"}},
 )
 async def listar_reemplazos_qr(
-    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+    trampa_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> list[dict]:
-    await _obtener(session, trampa_id)
+    await _obtener(session, usuario, trampa_id)
     filas = await session.execute(
         select(ReemplazoQr, Usuario.nombre_completo)
         .join(Usuario, Usuario.id == ReemplazoQr.usuario_id)

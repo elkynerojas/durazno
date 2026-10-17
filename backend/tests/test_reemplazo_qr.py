@@ -14,7 +14,7 @@ from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services.qr import url_trampa
-from tests.utilidades import encabezados
+from tests.utilidades import encabezados, predio_de_lote
 
 ANILLO = [[-72.640, 7.270], [-72.639, 7.270], [-72.639, 7.271], [-72.640, 7.271], [-72.640, 7.270]]
 
@@ -50,8 +50,12 @@ async def trampa(session):
 
 
 @pytest.fixture
-async def tecnico(crear_usuario):
-    return await crear_usuario(f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="tecnico")
+async def tecnico(crear_usuario, session, trampa):
+    return await crear_usuario(
+        f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="tecnico",
+        predios=[await predio_de_lote(session, trampa.lote_id)],
+    )
 
 
 def _reemplazar(cliente, trampa, usuario, **cuerpo):
@@ -118,8 +122,12 @@ async def test_los_codigos_retirados_no_se_reutilizan(cliente, trampa, tecnico, 
     assert respuesta.json()["codigo_qr"] == "NUEV2345"
 
 
-async def test_el_productor_no_reemplaza_y_sin_sesion_401(cliente, crear_usuario, trampa):
-    productor = await crear_usuario(f"p.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="productor")
+async def test_el_productor_no_reemplaza_y_sin_sesion_401(session, cliente, crear_usuario, trampa):
+    productor = await crear_usuario(
+        f"p.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="productor",
+        predios=[await predio_de_lote(session, trampa.lote_id)],
+    )
     assert (await _reemplazar(cliente, trampa, productor)).status_code == 403
     url = f"/api/v1/trampas/{trampa.id}/qr/reemplazar"
     assert (await cliente.post(url, json={})).status_code == 401

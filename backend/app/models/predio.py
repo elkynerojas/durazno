@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from geoalchemy2 import Geometry, WKBElement
-from sqlalchemy import CheckConstraint, Index, Numeric, String, text
+from sqlalchemy import CheckConstraint, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, EntidadSincronizable
@@ -9,16 +9,8 @@ from app.db.base import Base, EntidadSincronizable
 
 class Predio(EntidadSincronizable, Base):
     __tablename__ = "predio"
-    __table_args__ = (
-        CheckConstraint("area_ha > 0", name="area_positiva"),
-        # Un único predio en esta versión (sin multi-tenancy): a lo sumo una fila sin borrar.
-        Index(
-            "uq_predio_unico",
-            text("(deleted_at IS NULL)"),
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
-    )
+    # Varios predios: cada usuario ve los que tiene asignados (predio_usuario).
+    __table_args__ = (CheckConstraint("area_ha > 0", name="area_positiva"),)
 
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     vereda: Mapped[str] = mapped_column(String(100), nullable=False)

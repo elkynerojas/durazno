@@ -5,10 +5,11 @@ import uuid
 from fastapi import APIRouter, HTTPException, Response, status
 from sqlalchemy import func, select
 
+from app.api.acceso import exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep
 from app.models.lote import Lote
-from app.models.predio import Predio
 from app.models.trampa import Trampa
+from app.models.usuario import Usuario
 from app.services.exportar import LoteExportado, TrampaExportada, a_geojson, a_kml
 
 router = APIRouter(prefix="/export", tags=["exportar"])
@@ -17,13 +18,25 @@ router = APIRouter(prefix="/export", tags=["exportar"])
 DECIMALES = 7
 RESPUESTAS = {
     401: {"description": "Sin sesión o sesión inválida"},
-    404: {"description": "Lote no encontrado"},
+    404: {"description": "Predio o lote no encontrado (o no asignado al usuario)"},
+    422: {"description": "Falta `predio_id` o `lote_id`"},
 }
 
 
 async def _datos(
-    session: SessionDep, lote_id: uuid.UUID | None
+    session: SessionDep,
+    usuario: Usuario,
+    predio_id: uuid.UUID | None,
+    lote_id: uuid.UUID | None,
 ) -> tuple[list[LoteExportado], list[TrampaExportada], str]:
+    if predio_id is None and lote_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Indique el predio (predio_id) o el lote (lote_id) a exportar",
+        )
+    if lote_id is not None:
+        predio_id = (await exigir_lote(session, usuario, lote_id)).predio_id
+    predio = await exigir_predio(session, usuario, predio_id)
     consulta_lotes = select(
         Lote.id,
         Lote.codigo,
@@ -31,7 +44,7 @@ async def _datos(
         Lote.area_ha,
         func.ST_AsGeoJSON(Lote.geom, DECIMALES),
         func.ST_AsKML(Lote.geom, DECIMALES),
-    ).where(Lote.deleted_at.is_(None))
+    ).where(Lote.predio_id == predio.id, Lote.deleted_at.is_(None))
     if lote_id is not None:
         consulta_lotes = consulta_lotes.where(Lote.id == lote_id)
     filas = (await session.execute(consulta_lotes.order_by(Lote.codigo))).all()
@@ -54,7 +67,7 @@ async def _datos(
             func.ST_AsKML(Trampa.geom, DECIMALES),
         )
         .join(Lote, Lote.id == Trampa.lote_id)
-        .where(Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None))
+        .where(Lote.predio_id == predio.id, Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None))
         .order_by(Trampa.codigo_ica)
     )
     if lote_id is not None:
@@ -76,9 +89,7 @@ async def _datos(
         for f in await session.execute(consulta_trampas)
     ]
 
-    predio = await session.scalar(select(Predio.nombre).where(Predio.deleted_at.is_(None)))
-    nombre = predio or "predio"
-    titulo = f"{nombre} · lote {lotes[0].codigo}" if lote_id is not None else nombre
+    titulo = f"{predio.nombre} · lote {lotes[0].codigo}" if lote_id is not None else predio.nombre
     return lotes, trampas, titulo
 
 
@@ -93,14 +104,18 @@ def _archivo(titulo: str, extension: str) -> str:
     summary="Exportar lotes y trampas en GeoJSON",
     description="FeatureCollection RFC 7946 (WGS 84, `[longitud, latitud]`) con los lotes "
     "(polígonos) y las trampas (puntos) vigentes y sus propiedades; `properties.elemento` "
-    "distingue `lote` de `trampa`. Con `lote_id`, solo ese lote y sus trampas.",
+    "distingue `lote` de `trampa`. Del predio `predio_id`; con `lote_id`, solo ese lote y sus "
+    "trampas.",
     response_class=Response,
     responses={200: {"content": {"application/geo+json": {}}}, **RESPUESTAS},
 )
 async def exportar_geojson(
-    _usuario: UsuarioActualDep, session: SessionDep, lote_id: uuid.UUID | None = None
+    usuario: UsuarioActualDep,
+    session: SessionDep,
+    predio_id: uuid.UUID | None = None,
+    lote_id: uuid.UUID | None = None,
 ) -> Response:
-    lotes, trampas, titulo = await _datos(session, lote_id)
+    lotes, trampas, titulo = await _datos(session, usuario, predio_id, lote_id)
     return Response(
         content=json.dumps(a_geojson(lotes, trampas), ensure_ascii=False),
         media_type="application/geo+json",
@@ -112,14 +127,17 @@ async def exportar_geojson(
     "/kml",
     summary="Exportar lotes y trampas en KML",
     description="Documento KML 2.2 para Google Earth con una carpeta de lotes y otra de "
-    "trampas (estilo por tipo). Con `lote_id`, solo ese lote y sus trampas.",
+    "trampas (estilo por tipo). Del predio `predio_id`; con `lote_id`, solo ese lote.",
     response_class=Response,
     responses={200: {"content": {"application/vnd.google-earth.kml+xml": {}}}, **RESPUESTAS},
 )
 async def exportar_kml(
-    _usuario: UsuarioActualDep, session: SessionDep, lote_id: uuid.UUID | None = None
+    usuario: UsuarioActualDep,
+    session: SessionDep,
+    predio_id: uuid.UUID | None = None,
+    lote_id: uuid.UUID | None = None,
 ) -> Response:
-    lotes, trampas, titulo = await _datos(session, lote_id)
+    lotes, trampas, titulo = await _datos(session, usuario, predio_id, lote_id)
     return Response(
         content=a_kml(lotes, trampas, titulo),
         media_type="application/vnd.google-earth.kml+xml",

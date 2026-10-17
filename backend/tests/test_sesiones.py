@@ -21,8 +21,8 @@ async def _login(cliente, correo, clave=CLAVE):
 
 
 @pytest.fixture
-async def agronomo(crear_usuario):
-    return await crear_usuario(f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo")
+async def admin(crear_usuario):
+    return await crear_usuario(f"admin.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="administrador")
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ def test_claves_razonables_se_aceptan(clave):
     assert motivo_clave_debil(clave, "tecnico@ejemplo.com") is None
 
 
-async def test_crear_o_restablecer_con_clave_trivial_responde_422(cliente, agronomo, tecnico):
+async def test_crear_o_restablecer_con_clave_trivial_responde_422(cliente, admin, tecnico):
     nuevo = {
         "correo": f"{uuid.uuid4().hex[:10]}@ejemplo.com",
         "nombre_completo": "Técnico",
@@ -59,13 +59,13 @@ async def test_crear_o_restablecer_con_clave_trivial_responde_422(cliente, agron
         "clave": "12345678",
         "autorizacion_datos": True,
     }
-    creado = await cliente.post(URL, json=nuevo, headers=encabezados(agronomo))
+    creado = await cliente.post(URL, json=nuevo, headers=encabezados(admin))
     assert creado.status_code == 422
     assert creado.json()["detail"] == (
         "La contraseña es demasiado común; use una frase o combinación propia"
     )
     restablecida = await cliente.patch(
-        f"{URL}/{tecnico.id}", json={"clave": "qwertyuiop"}, headers=encabezados(agronomo)
+        f"{URL}/{tecnico.id}", json={"clave": "qwertyuiop"}, headers=encabezados(admin)
     )
     assert restablecida.status_code == 422
 
@@ -73,14 +73,14 @@ async def test_crear_o_restablecer_con_clave_trivial_responde_422(cliente, agron
 # --- Revocación de sesiones ---
 
 
-async def test_restablecer_la_clave_cierra_las_sesiones_abiertas(cliente, agronomo, tecnico):
+async def test_restablecer_la_clave_cierra_las_sesiones_abiertas(cliente, admin, tecnico):
     sesion = await _login(cliente, tecnico.correo)
     acceso = {"Authorization": f"Bearer {sesion.json()['access_token']}"}
     cliente.cookies.clear()
     renovacion = sesion.cookies["icota_renovacion"]
 
     respuesta = await cliente.patch(
-        f"{URL}/{tecnico.id}", json={"clave": CLAVE_NUEVA}, headers=encabezados(agronomo)
+        f"{URL}/{tecnico.id}", json={"clave": CLAVE_NUEVA}, headers=encabezados(admin)
     )
     assert respuesta.status_code == 200
 
@@ -99,21 +99,21 @@ async def test_restablecer_la_clave_cierra_las_sesiones_abiertas(cliente, agrono
 
 @pytest.mark.parametrize("cambios", [[{"rol": "productor"}], [{"activo": False}, {"activo": True}]])
 async def test_cambiar_rol_o_reactivar_no_revive_sesiones_anteriores(
-    cliente, agronomo, tecnico, cambios
+    cliente, admin, tecnico, cambios
 ):
     antiguo = encabezados(tecnico)
     for cambio in cambios:
         respuesta = await cliente.patch(
-            f"{URL}/{tecnico.id}", json=cambio, headers=encabezados(agronomo)
+            f"{URL}/{tecnico.id}", json=cambio, headers=encabezados(admin)
         )
         assert respuesta.status_code == 200
     assert (await cliente.get("/api/v1/auth/yo", headers=antiguo)).status_code == 401
 
 
-async def test_editar_el_nombre_no_cierra_sesiones(cliente, agronomo, tecnico):
+async def test_editar_el_nombre_no_cierra_sesiones(cliente, admin, tecnico):
     abierta = encabezados(tecnico)
     await cliente.patch(
-        f"{URL}/{tecnico.id}", json={"nombre_completo": "Otro"}, headers=encabezados(agronomo)
+        f"{URL}/{tecnico.id}", json={"nombre_completo": "Otro"}, headers=encabezados(admin)
     )
     assert (await cliente.get("/api/v1/auth/yo", headers=abierta)).status_code == 200
 
@@ -122,32 +122,30 @@ async def test_editar_el_nombre_no_cierra_sesiones(cliente, agronomo, tecnico):
 
 
 @pytest.mark.parametrize("clave_actual", [None, "no-es-la-clave"])
-async def test_cambiar_la_propia_clave_exige_la_actual(cliente, agronomo, clave_actual):
+async def test_cambiar_la_propia_clave_exige_la_actual(cliente, admin, clave_actual):
     cuerpo = {"clave": CLAVE_NUEVA} | ({"clave_actual": clave_actual} if clave_actual else {})
-    respuesta = await cliente.patch(
-        f"{URL}/{agronomo.id}", json=cuerpo, headers=encabezados(agronomo)
-    )
+    respuesta = await cliente.patch(f"{URL}/{admin.id}", json=cuerpo, headers=encabezados(admin))
     assert respuesta.status_code == 403
     assert respuesta.json()["detail"] == (
         "Para cambiar su propia contraseña escriba la contraseña actual"
     )
 
 
-async def test_cambiar_la_propia_clave_con_la_actual_cierra_las_sesiones(cliente, agronomo):
-    abierta = encabezados(agronomo)
+async def test_cambiar_la_propia_clave_con_la_actual_cierra_las_sesiones(cliente, admin):
+    abierta = encabezados(admin)
     respuesta = await cliente.patch(
-        f"{URL}/{agronomo.id}",
+        f"{URL}/{admin.id}",
         json={"clave": CLAVE_NUEVA, "clave_actual": CLAVE},
         headers=abierta,
     )
     assert respuesta.status_code == 200
     assert (await cliente.get("/api/v1/auth/yo", headers=abierta)).status_code == 401
-    assert (await _login(cliente, agronomo.correo, CLAVE_NUEVA)).status_code == 200
+    assert (await _login(cliente, admin.correo, CLAVE_NUEVA)).status_code == 200
 
 
-async def test_el_agronomo_restablece_la_clave_de_otro_sin_la_actual(cliente, agronomo, tecnico):
+async def test_el_administrador_restablece_la_clave_de_otro_sin_la_actual(cliente, admin, tecnico):
     respuesta = await cliente.patch(
-        f"{URL}/{tecnico.id}", json={"clave": CLAVE_NUEVA}, headers=encabezados(agronomo)
+        f"{URL}/{tecnico.id}", json={"clave": CLAVE_NUEVA}, headers=encabezados(admin)
     )
     assert respuesta.status_code == 200
 
@@ -193,18 +191,18 @@ async def test_muchas_ip_contra_una_cuenta_la_frenan(cliente, tecnico):
     assert (await _login(cliente, tecnico.correo)).status_code == 429
 
 
-async def test_clave_actual_erronea_tiene_limite_de_intentos(cliente, agronomo):
+async def test_clave_actual_erronea_tiene_limite_de_intentos(cliente, admin):
     for _ in range(5):
         respuesta = await cliente.patch(
-            f"{URL}/{agronomo.id}",
+            f"{URL}/{admin.id}",
             json={"clave": CLAVE_NUEVA, "clave_actual": "no-es"},
-            headers=encabezados(agronomo),
+            headers=encabezados(admin),
         )
         assert respuesta.status_code == 403
     bloqueado = await cliente.patch(
-        f"{URL}/{agronomo.id}",
+        f"{URL}/{admin.id}",
         json={"clave": CLAVE_NUEVA, "clave_actual": CLAVE},
-        headers=encabezados(agronomo),
+        headers=encabezados(admin),
     )
     assert bloqueado.status_code == 429
 

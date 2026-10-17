@@ -94,21 +94,27 @@ async def trampa(session, lote_a):
 
 
 @pytest.fixture
-async def agronomo(crear_usuario):
-    return await crear_usuario(f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo")
+async def agronomo(crear_usuario, predio):
+    return await crear_usuario(
+        f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[predio]
+    )
 
 
-async def test_sin_sesion_responde_401(cliente, lote_a):
-    assert (await cliente.get(URL)).status_code == 401
+async def test_sin_sesion_responde_401(cliente, predio, lote_a):
+    assert (await cliente.get(URL, params={"predio_id": str(predio.id)})).status_code == 401
     assert (await cliente.get(f"/api/v1/lotes/{lote_a.id}/trampas")).status_code == 401
     assert (await cliente.post(URL, json=_datos(lote_a.id))).status_code == 401
 
 
 @pytest.mark.parametrize("rol", ["tecnico", "productor"])
-async def test_solo_el_agronomo_modifica_trampas(cliente, crear_usuario, trampa, rol):
-    otro = await crear_usuario(f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol)
+async def test_solo_el_agronomo_modifica_trampas(cliente, predio, crear_usuario, trampa, rol):
+    otro = await crear_usuario(
+        f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol, predios=[predio]
+    )
     cabeceras = encabezados(otro)
-    assert (await cliente.get(URL, headers=cabeceras)).status_code == 200
+    assert (
+        await cliente.get(URL, params={"predio_id": str(predio.id)}, headers=cabeceras)
+    ).status_code == 200
     assert (await cliente.get(f"{URL}/{trampa.id}", headers=cabeceras)).status_code == 200
     nueva = _datos(trampa.lote_id)
     assert (await cliente.post(URL, json=nueva, headers=cabeceras)).status_code == 403
@@ -119,7 +125,7 @@ async def test_solo_el_agronomo_modifica_trampas(cliente, crear_usuario, trampa,
     assert (await cliente.delete(url, headers=cabeceras)).status_code == 403
 
 
-async def test_registrar_trampa_con_precision_del_gps(cliente, agronomo, lote_a):
+async def test_registrar_trampa_con_precision_del_gps(cliente, predio, agronomo, lote_a):
     datos = _datos(lote_a.id, tipo="mcphail", atrayente="Proteína hidrolizada", precision_m=4.5)
     respuesta = await cliente.post(URL, json=datos, headers=encabezados(agronomo))
     assert respuesta.status_code == 201
@@ -135,7 +141,7 @@ async def test_registrar_trampa_con_precision_del_gps(cliente, agronomo, lote_a)
     assert [t["id"] for t in del_lote.json()] == [cuerpo["id"]]
 
 
-async def test_ubicada_en_el_mapa_no_lleva_precision(cliente, agronomo, lote_a):
+async def test_ubicada_en_el_mapa_no_lleva_precision(cliente, predio, agronomo, lote_a):
     respuesta = await cliente.post(URL, json=_datos(lote_a.id), headers=encabezados(agronomo))
     assert respuesta.json()["precision_m"] is None
 
@@ -143,7 +149,9 @@ async def test_ubicada_en_el_mapa_no_lleva_precision(cliente, agronomo, lote_a):
 @pytest.mark.parametrize(
     "ubicacion", [FUERA, DENTRO_B, EN_EL_BORDE_A], ids=["fuera", "otro_lote", "borde"]
 )
-async def test_punto_fuera_del_lote_responde_422(cliente, agronomo, lote_a, lote_b, ubicacion):
+async def test_punto_fuera_del_lote_responde_422(
+    cliente, predio, agronomo, lote_a, lote_b, ubicacion
+):
     respuesta = await cliente.post(
         URL, json=_datos(lote_a.id, geom=ubicacion), headers=encabezados(agronomo)
     )
@@ -153,7 +161,7 @@ async def test_punto_fuera_del_lote_responde_422(cliente, agronomo, lote_a, lote
     )
 
 
-async def test_codigo_ica_duplicado_responde_409(cliente, agronomo, trampa):
+async def test_codigo_ica_duplicado_responde_409(cliente, predio, agronomo, trampa):
     respuesta = await cliente.post(
         URL, json=_datos(trampa.lote_id, codigo_ica="ica-001"), headers=encabezados(agronomo)
     )
@@ -161,17 +169,19 @@ async def test_codigo_ica_duplicado_responde_409(cliente, agronomo, trampa):
     assert respuesta.json()["detail"] == "Ya existe una trampa con ese código ICA"
 
 
-async def test_registrar_es_idempotente_por_id(cliente, agronomo, lote_a):
+async def test_registrar_es_idempotente_por_id(cliente, predio, agronomo, lote_a):
     datos = _datos(lote_a.id, id=str(uuid.uuid4()))
     primera = await cliente.post(URL, json=datos, headers=encabezados(agronomo))
     segunda = await cliente.post(URL, json=datos, headers=encabezados(agronomo))
     assert (primera.status_code, segunda.status_code) == (201, 200)
     assert primera.json()["id"] == segunda.json()["id"] == datos["id"]
-    lista = await cliente.get(URL, headers=encabezados(agronomo))
+    lista = await cliente.get(
+        URL, params={"predio_id": str(predio.id)}, headers=encabezados(agronomo)
+    )
     assert len(lista.json()) == 1
 
 
-async def test_lote_inexistente_responde_404(cliente, agronomo):
+async def test_lote_inexistente_responde_404(cliente, predio, agronomo):
     respuesta = await cliente.post(URL, json=_datos(uuid.uuid4()), headers=encabezados(agronomo))
     assert respuesta.status_code == 404
     assert respuesta.json()["detail"] == "Lote no encontrado"
@@ -189,14 +199,14 @@ async def test_lote_inexistente_responde_404(cliente, agronomo):
     ],
     ids=["tipo", "estado", "precision", "invertida", "no_es_punto", "campo_privilegiado"],
 )
-async def test_datos_invalidos_responden_422(cliente, agronomo, lote_a, cambio):
+async def test_datos_invalidos_responden_422(cliente, predio, agronomo, lote_a, cambio):
     respuesta = await cliente.post(
         URL, json=_datos(lote_a.id, **cambio), headers=encabezados(agronomo)
     )
     assert respuesta.status_code == 422
 
 
-async def test_mover_conserva_el_id(cliente, agronomo, trampa, lote_b):
+async def test_mover_conserva_el_id(cliente, predio, agronomo, trampa, lote_b):
     url = f"{URL}/{trampa.id}"
     otra_posicion = await cliente.patch(
         url,
@@ -214,7 +224,7 @@ async def test_mover_conserva_el_id(cliente, agronomo, trampa, lote_b):
     assert otro_lote.json()["lote_id"] == str(lote_b.id)
 
 
-async def test_mover_fuera_del_lote_responde_422(cliente, agronomo, trampa, lote_b):
+async def test_mover_fuera_del_lote_responde_422(cliente, predio, agronomo, trampa, lote_b):
     url = f"{URL}/{trampa.id}"
     afuera = await cliente.patch(url, json={"geom": FUERA}, headers=encabezados(agronomo))
     assert afuera.status_code == 422
@@ -223,33 +233,43 @@ async def test_mover_fuera_del_lote_responde_422(cliente, agronomo, trampa, lote
     assert otro.status_code == 422
 
 
-async def test_filtrar_por_estado(cliente, agronomo, trampa):
+async def test_filtrar_por_estado(cliente, predio, agronomo, trampa):
     url = f"{URL}/{trampa.id}"
     retirada = await cliente.patch(url, json={"estado": "retirada"}, headers=encabezados(agronomo))
     assert retirada.json()["estado"] == "retirada"
-    activas = await cliente.get(URL, params={"estado": "activa"}, headers=encabezados(agronomo))
+    activas = await cliente.get(
+        URL, params={"predio_id": str(predio.id), "estado": "activa"}, headers=encabezados(agronomo)
+    )
     assert activas.json() == []
-    retiradas = await cliente.get(URL, params={"estado": "retirada"}, headers=encabezados(agronomo))
+    retiradas = await cliente.get(
+        URL,
+        params={"predio_id": str(predio.id), "estado": "retirada"},
+        headers=encabezados(agronomo),
+    )
     assert [t["id"] for t in retiradas.json()] == [str(trampa.id)]
 
 
-async def test_borrado_logico(cliente, agronomo, trampa, session):
+async def test_borrado_logico(cliente, predio, agronomo, trampa, session):
     url = f"{URL}/{trampa.id}"
     assert (await cliente.delete(url, headers=encabezados(agronomo))).status_code == 204
     assert (await cliente.get(url, headers=encabezados(agronomo))).status_code == 404
-    assert (await cliente.get(URL, headers=encabezados(agronomo))).json() == []
+    assert (
+        await cliente.get(URL, params={"predio_id": str(predio.id)}, headers=encabezados(agronomo))
+    ).json() == []
     await session.refresh(trampa)
     assert trampa.deleted_at is not None
 
 
-async def test_no_se_borra_un_lote_con_trampas(cliente, agronomo, trampa):
+async def test_no_se_borra_un_lote_con_trampas(cliente, predio, agronomo, trampa):
     respuesta = await cliente.delete(
         f"/api/v1/lotes/{trampa.lote_id}", headers=encabezados(agronomo)
     )
     assert respuesta.status_code == 409
 
 
-async def test_cambiar_la_forma_del_lote_no_deja_trampas_por_fuera(cliente, agronomo, trampa):
+async def test_cambiar_la_forma_del_lote_no_deja_trampas_por_fuera(
+    cliente, predio, agronomo, trampa
+):
     url_lote = f"/api/v1/lotes/{trampa.lote_id}"
     pequeno = cuadro(-72.640, 7.270, -72.6397, 7.2703)
     respuesta = await cliente.patch(url_lote, json={"geom": pequeno}, headers=encabezados(agronomo))
@@ -263,7 +283,7 @@ async def test_cambiar_la_forma_del_lote_no_deja_trampas_por_fuera(cliente, agro
     assert respuesta.status_code == 200
 
 
-async def test_mover_sin_precision_borra_la_del_gps(cliente, agronomo, trampa, session):
+async def test_mover_sin_precision_borra_la_del_gps(cliente, predio, agronomo, trampa, session):
     trampa.precision_m = 4.5
     await session.flush()
     url = f"{URL}/{trampa.id}"
@@ -278,3 +298,41 @@ async def test_mover_sin_precision_borra_la_del_gps(cliente, agronomo, trampa, s
     assert con_gps.json()["precision_m"] == 3
     sin_mover = await cliente.patch(url, json={"estado": "inactiva"}, headers=encabezados(agronomo))
     assert sin_mover.json()["precision_m"] == 3
+
+
+async def test_mover_a_un_lote_de_otro_predio_responde_422(
+    cliente, predio, crear_usuario, trampa, session
+):
+    otro_predio = Predio(nombre="Otra finca", vereda="X", municipio="Y", area_ha=5)
+    session.add(otro_predio)
+    await session.flush()
+    lote_ajeno = await _lote(session, otro_predio, "L-Z", LOTE_B)
+    admin = await crear_usuario(f"admin.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="administrador")
+    respuesta = await cliente.patch(
+        f"{URL}/{trampa.id}",
+        json={"lote_id": str(lote_ajeno.id), "geom": DENTRO_B},
+        headers=encabezados(admin),
+    )
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"] == "La trampa solo puede moverse a otro lote del mismo predio"
+
+
+async def test_una_trampa_de_otro_predio_no_se_ve_ni_se_modifica(
+    cliente, predio, crear_usuario, trampa, session
+):
+    otro_predio = Predio(nombre="Otra finca", vereda="X", municipio="Y", area_ha=5)
+    session.add(otro_predio)
+    await session.flush()
+    ajeno = await crear_usuario(
+        f"ajeno.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[otro_predio]
+    )
+    cabeceras = encabezados(ajeno)
+    url = f"{URL}/{trampa.id}"
+    assert (await cliente.get(url, headers=cabeceras)).status_code == 404
+    patch = await cliente.patch(url, json={"estado": "inactiva"}, headers=cabeceras)
+    assert patch.status_code == 404
+    assert (await cliente.delete(url, headers=cabeceras)).status_code == 404
+    lote = f"/api/v1/lotes/{trampa.lote_id}/trampas"
+    assert (await cliente.get(lote, headers=cabeceras)).status_code == 404
+    crear = await cliente.post(URL, json=_datos(trampa.lote_id), headers=cabeceras)
+    assert crear.status_code == 404

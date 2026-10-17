@@ -12,9 +12,10 @@ class Lote(EntidadSincronizable, Base):
     __tablename__ = "lote"
     __table_args__ = (
         CheckConstraint("area_ha > 0", name="area_positiva"),
-        # Código único entre los lotes vigentes, sin distinguir mayúsculas.
+        # Código único dentro de cada predio entre los lotes vigentes, sin distinguir mayúsculas.
         Index(
-            "uq_lote_codigo",
+            "uq_lote_predio_codigo",
+            text("predio_id"),
             func.lower(text("codigo")),
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),

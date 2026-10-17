@@ -23,7 +23,8 @@ class LoteCrear(BaseModel):
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: si se envía, reenviar el mismo `id` no duplica"
     )
-    codigo: Codigo = Field(description="Código único del lote, p. ej. `L-01`")
+    predio_id: uuid.UUID = Field(description="Predio al que pertenece el lote")
+    codigo: Codigo = Field(description="Código único dentro del predio, p. ej. `L-01`")
     nombre: NombreLote | None = None
     geom: PoligonoGeoJSON
 
@@ -47,6 +48,7 @@ class LoteLeer(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    predio_id: uuid.UUID
     codigo: str
     nombre: str | None
     area_ha: float = Field(description="Área geodésica calculada en el servidor")

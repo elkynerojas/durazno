@@ -16,7 +16,7 @@ class PredioGuardar(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: uuid.UUID | None = Field(
-        default=None, description="Opcional, solo se usa al registrar el predio por primera vez"
+        default=None, description="Opcional al crear: reenviar el mismo `id` no duplica el predio"
     )
     nombre: Nombre
     vereda: Lugar
@@ -47,3 +47,15 @@ class PredioLeer(BaseModel):
     @classmethod
     def _limite_a_geojson(cls, valor: object) -> object:
         return a_geojson(valor)
+
+
+class PersonaPredio(BaseModel):
+    """Usuario asignado a un predio."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    nombre_completo: str
+    correo: str
+    rol: str
+    activo: bool

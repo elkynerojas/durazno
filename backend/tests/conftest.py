@@ -4,10 +4,11 @@ Las pruebas que tocan la base usan una conexión con una transacción que se rev
 así no dejan datos en la base de desarrollo.
 """
 
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -15,6 +16,10 @@ from app.api.v1.endpoints.auth import limite_cuenta, limite_intentos
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.main import app
+from app.models.lote import Lote
+from app.models.predio import Predio
+from app.models.predio_usuario import PredioUsuario
+from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.services.auth import hashear_clave
 from tests.utilidades import CLAVE
@@ -57,9 +62,17 @@ async def cliente(session: AsyncSession) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 def crear_usuario(session: AsyncSession) -> Callable[..., Awaitable[Usuario]]:
-    """Fábrica: `await crear_usuario("correo@ejemplo.com", rol="agronomo", activo=True)`."""
+    """Fábrica: `await crear_usuario("correo@ejemplo.com", rol="agronomo", predios=[predio])`.
 
-    async def _crear(correo: str, rol: str = "tecnico", activo: bool = True) -> Usuario:
+    `predios`: predios a los que queda asignado (el administrador los ve todos sin asignación).
+    """
+
+    async def _crear(
+        correo: str,
+        rol: str = "tecnico",
+        activo: bool = True,
+        predios: Iterable[Predio] = (),
+    ) -> Usuario:
         usuario = Usuario(
             correo=correo,
             nombre_completo="Persona de Prueba",
@@ -69,6 +82,21 @@ def crear_usuario(session: AsyncSession) -> Callable[..., Awaitable[Usuario]]:
         )
         session.add(usuario)
         await session.flush()
+        for predio in predios:
+            session.add(PredioUsuario(predio_id=predio.id, usuario_id=usuario.id))
+        await session.flush()
         return usuario
 
     return _crear
+
+
+@pytest.fixture
+async def predio_vacio(session: AsyncSession) -> Predio:
+    """Un predio nuevo, con los lotes, trampas y predios de la base de desarrollo ocultos dentro
+    de la transacción de la prueba."""
+    for modelo in (Trampa, Lote, Predio):
+        await session.execute(update(modelo).values(deleted_at=func.now()))
+    predio = Predio(nombre="Finca Icota", vereda="Icota", municipio="Cácota", area_ha=30)
+    session.add(predio)
+    await session.flush()
+    return predio

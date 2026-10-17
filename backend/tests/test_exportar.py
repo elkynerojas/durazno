@@ -12,7 +12,7 @@ from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services.qr import generar_codigo
-from tests.utilidades import encabezados
+from tests.utilidades import encabezados, predio_de_lote
 
 KML = {"k": "http://www.opengis.net/kml/2.2"}
 A = [[-72.640, 7.270], [-72.639, 7.270], [-72.639, 7.271], [-72.640, 7.271], [-72.640, 7.270]]
@@ -69,8 +69,12 @@ async def datos(session):
 
 
 @pytest.fixture
-async def productor(crear_usuario):
-    return await crear_usuario(f"productor.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="productor")
+async def productor(crear_usuario, session, datos):
+    return await crear_usuario(
+        f"productor.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="productor",
+        predios=[await predio_de_lote(session, datos["lote_a"].id)],
+    )
 
 
 async def test_sin_sesion_responde_401(cliente, datos):
@@ -79,7 +83,11 @@ async def test_sin_sesion_responde_401(cliente, datos):
 
 
 async def test_geojson_del_predio_conforme_a_rfc_7946(cliente, datos, productor):
-    respuesta = await cliente.get("/api/v1/export/geojson", headers=encabezados(productor))
+    respuesta = await cliente.get(
+        "/api/v1/export/geojson",
+        params={"predio_id": str(datos["lote_a"].predio_id)},
+        headers=encabezados(productor),
+    )
     assert respuesta.status_code == 200
     assert respuesta.headers["content-type"] == "application/geo+json"
     assert respuesta.headers["content-disposition"] == 'attachment; filename="Finca-Icota.geojson"'
@@ -119,7 +127,11 @@ async def test_geojson_de_un_lote(cliente, datos, productor):
 
 
 async def test_kml_valido_con_carpetas_y_texto_escapado(cliente, datos, productor):
-    respuesta = await cliente.get("/api/v1/export/kml", headers=encabezados(productor))
+    respuesta = await cliente.get(
+        "/api/v1/export/kml",
+        params={"predio_id": str(datos["lote_a"].predio_id)},
+        headers=encabezados(productor),
+    )
     assert respuesta.status_code == 200
     assert respuesta.headers["content-type"] == "application/vnd.google-earth.kml+xml"
 

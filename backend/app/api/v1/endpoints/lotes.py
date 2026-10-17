@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.api.acceso import ROLES_GESTION, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
-from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
@@ -19,28 +19,21 @@ from app.services.trampas import trampas_fuera
 
 router = APIRouter(prefix="/lotes", tags=["lotes"])
 
-AgronomoDep = Annotated[Usuario, Depends(requiere_rol("agronomo"))]
+GestionDep = Annotated[Usuario, Depends(requiere_rol(*ROLES_GESTION))]
 
 ERROR_401 = {401: {"description": "Sin sesión o sesión inválida"}}
-ERROR_403 = {403: {"description": "Solo el agrónomo administra los lotes"}}
-ERROR_404 = {404: {"description": "Lote no encontrado"}}
+ERROR_403 = {403: {"description": "Solo el agrónomo o el administrador gestionan los lotes"}}
+ERROR_404 = {404: {"description": "Lote o predio no encontrado (o no asignado al usuario)"}}
 ERROR_409 = {
     409: {
-        "description": "Código repetido, `id` en uso, predio sin registrar o trampas que "
-        "quedarían fuera del lote"
+        "description": "Código repetido en el predio, `id` en uso o trampas que quedarían "
+        "fuera del lote"
     }
 }
 ERROR_422 = {422: {"description": "Datos inválidos o polígono que se cruza consigo mismo"}}
 
-CODIGO_REPETIDO = "Ya existe un lote con ese código"
+CODIGO_REPETIDO = "Ya existe un lote con ese código en el predio"
 ID_EN_USO = "El id ya pertenece a otro lote"
-
-
-async def _obtener(session: SessionDep, lote_id: uuid.UUID) -> Lote:
-    lote = await session.scalar(select(Lote).where(Lote.id == lote_id, Lote.deleted_at.is_(None)))
-    if lote is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
-    return lote
 
 
 async def _aplicar_geometria(session: SessionDep, lote: Lote, geojson: PoligonoGeoJSON) -> None:
@@ -78,7 +71,9 @@ async def _con_advertencias(session: SessionDep, lote: Lote) -> LoteGuardado:
     guardado = LoteGuardado.model_validate(lote)
     guardado.advertencias = [
         f"Se traslapa con el lote {t.codigo} ({t.area_m2:,.0f} m² en común)".replace(",", ".")
-        for t in await lotes_traslapados(session, lote.geom, excluir_id=lote.id)
+        for t in await lotes_traslapados(
+            session, lote.geom, excluir_id=lote.id, predio_id=lote.predio_id
+        )
     ]
     return guardado
 
@@ -88,10 +83,17 @@ async def _con_advertencias(session: SessionDep, lote: Lote) -> LoteGuardado:
     response_model=list[LoteLeer],
     summary="Listar lotes",
     description="Lotes vigentes del predio ordenados por código, con su polígono en GeoJSON.",
-    responses=ERROR_401,
+    responses={**ERROR_401, **ERROR_404},
 )
-async def listar_lotes(_usuario: UsuarioActualDep, session: SessionDep) -> list[Lote]:
-    consulta = select(Lote).where(Lote.deleted_at.is_(None)).order_by(Lote.codigo)
+async def listar_lotes(
+    predio_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
+) -> list[Lote]:
+    await exigir_predio(session, usuario, predio_id)
+    consulta = (
+        select(Lote)
+        .where(Lote.predio_id == predio_id, Lote.deleted_at.is_(None))
+        .order_by(Lote.codigo)
+    )
     return list(await session.scalars(consulta))
 
 
@@ -101,8 +103,8 @@ async def listar_lotes(_usuario: UsuarioActualDep, session: SessionDep) -> list[
     summary="Obtener un lote",
     responses={**ERROR_401, **ERROR_404},
 )
-async def obtener_lote(lote_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep) -> Lote:
-    return await _obtener(session, lote_id)
+async def obtener_lote(lote_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep) -> Lote:
+    return await exigir_lote(session, usuario, lote_id)
 
 
 @router.post(
@@ -123,23 +125,22 @@ async def obtener_lote(lote_id: uuid.UUID, _usuario: UsuarioActualDep, session: 
     },
 )
 async def crear_lote(
-    entrada: LoteCrear, _agronomo: AgronomoDep, session: SessionDep, response: Response
+    entrada: LoteCrear, usuario: GestionDep, session: SessionDep, response: Response
 ) -> LoteGuardado:
+    await exigir_predio(session, usuario, entrada.predio_id, escribir=True)
     if entrada.id is not None:
         existente = await session.get(Lote, entrada.id)
         if existente is not None:
-            if existente.deleted_at is not None or existente.codigo != entrada.codigo:
+            if (
+                existente.deleted_at is not None
+                or existente.codigo != entrada.codigo
+                or existente.predio_id != entrada.predio_id
+            ):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=ID_EN_USO)
             response.status_code = status.HTTP_200_OK
             return await _con_advertencias(session, existente)
 
-    predio_id = await session.scalar(select(Predio.id).where(Predio.deleted_at.is_(None)))
-    if predio_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Registre primero los datos del predio",
-        )
-    lote = Lote(predio_id=predio_id, codigo=entrada.codigo, nombre=entrada.nombre)
+    lote = Lote(predio_id=entrada.predio_id, codigo=entrada.codigo, nombre=entrada.nombre)
     if entrada.id is not None:
         lote.id = entrada.id
     await _aplicar_geometria(session, lote, entrada.geom)
@@ -156,9 +157,9 @@ async def crear_lote(
     responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_409, **ERROR_422},
 )
 async def actualizar_lote(
-    lote_id: uuid.UUID, entrada: LoteActualizar, _agronomo: AgronomoDep, session: SessionDep
+    lote_id: uuid.UUID, entrada: LoteActualizar, usuario: GestionDep, session: SessionDep
 ) -> LoteGuardado:
-    lote = await _obtener(session, lote_id)
+    lote = await exigir_lote(session, usuario, lote_id, escribir=True)
     cambios = entrada.model_dump(exclude_unset=True, exclude={"geom"})
     for campo, valor in cambios.items():
         setattr(lote, campo, valor)
@@ -179,8 +180,8 @@ async def actualizar_lote(
         409: {"description": "El lote tiene trampas registradas"},
     },
 )
-async def eliminar_lote(lote_id: uuid.UUID, _agronomo: AgronomoDep, session: SessionDep) -> None:
-    lote = await _obtener(session, lote_id)
+async def eliminar_lote(lote_id: uuid.UUID, usuario: GestionDep, session: SessionDep) -> None:
+    lote = await exigir_lote(session, usuario, lote_id, escribir=True)
     tiene_trampas = await session.scalar(
         select(Trampa.id).where(Trampa.lote_id == lote.id, Trampa.deleted_at.is_(None)).limit(1)
     )

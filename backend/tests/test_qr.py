@@ -17,7 +17,7 @@ from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services import qr
-from tests.utilidades import encabezados
+from tests.utilidades import encabezados, predio_de_lote
 
 URL = "/api/v1/trampas"
 LOTE = {
@@ -48,8 +48,12 @@ async def lote(session):
 
 
 @pytest.fixture
-async def agronomo(crear_usuario):
-    return await crear_usuario(f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo")
+async def agronomo(crear_usuario, session, lote):
+    return await crear_usuario(
+        f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="agronomo",
+        predios=[await predio_de_lote(session, lote.id)],
+    )
 
 
 async def _crear(cliente, agronomo, lote, **cambios):
@@ -154,10 +158,14 @@ async def test_reenviar_el_mismo_id_conserva_el_codigo(cliente, agronomo, lote):
 
 @pytest.mark.parametrize("rol", ["tecnico", "productor", "agronomo"])
 async def test_descargar_png_que_se_decodifica_a_la_url(
-    cliente, crear_usuario, agronomo, lote, rol
+    session, cliente, crear_usuario, agronomo, lote, rol
 ):
     trampa = await _crear(cliente, agronomo, lote)
-    usuario = await crear_usuario(f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol)
+    usuario = await crear_usuario(
+        f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol=rol,
+        predios=[await predio_de_lote(session, lote.id)],
+    )
     respuesta = await cliente.get(f"{URL}/{trampa['id']}/qr.png", headers=encabezados(usuario))
     assert respuesta.status_code == 200
     assert respuesta.headers["content-type"] == "image/png"

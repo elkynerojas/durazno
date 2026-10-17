@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-Rol = Literal["tecnico", "agronomo", "productor"]
+Rol = Literal["tecnico", "agronomo", "productor", "administrador"]
 NombreCompleto = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
 ]
@@ -85,3 +85,6 @@ class UsuarioAdminLeer(BaseModel):
     autorizacion_datos_en: datetime | None
     created_at: datetime
     updated_at: datetime
+    predios: list[str] = Field(
+        default_factory=list, description="Nombres de los predios asignados a la cuenta"
+    )

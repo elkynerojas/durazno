@@ -5,7 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, EntidadSincronizable
 
-ROLES = ("tecnico", "agronomo", "productor")
+# `administrador`: crea predios, asigna personal y administra cuentas; ve todos los predios.
+ROLES = ("tecnico", "agronomo", "productor", "administrador")
 
 
 class Usuario(EntidadSincronizable, Base):

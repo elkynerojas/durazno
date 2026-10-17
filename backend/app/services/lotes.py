@@ -32,7 +32,10 @@ async def calcular_area_ha(session: AsyncSession, geometria: WKBElement) -> Deci
 
 
 async def lotes_traslapados(
-    session: AsyncSession, geometria: WKBElement, excluir_id: uuid.UUID | None = None
+    session: AsyncSession,
+    geometria: WKBElement,
+    excluir_id: uuid.UUID | None = None,
+    predio_id: uuid.UUID | None = None,
 ) -> list[Traslape]:
     """Lotes vigentes cuyo interior comparte más de `UMBRAL_TRASLAPE_M2` con `geometria`.
 
@@ -54,4 +57,7 @@ async def lotes_traslapados(
     )
     if excluir_id is not None:
         consulta = consulta.where(Lote.id != excluir_id)
+    # Los lotes de otro predio no cuentan como traslape.
+    if predio_id is not None:
+        consulta = consulta.where(Lote.predio_id == predio_id)
     return [Traslape(f.id, f.codigo, f.area_m2) for f in await session.execute(consulta)]

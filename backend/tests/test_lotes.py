@@ -48,8 +48,10 @@ async def predio(session):
 
 
 @pytest.fixture
-async def agronomo(crear_usuario):
-    return await crear_usuario(f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo")
+async def agronomo(crear_usuario, predio):
+    return await crear_usuario(
+        f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[predio]
+    )
 
 
 @pytest.fixture
@@ -107,18 +109,24 @@ async def test_traslape_excluye_el_propio_lote_y_los_borrados(session, lote_a):
 # --- API ---
 
 
-async def test_sin_sesion_responde_401(cliente):
+async def test_sin_sesion_responde_401(cliente, predio):
     assert (await cliente.get(URL)).status_code == 401
-    assert (await cliente.post(URL, json={"codigo": "L-1", "geom": A})).status_code == 401
+    assert (
+        await cliente.post(URL, json={"predio_id": str(predio.id), "codigo": "L-1", "geom": A})
+    ).status_code == 401
 
 
 @pytest.mark.parametrize("rol", ["tecnico", "productor"])
-async def test_solo_el_agronomo_modifica_lotes(cliente, crear_usuario, lote_a, rol):
-    otro = await crear_usuario(f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol)
+async def test_solo_el_agronomo_modifica_lotes(cliente, predio, crear_usuario, lote_a, rol):
+    otro = await crear_usuario(
+        f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol, predios=[predio]
+    )
     cabeceras = encabezados(otro)
-    assert (await cliente.get(URL, headers=cabeceras)).status_code == 200
+    assert (
+        await cliente.get(URL, params={"predio_id": str(predio.id)}, headers=cabeceras)
+    ).status_code == 200
     assert (await cliente.get(f"{URL}/{lote_a.id}", headers=cabeceras)).status_code == 200
-    nuevo = {"codigo": "L-9", "geom": A}
+    nuevo = {"predio_id": str(predio.id), "codigo": "L-9", "geom": A}
     assert (await cliente.post(URL, json=nuevo, headers=cabeceras)).status_code == 403
     url_lote = f"{URL}/{lote_a.id}"
     assert (
@@ -127,10 +135,10 @@ async def test_solo_el_agronomo_modifica_lotes(cliente, crear_usuario, lote_a, r
     assert (await cliente.delete(url_lote, headers=cabeceras)).status_code == 403
 
 
-async def test_crear_calcula_el_area_y_devuelve_geojson(cliente, agronomo):
+async def test_crear_calcula_el_area_y_devuelve_geojson(cliente, predio, agronomo):
     respuesta = await cliente.post(
         URL,
-        json={"codigo": "L-01", "nombre": "Lote del río", "geom": A},
+        json={"predio_id": str(predio.id), "codigo": "L-01", "nombre": "Lote del río", "geom": A},
         headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 201
@@ -139,36 +147,46 @@ async def test_crear_calcula_el_area_y_devuelve_geojson(cliente, agronomo):
     assert cuerpo["geom"] == A
     assert cuerpo["advertencias"] == []
 
-    lista = await cliente.get(URL, headers=encabezados(agronomo))
+    lista = await cliente.get(
+        URL, params={"predio_id": str(predio.id)}, headers=encabezados(agronomo)
+    )
     assert [lote["codigo"] for lote in lista.json()] == ["L-01"]
 
 
-async def test_el_area_enviada_por_el_cliente_se_rechaza(cliente, agronomo):
-    datos = {"codigo": "L-01", "geom": A, "area_ha": 99}
+async def test_el_area_enviada_por_el_cliente_se_rechaza(cliente, predio, agronomo):
+    datos = {"predio_id": str(predio.id), "codigo": "L-01", "geom": A, "area_ha": 99}
     assert (await cliente.post(URL, json=datos, headers=encabezados(agronomo))).status_code == 422
 
 
-async def test_poligono_que_se_cruza_responde_422(cliente, agronomo):
+async def test_poligono_que_se_cruza_responde_422(cliente, predio, agronomo):
     respuesta = await cliente.post(
-        URL, json={"codigo": "L-01", "geom": CORBATIN}, headers=encabezados(agronomo)
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-01", "geom": CORBATIN},
+        headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 422
     assert respuesta.json()["detail"] == "El polígono no es válido: sus bordes se cruzan entre sí"
 
 
-async def test_coordenadas_invertidas_responden_422(cliente, agronomo):
+async def test_coordenadas_invertidas_responden_422(cliente, predio, agronomo):
     invertido = {"type": "Polygon", "coordinates": [[[y, x] for x, y in A["coordinates"][0]]]}
     respuesta = await cliente.post(
-        URL, json={"codigo": "L-01", "geom": invertido}, headers=encabezados(agronomo)
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-01", "geom": invertido},
+        headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 422
     assert "[longitud, latitud]" in str(respuesta.json()["detail"])
 
 
-async def test_traslape_se_guarda_con_advertencia(cliente, agronomo, lote_a):
+async def test_traslape_se_guarda_con_advertencia(cliente, predio, agronomo, lote_a):
     respuesta = await cliente.post(
         URL,
-        json={"codigo": "L-02", "geom": cuadro(-72.6395, 7.270, -72.6385, 7.271)},
+        json={
+            "predio_id": str(predio.id),
+            "codigo": "L-02",
+            "geom": cuadro(-72.6395, 7.270, -72.6385, 7.271),
+        },
         headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 201
@@ -176,28 +194,36 @@ async def test_traslape_se_guarda_con_advertencia(cliente, agronomo, lote_a):
     assert advertencia.startswith("Se traslapa con el lote L-A (")
 
 
-async def test_codigo_unico_sin_distinguir_mayusculas(cliente, agronomo, lote_a):
+async def test_codigo_unico_sin_distinguir_mayusculas(cliente, predio, agronomo, lote_a):
     otro = cuadro(-72.630, 7.270, -72.629, 7.271)
     respuesta = await cliente.post(
-        URL, json={"codigo": "l-a", "geom": otro}, headers=encabezados(agronomo)
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "l-a", "geom": otro},
+        headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 409
-    assert respuesta.json()["detail"] == "Ya existe un lote con ese código"
+    assert respuesta.json()["detail"] == "Ya existe un lote con ese código en el predio"
 
 
-async def test_el_codigo_de_un_lote_borrado_se_puede_reusar(cliente, agronomo, lote_a, session):
+async def test_el_codigo_de_un_lote_borrado_se_puede_reusar(
+    cliente, predio, agronomo, lote_a, session
+):
     lote_a.deleted_at = func.now()
     await session.flush()
     reuso = await cliente.post(
         URL,
-        json={"codigo": "L-A", "geom": cuadro(-72.630, 7.270, -72.629, 7.271)},
+        json={
+            "predio_id": str(predio.id),
+            "codigo": "L-A",
+            "geom": cuadro(-72.630, 7.270, -72.629, 7.271),
+        },
         headers=encabezados(agronomo),
     )
     assert reuso.status_code == 201
 
 
-async def test_crear_es_idempotente_por_id(cliente, agronomo):
-    datos = {"id": str(uuid.uuid4()), "codigo": "L-01", "geom": A}
+async def test_crear_es_idempotente_por_id(cliente, predio, agronomo):
+    datos = {"id": str(uuid.uuid4()), "predio_id": str(predio.id), "codigo": "L-01", "geom": A}
     primera = await cliente.post(URL, json=datos, headers=encabezados(agronomo))
     segunda = await cliente.post(URL, json=datos, headers=encabezados(agronomo))
     assert (primera.status_code, segunda.status_code) == (201, 200)
@@ -209,17 +235,59 @@ async def test_crear_es_idempotente_por_id(cliente, agronomo):
     assert otro_codigo.status_code == 409
 
 
-async def test_sin_predio_registrado_responde_409(cliente, agronomo, session):
-    await session.execute(update(Predio).values(deleted_at=func.now()))
+async def test_un_lote_de_otro_predio_no_se_ve_ni_se_modifica(
+    cliente, predio, crear_usuario, lote_a, session
+):
+    otro_predio = Predio(nombre="Otra finca", vereda="X", municipio="Y", area_ha=5)
+    session.add(otro_predio)
     await session.flush()
+    ajeno = await crear_usuario(
+        f"ajeno.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[otro_predio]
+    )
+    cabeceras = encabezados(ajeno)
+    url_lote = f"{URL}/{lote_a.id}"
+    assert (await cliente.get(url_lote, headers=cabeceras)).status_code == 404
+    patch = await cliente.patch(url_lote, json={"nombre": "X"}, headers=cabeceras)
+    assert patch.status_code == 404
+    assert (await cliente.delete(url_lote, headers=cabeceras)).status_code == 404
+    lista = await cliente.get(URL, params={"predio_id": str(predio.id)}, headers=cabeceras)
+    assert lista.status_code == 404
+    crear = await cliente.post(
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-X", "geom": A},
+        headers=cabeceras,
+    )
+    assert crear.status_code == 404
+
+
+async def test_el_mismo_codigo_en_otro_predio_y_sin_traslape_entre_predios(
+    cliente, predio, crear_usuario, lote_a, session
+):
+    otro_predio = Predio(nombre="Otra finca", vereda="X", municipio="Y", area_ha=5)
+    session.add(otro_predio)
+    await session.flush()
+    agronomo = await crear_usuario(
+        f"ag2.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[otro_predio]
+    )
+    # Mismo código y mismo polígono que L-A, pero en otro predio: se acepta sin advertencias.
     respuesta = await cliente.post(
+        URL,
+        json={"predio_id": str(otro_predio.id), "codigo": "L-A", "geom": A},
+        headers=encabezados(agronomo),
+    )
+    assert respuesta.status_code == 201
+    assert respuesta.json()["advertencias"] == []
+
+
+async def test_falta_el_predio_responde_422(cliente, predio, agronomo):
+    assert (await cliente.get(URL, headers=encabezados(agronomo))).status_code == 422
+    sin_predio = await cliente.post(
         URL, json={"codigo": "L-01", "geom": A}, headers=encabezados(agronomo)
     )
-    assert respuesta.status_code == 409
-    assert respuesta.json()["detail"] == "Registre primero los datos del predio"
+    assert sin_predio.status_code == 422
 
 
-async def test_editar_geometria_recalcula_el_area(cliente, agronomo, lote_a):
+async def test_editar_geometria_recalcula_el_area(cliente, predio, agronomo, lote_a):
     doble = cuadro(-72.640, 7.270, -72.638, 7.271)
     respuesta = await cliente.patch(
         f"{URL}/{lote_a.id}",
@@ -238,28 +306,32 @@ async def test_editar_geometria_recalcula_el_area(cliente, agronomo, lote_a):
 
 
 @pytest.mark.parametrize("cambio", [{"codigo": None}, {"geom": None}, {"geom": CORBATIN}])
-async def test_editar_con_datos_invalidos_responde_422(cliente, agronomo, lote_a, cambio):
+async def test_editar_con_datos_invalidos_responde_422(cliente, predio, agronomo, lote_a, cambio):
     respuesta = await cliente.patch(
         f"{URL}/{lote_a.id}", json=cambio, headers=encabezados(agronomo)
     )
     assert respuesta.status_code == 422
 
 
-async def test_borrado_logico(cliente, agronomo, lote_a, session):
+async def test_borrado_logico(cliente, predio, agronomo, lote_a, session):
     url_lote = f"{URL}/{lote_a.id}"
     assert (await cliente.delete(url_lote, headers=encabezados(agronomo))).status_code == 204
     assert (await cliente.get(url_lote, headers=encabezados(agronomo))).status_code == 404
-    assert (await cliente.get(URL, headers=encabezados(agronomo))).json() == []
+    assert (
+        await cliente.get(URL, params={"predio_id": str(predio.id)}, headers=encabezados(agronomo))
+    ).json() == []
     assert (await cliente.delete(url_lote, headers=encabezados(agronomo))).status_code == 404
     await session.refresh(lote_a)
     assert lote_a.deleted_at is not None
 
 
-async def test_poligono_diminuto_responde_422(cliente, agronomo):
+async def test_poligono_diminuto_responde_422(cliente, predio, agronomo):
     # ~1 m × 1 m: el área redondeada a 0,01 ha es cero.
     diminuto = cuadro(-72.640, 7.270, -72.64001, 7.27001)
     respuesta = await cliente.post(
-        URL, json={"codigo": "L-01", "geom": diminuto}, headers=encabezados(agronomo)
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-01", "geom": diminuto},
+        headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 422
     assert "demasiado pequeño" in respuesta.json()["detail"]

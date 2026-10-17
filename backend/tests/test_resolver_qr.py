@@ -10,7 +10,7 @@ from app.models.lote import Lote
 from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
-from tests.utilidades import encabezados
+from tests.utilidades import encabezados, predio_de_lote
 
 URL = "/api/v1/trampas/qr"
 LOTE = {
@@ -53,8 +53,12 @@ async def trampa(session):
 
 
 @pytest.fixture
-async def tecnico(crear_usuario):
-    return await crear_usuario(f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="tecnico")
+async def tecnico(crear_usuario, session, trampa):
+    return await crear_usuario(
+        f"tecnico.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol="tecnico",
+        predios=[await predio_de_lote(session, trampa.lote_id)],
+    )
 
 
 async def test_sin_sesion_responde_401(cliente, trampa):
@@ -62,8 +66,14 @@ async def test_sin_sesion_responde_401(cliente, trampa):
 
 
 @pytest.mark.parametrize("rol", ["tecnico", "productor", "agronomo"])
-async def test_resuelve_trampa_y_lote_para_cualquier_rol(cliente, crear_usuario, trampa, rol):
-    usuario = await crear_usuario(f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com", rol=rol)
+async def test_resuelve_trampa_y_lote_para_cualquier_rol(
+    session, cliente, crear_usuario, trampa, rol
+):
+    usuario = await crear_usuario(
+        f"{rol}.{uuid.uuid4().hex[:8]}@ejemplo.com",
+        rol=rol,
+        predios=[await predio_de_lote(session, trampa.lote_id)],
+    )
     respuesta = await cliente.get(f"{URL}/ABCD2345", headers=encabezados(usuario))
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
