@@ -250,7 +250,7 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 ### HU-09 · Dibujar el polígono de un lote
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S1 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S1 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero dibujar y editar el polígono de cada lote sobre la imagen satelital, para delimitar digitalmente los lotes del predio.
 
 **Criterios de aceptación**
@@ -263,12 +263,21 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 
 **Tareas**
 
-- [ ] `HU-09.1` [BD] Modelo lote con Geometry(POLYGON, 4326) y migración
-- [ ] `HU-09.2` [API] CRUD /lotes en GeoJSON con borrado lógico
-- [ ] `HU-09.3` [API] Validación ST_IsValid, área geodésica y ST_Overlaps
-- [ ] `HU-09.4` [Web] Utilidad de conversión [lat, lng] ↔ GeoJSON
-- [ ] `HU-09.5` [Web] Capa de lotes con Leaflet-Geoman y formulario
-- [ ] `HU-09.6` [Pruebas] Polígono inválido, traslape y borrado lógico
+- [x] `HU-09.1` [BD] Modelo lote con Geometry(POLYGON, 4326) y migración
+- [x] `HU-09.2` [API] CRUD /lotes en GeoJSON con borrado lógico
+- [x] `HU-09.3` [API] Validación ST_IsValid, área geodésica y ST_Overlaps
+- [x] `HU-09.4` [Web] Utilidad de conversión [lat, lng] ↔ GeoJSON
+- [x] `HU-09.5` [Web] Capa de lotes con Leaflet-Geoman y formulario
+- [x] `HU-09.6` [Pruebas] Polígono inválido, traslape y borrado lógico
+
+> `/lotes`: consulta cualquier rol; crea, edita y elimina (borrado lógico) el agrónomo. Exige el
+> predio registrado (409). Área geodésica `ST_Area(geography)` guardada en `area_ha`; polígono
+> inválido → 422 con mensaje en español; traslape (área común > 1 m², `UMBRAL_TRASLAPE_M2` en
+> `services/lotes.py`) se guarda y se avisa en `advertencias`. Código único sin distinguir
+> mayúsculas entre lotes vigentes. Toda geometría fuera del rango de Colombia se rechaza
+> (atrapa `[lat, lng]` invertido). Web: capa de lotes, dibujo y edición de vértices con Geoman
+> y panel del lote; E2E `e2e/lotes.spec.js`. Por confirmar con el agrónomo: umbral del traslape
+> y si el lote debe quedar dentro del límite del predio.
 
 ### HU-10 · Importar lotes desde GeoJSON o KML
 

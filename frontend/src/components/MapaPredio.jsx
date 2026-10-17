@@ -3,9 +3,8 @@ import 'leaflet/dist/leaflet.css'
 
 import { CAPAS_BASE, CENTRO_CACOTA, ZOOM_INICIAL } from '../config'
 
-// Mapa base del predio. Aquí se agregarán las capas de lotes (polígonos),
-// trampas (puntos) y rutas, y las herramientas de dibujo de Leaflet-Geoman.
-export default function MapaPredio() {
+// Mapa base del predio. Las capas (lotes, trampas, rutas) y controles llegan como hijos.
+export default function MapaPredio({ children }) {
   return (
     <MapContainer center={CENTRO_CACOTA} zoom={ZOOM_INICIAL} className="mapa">
       <LayersControl position="topright">
@@ -16,6 +15,7 @@ export default function MapaPredio() {
         ))}
       </LayersControl>
       <ScaleControl imperial={false} />
+      {children}
     </MapContainer>
   )
 }

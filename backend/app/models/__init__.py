@@ -7,5 +7,6 @@ migraciones, por ejemplo:
 """
 
 from app.db.base import Base  # noqa: F401
+from app.models.lote import Lote  # noqa: F401
 from app.models.predio import Predio  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401

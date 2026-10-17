@@ -12,6 +12,11 @@ Latitud = Annotated[float, Field(ge=-90, le=90)]
 Posicion = tuple[Longitud, Latitud]
 Anillo = Annotated[list[Posicion], Field(min_length=4)]
 
+# Rango aproximado de Colombia. Atrapa el error más común: enviar [latitud, longitud]
+# (p. ej. [7.27, -72.64] cae en la Antártida, con coordenadas que en sí son válidas).
+LONGITUD_COLOMBIA = (-79.1, -66.8)
+LATITUD_COLOMBIA = (-4.3, 13.5)
+
 
 class PoligonoGeoJSON(BaseModel):
     model_config = ConfigDict(
@@ -34,6 +39,16 @@ class PoligonoGeoJSON(BaseModel):
     def _anillos_cerrados(cls, anillos: list[list[Posicion]]) -> list[list[Posicion]]:
         if any(anillo[0] != anillo[-1] for anillo in anillos):
             raise ValueError("Cada anillo debe terminar en el mismo punto en que empieza")
+        (lng_min, lng_max), (lat_min, lat_max) = LONGITUD_COLOMBIA, LATITUD_COLOMBIA
+        fuera = any(
+            not (lng_min <= lng <= lng_max and lat_min <= lat <= lat_max)
+            for anillo in anillos
+            for lng, lat in anillo
+        )
+        if fuera:
+            raise ValueError(
+                "Hay coordenadas fuera de Colombia: revise que el orden sea [longitud, latitud]"
+            )
         return anillos
 
 

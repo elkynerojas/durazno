@@ -86,3 +86,12 @@ export const actualizarUsuario = (id, cambios) =>
 export const obtenerPredio = () => api('/predio')
 
 export const guardarPredio = (datos) => api('/predio', { metodo: 'PUT', cuerpo: datos })
+
+export const listarLotes = () => api('/lotes')
+
+export const crearLote = (datos) => api('/lotes', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarLote = (id, cambios) =>
+  api(`/lotes/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
