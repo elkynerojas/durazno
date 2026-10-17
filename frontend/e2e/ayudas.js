@@ -13,8 +13,9 @@ export async function ingresar(page, correo = CORREO, clave = CLAVE) {
 // Los lotes exigen el predio registrado: lo registra si la base está vacía.
 export async function asegurarPredio(page) {
   await page.goto('/predio')
+  // Espera a que termine la carga: mientras tanto el título aún no dice si hay predio.
+  await expect(page.getByLabel('Nombre')).toBeVisible()
   const titulo = page.getByRole('heading', { level: 1 })
-  await expect(titulo).toHaveText(/predio/)
   if ((await titulo.textContent()) === 'Registrar el predio') {
     await page.getByLabel('Nombre').fill('Finca E2E')
     await page.getByLabel('Área (hectáreas)').fill('30')

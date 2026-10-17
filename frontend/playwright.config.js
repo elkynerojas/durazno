@@ -12,6 +12,8 @@ export default defineConfig({
     locale: 'es-CO',
     timezoneId: 'America/Bogota',
     trace: 'on-first-retry',
+    // Para probar el stack de producción en un equipo, con su certificado autofirmado.
+    ignoreHTTPSErrors: process.env.E2E_IGNORAR_HTTPS === '1',
   },
   // El aplicativo se usa sobre todo desde un teléfono Android en campo.
   projects: [{ name: 'android', use: { ...devices['Pixel 7'] } }],

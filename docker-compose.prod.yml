@@ -1,0 +1,121 @@
+# Producción (HU-08). Archivo independiente del de desarrollo: sin Vite, sin pgAdmin, sin
+# recarga automática y sin puertos de la base. Variables en .env (ver .env.prod.example).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   sh deploy/obtener-certificado.sh          # primera vez, con el dominio ya apuntando aquí
+name: durazno-icota-prod
+
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: America/Bogota
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [interna]
+
+  api:
+    build:
+      context: ./backend
+      args:
+        REQUISITOS: requirements.txt
+    restart: unless-stopped
+    # ARCHIVO_ENV permite probar este stack en un equipo con otro archivo de variables.
+    env_file: ${ARCHIVO_ENV:-.env}
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      ENVIRONMENT: production
+    # Sin recarga automática. Un solo proceso: el límite de intentos de inicio de sesión vive en
+    # memoria. Solo confía en las cabeceras X-Forwarded-* que envía el Nginx (IP fija).
+    # Una sola línea: en un bloque YAML «>» las líneas con más sangría conservan el salto y sh
+    # las tomaría como comandos aparte.
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+        --no-server-header --proxy-headers --forwarded-allow-ips=${IP_NGINX:-10.231.0.10}
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [interna]
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO}
+    ports:
+      - "${HTTP_PUERTO:-80}:80"
+      - "${HTTPS_PUERTO:-443}:443"
+    volumes:
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - api
+    networks:
+      interna:
+        ipv4_address: ${IP_NGINX:-10.231.0.10}
+
+  # Renueva los certificados de Let's Encrypt (cada 12 h revisa si vencen en menos de 30 días).
+  # La primera emisión la hace deploy/obtener-certificado.sh.
+  certbot:
+    image: certbot/certbot:v3.1.0
+    restart: unless-stopped
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do
+             certbot renew --webroot -w /var/www/certbot --quiet;
+             sleep 12h & wait $${!}; done"
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks: [interna]
+
+  # Copia diaria de la base a las 02:00 (hora de Bogotá); conserva 14 días.
+  respaldo:
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    restart: unless-stopped
+    entrypoint: ["sh", "/respaldo/programar.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      DIAS_RETENCION: ${DIAS_RETENCION:-14}
+      TZ: America/Bogota
+    volumes:
+      - respaldos:/respaldos
+      - ./deploy/respaldo:/respaldo:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [interna]
+
+networks:
+  interna:
+    ipam:
+      config:
+        - subnet: ${RED_INTERNA:-10.231.0.0/24}
+
+volumes:
+  pgdata:
+  letsencrypt:
+  certbot_www:
+  respaldos:

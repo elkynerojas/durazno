@@ -1,0 +1,21 @@
+# Producción: compila el frontend y lo sirve con Nginx, que además publica la API en /api.
+# Contexto: raíz del repositorio (ver docker-compose.prod.yml y .dockerignore).
+
+FROM node:22-alpine AS compilacion
+WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM nginx:1.27-alpine
+# openssl: certificado provisional mientras Let's Encrypt emite el definitivo.
+RUN apk add --no-cache openssl
+COPY --from=compilacion /app/dist /usr/share/nginx/html
+COPY nginx/prod/default.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx/prod/seguridad.conf nginx/prod/seguridad-docs.conf nginx/prod/proxy-api.conf /etc/nginx/snippets/
+COPY nginx/prod/certificado.sh /usr/local/bin/certificado.sh
+COPY nginx/prod/40-certificado.sh nginx/prod/50-recargar.sh /docker-entrypoint.d/
+RUN chmod +x /usr/local/bin/certificado.sh /docker-entrypoint.d/40-certificado.sh \
+        /docker-entrypoint.d/50-recargar.sh \
+    && rm -f /etc/nginx/conf.d/default.conf

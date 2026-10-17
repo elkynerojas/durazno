@@ -1,0 +1,14 @@
+# Contexto de construcción de la imagen de nginx de producción (docker-compose.prod.yml).
+.git
+.env
+.env.*
+!.env.prod.example
+mockups
+backend
+db
+deploy
+**/node_modules
+**/dist
+frontend/test-results
+frontend/playwright-report
+frontend/coverage

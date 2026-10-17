@@ -224,7 +224,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-08 · Desplegar en servidor con HTTPS
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S2 · **Responsable:** Ingry
+- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S2 · **Responsable:** Ingry
 - **Historia:** Como técnico de campo, quiero abrir el aplicativo desde el teléfono, para usar el GPS y la lectura de QR, que exigen HTTPS.
 
 **Criterios de aceptación**
@@ -236,12 +236,12 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 **Tareas**
 
-- [ ] `HU-08.1` [DevOps] docker-compose.prod.yml y variables de producción
-- [ ] `HU-08.2` [DevOps] Dockerfile multietapa del frontend con Nginx
-- [ ] `HU-08.3` [DevOps] Proxy /api en Nginx y certificados Let's Encrypt
-- [ ] `HU-08.4` [DevOps] Copia diaria de la base y prueba de restauración
-- [ ] `HU-08.5` [DevOps] Cabeceras CSP y HSTS en el Nginx de producción
-- [ ] `HU-08.6` [DevOps] `limit_req` por IP en Nginx para `/api/v1/auth/` y `forwarded-allow-ips` restringido al proxy (bloqueo de cuentas ajenas y rociado de contraseñas, auditoría HU-05)
+- [x] `HU-08.1` [DevOps] docker-compose.prod.yml y variables de producción
+- [x] `HU-08.2` [DevOps] Dockerfile multietapa del frontend con Nginx
+- [x] `HU-08.3` [DevOps] Proxy /api en Nginx y certificados Let's Encrypt
+- [x] `HU-08.4` [DevOps] Copia diaria de la base y prueba de restauración
+- [x] `HU-08.5` [DevOps] Cabeceras CSP y HSTS en el Nginx de producción
+- [x] `HU-08.6` [DevOps] `limit_req` por IP en Nginx para `/api/v1/auth/` y `forwarded-allow-ips` restringido al proxy (bloqueo de cuentas ajenas y rociado de contraseñas, auditoría HU-05)
 - [ ] `HU-08.7` [API] Token de renovación en cookie `HttpOnly; Secure; SameSite=Strict` y revocación de sesiones (`sesion_valida_desde` o `jti`), auditoría HU-05; revocar también al restablecer la clave o reactivar la cuenta, rechazar claves triviales y exigir la clave actual para cambiar la propia (auditoría HU-06)
 
 ## E2 · Lotes y trampas georreferenciados

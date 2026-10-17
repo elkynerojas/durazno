@@ -7,8 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# En producción se instalan solo las dependencias de ejecución (sin pytest, ruff, debugpy...).
+ARG REQUISITOS=requirements-dev.txt
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install -r requirements-dev.txt
+RUN pip install -r ${REQUISITOS}
 
 COPY . .
 
