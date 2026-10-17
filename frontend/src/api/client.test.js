@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { guardarToken, leerToken, leerTokenRenovacion } from '../features/auth/sesion'
-import { simularFetch, respuestaJson } from '../test/utilidades'
+import { respuestaBinaria, respuestaJson, simularFetch } from '../test/utilidades'
 import { api, ErrorApi, EVENTO_SESION_CERRADA, iniciarSesion } from './client'
 
 describe('cliente de la API', () => {
@@ -99,5 +99,27 @@ describe('cliente de la API', () => {
     expect(alCerrar).toHaveBeenCalledOnce()
     expect(leerTokenRenovacion()).toBeNull()
     window.removeEventListener(EVENTO_SESION_CERRADA, alCerrar)
+  })
+
+  it('devuelve un Blob cuando se pide una respuesta binaria', async () => {
+    guardarToken('token-123')
+    simularFetch(respuestaBinaria(200, '<svg/>', 'image/svg+xml'))
+
+    const archivo = await api('/trampas/t-1/qr.svg', { binario: true })
+
+    expect(archivo).toBeInstanceOf(Blob)
+    expect(archivo.type).toBe('image/svg+xml')
+    expect(await archivo.text()).toBe('<svg/>')
+  })
+
+  it('renueva el token también en descargas binarias', async () => {
+    guardarToken('vencido', 'renovacion-1')
+    simularFetch(
+      respuestaJson(401, {}),
+      respuestaJson(200, { access_token: 'nuevo', refresh_token: 'renovacion-2' }),
+      respuestaBinaria(200, 'png', 'image/png'),
+    )
+
+    await expect(api('/trampas/t-1/qr.png', { binario: true })).resolves.toBeInstanceOf(Blob)
   })
 })

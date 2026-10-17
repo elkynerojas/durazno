@@ -29,6 +29,8 @@ class Trampa(EntidadSincronizable, Base):
 
     lote_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lote.id"), nullable=False, index=True)
     codigo_ica: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Código corto del QR (services/qr.py). Único aun entre trampas borradas: nunca se reutiliza.
+    codigo_qr: Mapped[str] = mapped_column(String(8), unique=True, nullable=False)
     tipo: Mapped[str] = mapped_column(String(10), nullable=False)
     atrayente: Mapped[str] = mapped_column(String(60), nullable=False)
     fecha_instalacion: Mapped[date] = mapped_column(Date, nullable=False)

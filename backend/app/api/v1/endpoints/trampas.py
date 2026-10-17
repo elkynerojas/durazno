@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -12,6 +13,7 @@ from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
 from app.schemas.trampa import EstadoTrampa, TrampaActualizar, TrampaCrear, TrampaLeer
+from app.services.qr import generar_codigo, qr_png, qr_svg
 from app.services.trampas import punto_en_lote
 
 router = APIRouter(tags=["trampas"])
@@ -51,6 +53,14 @@ async def _exigir_ubicacion(session: SessionDep, trampa: Trampa) -> None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=FUERA_DEL_LOTE
         )
+
+
+async def _codigo_qr_libre(session: SessionDep) -> str:
+    # 31^8 ≈ 8,5 × 10^11 combinaciones: un choque es casi imposible, pero se descarta igual.
+    while True:
+        codigo = generar_codigo()
+        if await session.scalar(select(Trampa.id).where(Trampa.codigo_qr == codigo)) is None:
+            return codigo
 
 
 async def _guardar(session: SessionDep, trampa: Trampa) -> Trampa:
@@ -122,7 +132,8 @@ async def obtener_trampa(
     status_code=status.HTTP_201_CREATED,
     summary="Registrar una trampa",
     description="Ubica la trampa con un punto GeoJSON `[longitud, latitud]`, que debe quedar "
-    "dentro del polígono de su lote (`ST_Contains`). `precision_m` se envía cuando la "
+    "dentro del polígono de su lote (`ST_Contains`). El servidor le asigna `codigo_qr`. "
+    "`precision_m` se envía cuando la "
     "coordenada viene del GPS. Reenviar el mismo `id` con el mismo código ICA devuelve la "
     "trampa existente con 200.",
     responses={
@@ -146,7 +157,11 @@ async def crear_trampa(
             return existente
 
     await _exigir_lote(session, entrada.lote_id)
-    trampa = Trampa(**entrada.model_dump(exclude={"id", "geom"}), geom=a_geometria(entrada.geom))
+    trampa = Trampa(
+        **entrada.model_dump(exclude={"id", "geom"}),
+        geom=a_geometria(entrada.geom),
+        codigo_qr=await _codigo_qr_libre(session),
+    )
     if entrada.id is not None:
         trampa.id = entrada.id
     await _exigir_ubicacion(session, trampa)
@@ -197,3 +212,46 @@ async def eliminar_trampa(
     trampa = await _obtener(session, trampa_id)
     trampa.deleted_at = datetime.now(UTC)
     await session.commit()
+
+
+ERROR_QR = {**ERROR_401, 404: {"description": "Trampa no encontrada"}}
+
+
+@router.get(
+    "/trampas/{trampa_id}/qr.svg",
+    summary="QR de la trampa en SVG",
+    description="QR (corrección de errores nivel Q) que codifica solo la URL "
+    "`<QR_URL_BASE>/t/<codigo_qr>`. Vectorial: ideal para imprimir etiquetas.",
+    response_class=Response,
+    responses={200: {"content": {"image/svg+xml": {}}}, **ERROR_QR},
+)
+async def descargar_qr_svg(
+    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+) -> Response:
+    trampa = await _obtener(session, trampa_id)
+    return _archivo_qr(await run_in_threadpool(qr_svg, trampa.codigo_qr), trampa, "svg")
+
+
+@router.get(
+    "/trampas/{trampa_id}/qr.png",
+    summary="QR de la trampa en PNG",
+    description="El mismo QR que `qr.svg`, como imagen PNG.",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}}, **ERROR_QR},
+)
+async def descargar_qr_png(
+    trampa_id: uuid.UUID, _usuario: UsuarioActualDep, session: SessionDep
+) -> Response:
+    trampa = await _obtener(session, trampa_id)
+    return _archivo_qr(await run_in_threadpool(qr_png, trampa.codigo_qr), trampa, "png")
+
+
+def _archivo_qr(contenido: bytes, trampa: Trampa, extension: str) -> Response:
+    tipo = "image/svg+xml" if extension == "svg" else "image/png"
+    # El nombre usa solo el código QR (alfabeto seguro), no el código ICA que escribe el usuario.
+    nombre = f"qr-trampa-{trampa.codigo_qr}.{extension}"
+    return Response(
+        content=contenido,
+        media_type=tipo,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )

@@ -55,4 +55,14 @@ test('el agrónomo ubica una trampa tocando el mapa dentro de un lote', async ({
   const guardada = page.getByRole('complementary', { name: `Trampa ${codigo}` })
   await expect(guardada.getByLabel('Estado')).toHaveValue('activa')
   await expect(page.locator('.marcador-trampa--activa')).not.toHaveCount(0)
+
+  // HU-14: la trampa recibe su QR, que se ve en el panel y se descarga.
+  await expect(guardada.getByRole('img', { name: `QR de la trampa ${codigo}` })).toBeVisible()
+  const codigoQr = await guardada.locator('.qr-trampa__codigo').textContent()
+  expect(codigoQr).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/)
+  const [descarga] = await Promise.all([
+    page.waitForEvent('download'),
+    guardada.getByRole('button', { name: 'Descargar PNG' }).click(),
+  ])
+  expect(descarga.suggestedFilename()).toBe(`qr-${codigoQr}.png`)
 })

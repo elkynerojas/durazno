@@ -37,7 +37,11 @@ function renovarTokens() {
   return renovacionEnCurso
 }
 
-export async function api(ruta, { metodo = 'GET', cuerpo, reintento = true, ...opciones } = {}) {
+// Con `binario: true` devuelve el cuerpo como Blob (imágenes, PDF) en lugar de JSON.
+export async function api(
+  ruta,
+  { metodo = 'GET', cuerpo, reintento = true, binario = false, ...opciones } = {},
+) {
   const token = leerToken()
   const esFormulario = cuerpo instanceof URLSearchParams
   const headers = {}
@@ -50,18 +54,19 @@ export async function api(ruta, { metodo = 'GET', cuerpo, reintento = true, ...o
     body: cuerpo && !esFormulario ? JSON.stringify(cuerpo) : cuerpo,
     ...opciones,
   })
-  const datos = respuesta.status === 204 ? null : await respuesta.json().catch(() => null)
   if (!respuesta.ok) {
     if (respuesta.status === 401 && token) {
       if (reintento && (await renovarTokens())) {
-        return api(ruta, { metodo, cuerpo, reintento: false, ...opciones })
+        return api(ruta, { metodo, cuerpo, reintento: false, binario, ...opciones })
       }
       borrarToken()
       window.dispatchEvent(new Event(EVENTO_SESION_CERRADA))
     }
+    const datos = await respuesta.json().catch(() => null)
     throw new ErrorApi(respuesta.status, datos?.detail)
   }
-  return datos
+  if (binario) return respuesta.blob()
+  return respuesta.status === 204 ? null : await respuesta.json().catch(() => null)
 }
 
 export const obtenerSalud = () => api('/health')
@@ -102,3 +107,5 @@ export const crearTrampa = (datos) => api('/trampas', { metodo: 'POST', cuerpo: 
 
 export const actualizarTrampa = (id, cambios) =>
   api(`/trampas/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+export const obtenerQrTrampa = (id, formato) => api(`/trampas/${id}/qr.${formato}`, { binario: true })

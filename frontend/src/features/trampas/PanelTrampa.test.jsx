@@ -6,6 +6,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { respuestaJson, simularFetch } from '../../test/utilidades'
 import PanelTrampa from './PanelTrampa'
 
+// El QR tiene sus propias pruebas; aquí no debe consumir las respuestas simuladas.
+vi.mock('./QrTrampa', () => ({ default: () => null }))
+
 const cuadro = (x0, y0, x1, y1) => ({
   type: 'Polygon',
   coordinates: [

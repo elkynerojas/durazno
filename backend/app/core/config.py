@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Orígenes permitidos para CORS, separados por coma.
     cors_origins: str = "http://localhost:5173"
 
+    # Dirección pública del aplicativo: el QR de cada trampa codifica <qr_url_base>/t/<código>.
+    qr_url_base: str = "http://localhost:5173"
+
     @model_validator(mode="after")
     def _exigir_clave_segura(self) -> "Settings":
         if self.environment not in ENTORNOS_LOCALES and (
@@ -46,6 +49,12 @@ class Settings(BaseSettings):
                 "SECRET_KEY insegura: fuera de desarrollo use al menos 32 caracteres "
                 "aleatorios (openssl rand -hex 32)."
             )
+        return self
+
+    @model_validator(mode="after")
+    def _exigir_qr_https(self) -> "Settings":
+        if self.environment not in ENTORNOS_LOCALES and not self.qr_url_base.startswith("https://"):
+            raise ValueError("QR_URL_BASE debe usar https:// fuera de desarrollo.")
         return self
 
     @property

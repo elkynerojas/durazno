@@ -15,7 +15,15 @@ def test_produccion_rechaza_clave_insegura(clave):
 
 
 def test_produccion_acepta_clave_fuerte():
-    assert Settings(environment="production", secret_key=CLAVE_FUERTE).secret_key == CLAVE_FUERTE
+    configuracion = Settings(
+        environment="production", secret_key=CLAVE_FUERTE, qr_url_base="https://icota.co"
+    )
+    assert configuracion.secret_key == CLAVE_FUERTE
+
+
+def test_produccion_exige_https_en_la_url_del_qr():
+    with pytest.raises(ValidationError, match="QR_URL_BASE"):
+        Settings(environment="production", secret_key=CLAVE_FUERTE, qr_url_base="http://icota.co")
 
 
 def test_desarrollo_permite_clave_de_ejemplo():

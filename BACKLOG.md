@@ -371,7 +371,7 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 ### HU-14 · Generar el QR de cada trampa
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S2 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero que cada trampa reciba un QR único al registrarla, para identificarla sin confusión en campo.
 
 **Criterios de aceptación**
@@ -383,10 +383,18 @@ _Objetivo 3 · módulo ii._ Código QR único por trampa, etiquetas imprimibles 
 
 **Tareas**
 
-- [ ] `HU-14.1` [BD] Campo codigo_qr único en trampa
-- [ ] `HU-14.2` [API] Servicio de generación con segno
-- [ ] `HU-14.3` [API] GET /trampas/{id}/qr.svg y qr.png
-- [ ] `HU-14.4` [Pruebas] Unicidad y decodificación del QR generado
+- [x] `HU-14.1` [BD] Campo codigo_qr único en trampa
+- [x] `HU-14.2` [API] Servicio de generación con segno
+- [x] `HU-14.3` [API] GET /trampas/{id}/qr.svg y qr.png
+- [x] `HU-14.4` [Pruebas] Unicidad y decodificación del QR generado
+
+> `codigo_qr`: 8 caracteres con `secrets` del alfabeto `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (sin
+> 0/O/1/I/L), asignado por el servidor al crear (el cliente no puede fijarlo), único incluso
+> entre trampas borradas y estable al mover. La migración asignó código a las trampas existentes.
+> El QR (segno, nivel Q) codifica solo `<QR_URL_BASE>/t/<código>`; `QR_URL_BASE` va en `.env` y
+> fuera de desarrollo debe ser `https://`. `GET /trampas/{id}/qr.svg|qr.png` para cualquier rol
+> con sesión. Las pruebas decodifican el PNG con zxing-cpp. Web: vista previa del QR y descarga
+> SVG/PNG en el panel de la trampa. La ruta `/t/<código>` se resuelve en HU-16.
 
 ### HU-15 · Imprimir las etiquetas de un lote
 

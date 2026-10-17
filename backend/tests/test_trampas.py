@@ -10,6 +10,7 @@ from app.models.lote import Lote
 from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
+from app.services.qr import generar_codigo
 from tests.utilidades import encabezados
 
 URL = "/api/v1/trampas"
@@ -80,6 +81,7 @@ async def trampa(session, lote_a):
     trampa = Trampa(
         lote_id=lote_a.id,
         codigo_ica="ICA-001",
+        codigo_qr=generar_codigo(),
         tipo="jackson",
         atrayente="Trimedlure",
         fecha_instalacion=date(2026, 10, 1),

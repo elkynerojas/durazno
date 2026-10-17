@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { actualizarTrampa, crearTrampa } from '../../api/client'
 import { latLngAPunto, puntoALeaflet, puntoEnPoligono } from '../../utils/geo'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA, hoyEnBogota } from './catalogo'
+import QrTrampa from './QrTrampa'
 
 function mensajeDeError(error) {
   if (typeof error.detalle === 'string') return error.detalle
@@ -95,6 +96,7 @@ export default function PanelTrampa({
     >
       <form className="formulario" onSubmit={guardar}>
         <h2>{nueva ? 'Nueva trampa' : `Trampa ${trampa.codigo_ica}`}</h2>
+        {!nueva && <QrTrampa trampa={trampa} />}
         {editable && capturando && (
           <p className="formulario__nota">
             Toque el mapa donde está la trampa o escriba sus coordenadas.

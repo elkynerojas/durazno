@@ -74,6 +74,7 @@ class TrampaLeer(BaseModel):
     id: uuid.UUID
     lote_id: uuid.UUID
     codigo_ica: str
+    codigo_qr: str = Field(description="Código corto del QR; no cambia si la trampa se mueve")
     tipo: TipoTrampa
     atrayente: str
     fecha_instalacion: date
