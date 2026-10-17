@@ -11,28 +11,36 @@ import sys
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import ENTORNOS_LOCALES, get_settings
 from app.db.session import SessionLocal, engine
 from app.models.usuario import Usuario
 
 
-async def promover(correo: str) -> str:
-    async with SessionLocal() as session:
-        usuario = await session.scalar(
-            select(Usuario).where(Usuario.correo == correo, Usuario.deleted_at.is_(None))
-        )
-        if usuario is None:
-            return f"No existe una cuenta vigente con el correo {correo}."
-        if usuario.rol == "administrador":
-            return f"{correo} ya es administrador."
-        usuario.rol = "administrador"
-        usuario.activo = True
-        # Cambiar el rol cierra las sesiones abiertas de la cuenta.
-        usuario.sesion_valida_desde = datetime.now(UTC)
-        await session.commit()
-    await engine.dispose()
+async def promover(session: AsyncSession, correo: str) -> str:
+    usuario = await session.scalar(
+        select(Usuario).where(Usuario.correo == correo, Usuario.deleted_at.is_(None))
+    )
+    if usuario is None:
+        return f"No existe una cuenta vigente con el correo {correo}."
+    if usuario.rol == "administrador":
+        return f"{correo} ya es administrador."
+    # Una cuenta desactivada a propósito no se reactiva por esta vía.
+    if not usuario.activo:
+        return f"La cuenta {correo} está desactivada: reactívela desde Usuarios primero."
+    usuario.rol = "administrador"
+    # Cambiar el rol cierra las sesiones abiertas de la cuenta.
+    usuario.sesion_valida_desde = datetime.now(UTC)
+    await session.commit()
     return f"{correo} ahora es administrador. Debe iniciar sesión de nuevo."
+
+
+async def _ejecutar(correo: str) -> str:
+    async with SessionLocal() as session:
+        mensaje = await promover(session, correo)
+    await engine.dispose()
+    return mensaje
 
 
 def main() -> None:
@@ -43,7 +51,7 @@ def main() -> None:
         confirmacion = input(f"Escriba de nuevo {correo} para confirmar: ").strip().lower()
         if confirmacion != correo:
             sys.exit("Cancelado.")
-    print(asyncio.run(promover(correo)))
+    print(asyncio.run(_ejecutar(correo)))
 
 
 if __name__ == "__main__":

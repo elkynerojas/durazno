@@ -94,6 +94,7 @@ class LoteResumen(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    predio_id: uuid.UUID
     codigo: str
     nombre: str | None
 

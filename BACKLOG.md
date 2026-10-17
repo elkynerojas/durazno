@@ -24,7 +24,7 @@ Periodo: 1 sep – 19 dic de 2026. Equipo: Ingry García y Luis Silva.
 |---|---|---|---|---|
 | S0 | Análisis y diseño | 1 sep – 26 oct | 21 | HU-01, HU-02, HU-03, HU-04 |
 | S1 | Lotes, trampas y acceso | 27 oct – 9 nov | 23 | HU-05, HU-06, HU-07, HU-09, HU-11 |
-| S2 | QR y despliegue | 10 – 16 nov | 27 | HU-08, HU-10, HU-12, HU-13, HU-14, HU-15, HU-16, HU-17 |
+| S2 | QR y despliegue | 10 – 16 nov | 35 | HU-08, HU-10, HU-12, HU-13, HU-14, HU-15, HU-16, HU-17, HU-39 |
 | S3 | Mapa, rutas y planeación | 17 – 25 nov | 28 | HU-18, HU-19, HU-20, HU-21, HU-23, HU-24 |
 | S4 | Lecturas, MTD y API | 26 nov – 4 dic | 34 | HU-22, HU-25, HU-26, HU-27, HU-28, HU-29, HU-30, HU-31 |
 | S5 | Validación y cierre | 5 – 19 dic | 27 | HU-32, HU-33, HU-34, HU-35, HU-36, HU-37, HU-38 |
@@ -180,11 +180,11 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 ### HU-06 · Gestionar usuarios del predio
 
 - **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S1 · **Responsable:** Luis
-- **Historia:** Como agrónomo, quiero crear, editar y desactivar las cuentas del personal, para controlar quién registra datos.
+- **Historia:** Como administrador, quiero crear, editar y desactivar las cuentas del personal, para controlar quién registra datos.
 
 **Criterios de aceptación**
 
-- Solo el agrónomo administra cuentas.
+- Solo el administrador administra cuentas (antes el agrónomo; cambió con HU-39).
 - Desactivar una cuenta no la borra y conserva la autoría de sus lecturas.
 - Datos personales mínimos, con aviso de tratamiento (Ley 1581 de 2012).
 - Un usuario desactivado no puede iniciar sesión.
@@ -214,7 +214,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 **Criterios de aceptación**
 
 - Nombre, vereda, municipio, registro ICA del predio y área.
-- Existe un único predio en esta versión.
+- Puede haber varios predios (HU-39); el agrónomo asignado o el administrador editan sus datos.
 - El límite del predio como polígono es opcional.
 
 **Tareas**
@@ -265,6 +265,34 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 > (M1); rol de base de datos sin superusuario para la API y de solo lectura para las copias (M5);
 > releer `sesion_valida_desde` con bloqueo al emitir tokens (B1); agrupar IPv6 por /64 en
 > `limit_req` (B6); cifrar las copias y enviarlas fuera del servidor (B4).
+
+### HU-39 · Gestionar varios predios
+
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S2 · **Responsable:** Ambos
+- **Historia:** Como administrador, quiero crear predios y asignarles su personal, para llevar
+  varios cultivos en el mismo aplicativo sin que cada equipo vea los datos de los otros.
+- **Origen:** cambio de alcance pedido el 17 oct 2026 (antes la multi-predio estaba fuera de alcance).
+
+**Criterios de aceptación**
+
+- El administrador crea, edita y elimina (borrado lógico, sin lotes) predios desde el aplicativo.
+- Cada usuario ve y trabaja solo en los predios que tiene asignados, con su rol; el administrador
+  ve todos.
+- Un recurso de otro predio (lote, trampa, QR, etiqueta, exportación) responde 404.
+- Código de lote único dentro de cada predio; código ICA y QR únicos en todo el sistema.
+- La web permite elegir el predio actual y recuerda la elección en el navegador.
+
+**Tareas**
+
+- [x] `HU-39.1` [BD] Rol administrador, tabla `predio_usuario` y códigos de lote por predio
+- [x] `HU-39.2` [API] `/predios` (CRUD y personal) y acceso por predio en todo el dominio
+- [x] `HU-39.3` [API] Cuentas administradas por el administrador; script `crear_administrador`
+- [x] `HU-39.4` [Web] Selector de predio, página Predios con personal y vistas por predio
+- [x] `HU-39.5` [Pruebas] Aislamiento entre predios, asignaciones y E2E del administrador
+
+> La migración asigna las cuentas vigentes a los predios existentes (nadie pierde acceso). El
+> primer administrador se nombra con `docker compose exec api python -m app.scripts.
+> crear_administrador <correo>`. Control de acceso en `app/api/acceso.py`.
 
 ## E2 · Lotes y trampas georreferenciados
 

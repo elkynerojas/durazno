@@ -18,7 +18,9 @@ class Trampa(EntidadSincronizable, Base):
         CheckConstraint(f"tipo IN {TIPOS_TRAMPA}", name="tipo_valido"),
         CheckConstraint(f"estado IN {ESTADOS_TRAMPA}", name="estado_valido"),
         CheckConstraint("precision_m IS NULL OR precision_m >= 0", name="precision_no_negativa"),
-        # Código ICA único entre las trampas vigentes, sin distinguir mayúsculas.
+        # Código ICA único en todo el sistema (es el identificador oficial del ICA), sin
+        # distinguir mayúsculas. Decisión de HU-39: el 409 puede revelar que el código ya se usa
+        # en otro predio, lo que se acepta porque el código ICA no es un dato reservado.
         Index(
             "uq_trampa_codigo_ica",
             func.lower(text("codigo_ica")),

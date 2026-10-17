@@ -10,18 +10,35 @@ export async function ingresar(page, correo = CORREO, clave = CLAVE) {
   await page.getByRole('button', { name: 'Ingresar' }).click()
 }
 
-// Los lotes exigen el predio registrado: lo registra si la base está vacía.
+// Las pruebas trabajan en su propio predio («Predio E2E»), que crean si no existe, y lo dejan
+// como predio actual del navegador.
 export async function asegurarPredio(page) {
-  await page.goto('/predio')
-  // Espera a que termine la carga: mientras tanto el título aún no dice si hay predio.
-  await expect(page.getByLabel('Nombre')).toBeVisible()
-  const titulo = page.getByRole('heading', { level: 1 })
-  if ((await titulo.textContent()) === 'Registrar el predio') {
-    await page.getByLabel('Nombre').fill('Finca E2E')
-    await page.getByLabel('Área (hectáreas)').fill('30')
-    await page.getByRole('button', { name: 'Guardar' }).click()
-    await expect(page.getByText('Datos del predio guardados.')).toBeVisible()
-  }
+  const predioId = await page.evaluate(async () => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const predios = await (await fetch('/api/v1/predios', { headers: cabeceras })).json()
+    let predio = predios.find((p) => p.nombre === 'Predio E2E')
+    if (!predio) {
+      const creado = await fetch('/api/v1/predios', {
+        method: 'POST',
+        headers: cabeceras,
+        body: JSON.stringify({
+          nombre: 'Predio E2E',
+          vereda: 'Icota',
+          municipio: 'Cácota',
+          area_ha: 30,
+        }),
+      })
+      predio = await creado.json()
+    }
+    localStorage.setItem('icota.predio', predio.id)
+    return predio.id
+  })
+  await page.reload()
+  return predioId
 }
 
 // Punto del mapa en fracciones de su ancho y alto.
@@ -61,11 +78,13 @@ export async function limpiarDatosE2E(page) {
     const cabeceras = { Authorization: `Bearer ${(await renovar.json()).access_token}` }
     const leer = async (ruta) => (await fetch(`/api/v1${ruta}`, { headers: cabeceras })).json()
     const borrar = (ruta) => fetch(`/api/v1${ruta}`, { method: 'DELETE', headers: cabeceras })
-    for (const trampa of await leer('/trampas')) {
-      if (trampa.codigo_ica.startsWith('ICA-E2E-')) await borrar(`/trampas/${trampa.id}`)
-    }
-    for (const lote of await leer('/lotes')) {
-      if (lote.codigo.startsWith('E2E-')) await borrar(`/lotes/${lote.id}`)
+    for (const predio of await leer('/predios')) {
+      for (const trampa of await leer(`/trampas?predio_id=${predio.id}`)) {
+        if (trampa.codigo_ica.startsWith('ICA-E2E-')) await borrar(`/trampas/${trampa.id}`)
+      }
+      for (const lote of await leer(`/lotes?predio_id=${predio.id}`)) {
+        if (lote.codigo.startsWith('E2E-')) await borrar(`/lotes/${lote.id}`)
+      }
     }
   })
   await page.reload()

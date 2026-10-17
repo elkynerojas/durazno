@@ -40,7 +40,7 @@ export default function VistaUsuarios() {
   return (
     <Plantilla>
       <Encabezado
-        migas={[{ texto: 'Predio Icota', a: '/mapa' }, { texto: 'Usuarios' }]}
+        migas={[{ texto: 'Administración' }, { texto: 'Usuarios' }]}
         titulo="Usuarios del predio"
       >
         {!edicion && (

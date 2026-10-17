@@ -1268,3 +1268,41 @@ button {
   gap: 0.1rem;
   font-size: 0.85rem;
 }
+
+.lateral__predio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 0.25rem;
+  font-size: 0.82rem;
+}
+
+.lateral__predio select {
+  min-height: 40px;
+  padding: 0.4rem 0.6rem;
+  color: #fff;
+  background: var(--verde-800);
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 8px;
+}
+
+@media (max-width: 860px) {
+  .lateral__predio {
+    display: none;
+    width: 100%;
+  }
+
+  .lateral--abierto .lateral__predio {
+    display: flex;
+  }
+}
+
+.por-predio {
+  display: contents;
+}
+
+.personal__asignar {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--borde);
+}

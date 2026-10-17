@@ -80,7 +80,10 @@ async def test_resuelve_trampa_y_lote_para_cualquier_rol(
     assert cuerpo["trampa"]["id"] == str(trampa.id)
     assert cuerpo["trampa"]["codigo_ica"] == "ICA-0031"
     assert cuerpo["trampa"]["geom"] == {"type": "Point", "coordinates": [-72.6395, 7.2705]}
-    assert cuerpo["lote"] == {"id": str(trampa.lote_id), "codigo": "L-03", "nombre": "Rubidoux"}
+    lote = cuerpo["lote"]
+    assert (lote["id"], lote["codigo"], lote["nombre"]) == (str(trampa.lote_id), "L-03", "Rubidoux")
+    # Con el predio, la ficha escaneada cambia al predio de la trampa.
+    assert lote["predio_id"]
     # Se completan cuando existan las rutas (HU-19) y las lecturas (HU-25).
     assert cuerpo["ruta"] is None
     assert cuerpo["ultima_lectura"] is None

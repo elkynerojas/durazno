@@ -8,6 +8,8 @@ import { fechaCorta } from '../../utils/fechas'
 import { formatoCoordenada, formatoHa } from '../../utils/formato'
 import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import { usePredio } from '../predios/usePredio'
+import { ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
 import CapaTrampas from '../trampas/CapaTrampas'
@@ -18,8 +20,9 @@ import { useDatosPredio } from './useDatosPredio'
 // Vista general del predio: indicadores, mapa de consulta y ficha de lo seleccionado.
 export default function VistaMapa() {
   const { usuario } = useSesion()
-  const editable = usuario.rol === 'agronomo'
-  const datos = useDatosPredio()
+  const editable = ROLES_GESTION.includes(usuario.rol)
+  const { predio } = usePredio()
+  const datos = useDatosPredio(predio?.id)
   const [capas, setCapas] = useState({ lotes: true, trampas: true })
   // { lote } o { trampa } seleccionado en el mapa.
   const [seleccion, setSeleccion] = useState(null)
@@ -35,10 +38,10 @@ export default function VistaMapa() {
   return (
     <Plantilla>
       <Encabezado
-        migas={[{ texto: 'Predio Icota · vereda Icota, Cácota (N. de S.)' }]}
+        migas={[{ texto: `${predio.nombre} · vereda ${predio.vereda}, ${predio.municipio}` }]}
         titulo="Mapa del predio"
       >
-        <BotonesExportar />
+        <BotonesExportar predio={predio} />
         {editable && (
           <>
             <Link to="/trampas" className="boton-secundario">

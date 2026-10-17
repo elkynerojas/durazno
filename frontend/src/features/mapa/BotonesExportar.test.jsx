@@ -17,18 +17,18 @@ describe('BotonesExportar', () => {
     )
     const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const usuarioEvento = userEvent.setup()
-    render(<BotonesExportar />)
+    render(<BotonesExportar predio={{ id: 'p-1', nombre: 'Finca Icota' }} />)
 
     await usuarioEvento.click(screen.getByRole('button', { name: 'Exportar GeoJSON' }))
     await usuarioEvento.click(screen.getByRole('button', { name: 'Exportar KML' }))
 
     expect(fetchSimulado.mock.calls.map(([url]) => url)).toEqual([
-      '/api/v1/export/geojson',
-      '/api/v1/export/kml',
+      '/api/v1/export/geojson?predio_id=p-1',
+      '/api/v1/export/kml?predio_id=p-1',
     ])
     expect(clic.mock.contexts.map((a) => a.download)).toEqual([
-      'predio-icota.geojson',
-      'predio-icota.kml',
+      'predio-Finca-Icota.geojson',
+      'predio-Finca-Icota.kml',
     ])
   })
 
@@ -45,7 +45,7 @@ describe('BotonesExportar', () => {
 
   it('avisa si falla', async () => {
     simularFetch(respuestaJson(500, {}))
-    render(<BotonesExportar />)
+    render(<BotonesExportar predio={{ id: 'p-1', nombre: 'Finca Icota' }} />)
     await userEvent.setup().click(screen.getByRole('button', { name: 'Exportar GeoJSON' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo exportar')
   })

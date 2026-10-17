@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { respuestaJson, simularFetch } from '../../test/utilidades'
-import { ContextoSesion } from '../auth/useSesion'
+import { ConContextos } from '../../test/contextos'
 import VistaFichaTrampa from './VistaFichaTrampa'
 
 vi.mock('../../components/EstadoApi', () => ({ default: () => null }))
@@ -22,20 +22,20 @@ const RESUELTA = {
     geom: { type: 'Point', coordinates: [-72.64021, 7.27184] },
     precision_m: 4.5,
   },
-  lote: { id: 'l-3', codigo: 'L-03', nombre: 'Rubidoux' },
+  lote: { id: 'l-3', predio_id: 'p-1', codigo: 'L-03', nombre: 'Rubidoux' },
   ruta: null,
   ultima_lectura: null,
 }
 
-function renderizar(rol = 'tecnico', ruta = '/t/ABCD2345') {
+function renderizar(rol = 'tecnico', ruta = '/t/ABCD2345', seleccionar = vi.fn()) {
   render(
-    <ContextoSesion.Provider value={{ usuario: { nombre_completo: 'Ana', rol }, salir: vi.fn() }}>
+    <ConContextos usuario={{ nombre_completo: 'Ana', rol }} seleccionar={seleccionar}>
       <MemoryRouter initialEntries={[ruta]}>
         <Routes>
           <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
         </Routes>
       </MemoryRouter>
-    </ContextoSesion.Provider>,
+    </ConContextos>,
   )
 }
 
@@ -106,5 +106,13 @@ describe('VistaFichaTrampa', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No se pudo consultar la trampa. Intente de nuevo.',
     )
+  })
+
+  it('si la trampa es de otro predio asignado, cambia el predio actual', async () => {
+    simularFetch(respuestaJson(200, { ...RESUELTA, lote: { ...RESUELTA.lote, predio_id: 'p-9' } }))
+    const seleccionar = vi.fn()
+    renderizar('tecnico', '/t/ABCD2345', seleccionar)
+    await screen.findByRole('heading', { level: 1, name: 'ICA-0031' })
+    expect(seleccionar).toHaveBeenCalledWith('p-9')
   })
 })

@@ -6,6 +6,8 @@ import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
 import { geojsonALeaflet, leafletAGeojson } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import { usePredio } from '../predios/usePredio'
+import { ROLES_GESTION } from '../usuarios/roles'
 import { useDatosPredio } from '../mapa/useDatosPredio'
 import CapaTrampas from '../trampas/CapaTrampas'
 import CapaLotes from './CapaLotes'
@@ -15,8 +17,9 @@ import TablaLotes from './TablaLotes'
 
 export default function VistaLotes() {
   const { usuario } = useSesion()
-  const editable = usuario.rol === 'agronomo'
-  const datos = useDatosPredio()
+  const editable = ROLES_GESTION.includes(usuario.rol)
+  const { predio } = usePredio()
+  const datos = useDatosPredio(predio?.id)
   const [parametros, setParametros] = useSearchParams()
   const [mapa, setMapa] = useState(null)
   // Lote en edición (null: nuevo), polígono recién dibujado y avisos del último guardado.
@@ -78,7 +81,7 @@ export default function VistaLotes() {
   return (
     <Plantilla>
       <Encabezado
-        migas={[{ texto: 'Predio Icota', a: '/mapa' }, { texto: 'Lotes' }]}
+        migas={[{ texto: predio?.nombre ?? 'Predio', a: '/mapa' }, { texto: 'Lotes' }]}
         titulo={titulo}
       >
         {(lote || geomNueva || dibujando) && editable && (
@@ -157,6 +160,7 @@ export default function VistaLotes() {
 
         <section className="tarjeta">
           <FormularioLote
+            predioId={predio.id}
             key={loteId ?? `nuevo-${reinicio}`}
             lote={lote}
             geomNueva={geomNueva}

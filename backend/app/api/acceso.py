@@ -46,9 +46,12 @@ async def exigir_predio(
     además tiene un rol con permiso (403)."""
     predio = None
     if predio_id is not None:
-        predio = await session.scalar(
-            consulta_predios_visibles(usuario).where(Predio.id == predio_id)
-        )
+        consulta = consulta_predios_visibles(usuario).where(Predio.id == predio_id)
+        # Las escrituras bloquean la fila del predio hasta el commit: así no se crea un lote en
+        # un predio que otra petición está eliminando.
+        if escribir:
+            consulta = consulta.with_for_update(of=Predio)
+        predio = await session.scalar(consulta)
     if predio is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detalle_404)
     if escribir and usuario.rol not in roles_escritura:

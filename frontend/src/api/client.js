@@ -92,11 +92,24 @@ export const crearUsuario = (datos) => api('/usuarios', { metodo: 'POST', cuerpo
 export const actualizarUsuario = (id, cambios) =>
   api(`/usuarios/${id}`, { metodo: 'PATCH', cuerpo: cambios })
 
-export const obtenerPredio = () => api('/predio')
+export const listarPredios = () => api('/predios')
 
-export const guardarPredio = (datos) => api('/predio', { metodo: 'PUT', cuerpo: datos })
+export const crearPredio = (datos) => api('/predios', { metodo: 'POST', cuerpo: datos })
 
-export const listarLotes = () => api('/lotes')
+export const actualizarPredio = (id, datos) =>
+  api(`/predios/${id}`, { metodo: 'PUT', cuerpo: datos })
+
+export const eliminarPredio = (id) => api(`/predios/${id}`, { metodo: 'DELETE' })
+
+export const listarPersonal = (predioId) => api(`/predios/${predioId}/usuarios`)
+
+export const asignarUsuario = (predioId, usuarioId) =>
+  api(`/predios/${predioId}/usuarios/${usuarioId}`, { metodo: 'PUT' })
+
+export const quitarUsuario = (predioId, usuarioId) =>
+  api(`/predios/${predioId}/usuarios/${usuarioId}`, { metodo: 'DELETE' })
+
+export const listarLotes = (predioId) => api(`/lotes?predio_id=${predioId}`)
 
 export const crearLote = (datos) => api('/lotes', { metodo: 'POST', cuerpo: datos })
 
@@ -105,7 +118,7 @@ export const actualizarLote = (id, cambios) =>
 
 export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
 
-export const listarTrampas = () => api('/trampas')
+export const listarTrampas = (predioId) => api(`/trampas?predio_id=${predioId}`)
 
 export const crearTrampa = (datos) => api('/trampas', { metodo: 'POST', cuerpo: datos })
 
@@ -120,10 +133,12 @@ export const resolverQr = (codigo) => api(`/trampas/qr/${encodeURIComponent(codi
 export const obtenerEtiquetasLote = (loteId) =>
   api(`/lotes/${loteId}/etiquetas.pdf`, { binario: true })
 
-export const exportarPredio = (formato, loteId) =>
-  api(`/export/${formato}${loteId ? `?lote_id=${encodeURIComponent(loteId)}` : ''}`, {
-    binario: true,
-  })
+// Del predio completo o, con `loteId`, de un solo lote.
+export const exportarPredio = (formato, { predioId, loteId }) =>
+  api(
+    `/export/${formato}?${loteId ? `lote_id=${encodeURIComponent(loteId)}` : `predio_id=${encodeURIComponent(predioId)}`}`,
+    { binario: true },
+  )
 
 export const obtenerEtiquetaTrampa = (id) => api(`/trampas/${id}/etiqueta.pdf`, { binario: true })
 

@@ -7,7 +7,8 @@ export const porCodigoIca = (a, b) =>
   a.codigo_ica.localeCompare(b.codigo_ica, 'es', { numeric: true })
 
 // Lotes y trampas vigentes del predio, ordenados. `lotesIniciales` encuadra el mapa una vez.
-export function useDatosPredio() {
+// Las vistas se vuelven a montar al cambiar de predio (PorPredio), así que se carga una vez.
+export function useDatosPredio(predioId) {
   const [lotes, setLotes] = useState([])
   const [trampas, setTrampas] = useState([])
   const [lotesIniciales, setLotesIniciales] = useState(null)
@@ -15,15 +16,20 @@ export function useDatosPredio() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    Promise.all([listarLotes(), listarTrampas()])
+    let vigente = true
+    Promise.all([listarLotes(predioId), listarTrampas(predioId)])
       .then(([listaLotes, listaTrampas]) => {
+        if (!vigente) return
         setLotes(listaLotes.sort(porCodigo))
         setTrampas(listaTrampas.sort(porCodigoIca))
         setLotesIniciales(listaLotes)
       })
-      .catch(() => setError('No se pudieron cargar los lotes y las trampas.'))
-      .finally(() => setCargando(false))
-  }, [])
+      .catch(() => vigente && setError('No se pudieron cargar los lotes y las trampas.'))
+      .finally(() => vigente && setCargando(false))
+    return () => {
+      vigente = false
+    }
+  }, [predioId])
 
   const guardarLote = (lote) =>
     setLotes((lista) => [...lista.filter((l) => l.id !== lote.id), lote].sort(porCodigo))

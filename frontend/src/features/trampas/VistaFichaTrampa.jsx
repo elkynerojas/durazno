@@ -8,6 +8,7 @@ import { fechaCorta } from '../../utils/fechas'
 import { formatoCoordenada } from '../../utils/formato'
 import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import { usePredio } from '../predios/usePredio'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from './catalogo'
 import ReponerEtiqueta from './ReponerEtiqueta'
 
@@ -15,6 +16,13 @@ import ReponerEtiqueta from './ReponerEtiqueta'
 export default function VistaFichaTrampa() {
   const { codigo } = useParams()
   const [estado, setEstado] = useState({ codigo, cargando: true })
+  const { predio, seleccionar } = usePredio()
+
+  // Al escanear una trampa de otro predio asignado, ese pasa a ser el predio actual.
+  const predioTrampa = estado.datos?.lote.predio_id
+  useEffect(() => {
+    if (predioTrampa && predioTrampa !== predio?.id) seleccionar(predioTrampa)
+  }, [predioTrampa, predio?.id, seleccionar])
 
   useEffect(() => {
     let vigente = true
@@ -49,6 +57,7 @@ export default function VistaFichaTrampa() {
 
 function Ficha({ trampa, lote, ultima_lectura }) {
   const { usuario } = useSesion()
+  const { predio } = usePredio()
   const navegar = useNavigate()
   const [lat, lng] = puntoALeaflet(trampa.geom)
   const tipo = TIPOS_TRAMPA[trampa.tipo]
@@ -58,7 +67,7 @@ function Ficha({ trampa, lote, ultima_lectura }) {
     <>
       <Encabezado
         migas={[
-          { texto: 'Predio Icota', a: '/mapa' },
+          { texto: predio?.nombre ?? 'Predio', a: '/mapa' },
           { texto: `Lote ${lote.codigo}`, a: `/lotes?lote=${lote.id}` },
           { texto: 'Trampa' },
         ]}
@@ -164,7 +173,7 @@ function CodigoNoEncontrado({ mensaje }) {
 
   return (
     <>
-      <Encabezado migas={[{ texto: 'Predio Icota', a: '/mapa' }]} titulo="Trampa no encontrada" />
+      <Encabezado migas={[{ texto: 'Inicio', a: '/mapa' }]} titulo="Trampa no encontrada" />
       <section className="tarjeta contenido-angosto">
         <p className="formulario__error" role="alert">
           {mensaje}

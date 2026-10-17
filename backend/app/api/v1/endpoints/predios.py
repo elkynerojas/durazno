@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.acceso import ADMINISTRADOR, ROLES_GESTION, consulta_predios_visibles, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
@@ -125,7 +126,8 @@ async def actualizar_predio(
 async def eliminar_predio(
     predio_id: uuid.UUID, admin: AdministradorDep, session: SessionDep
 ) -> None:
-    predio = await exigir_predio(session, admin, predio_id)
+    # escribir=True bloquea la fila: nadie crea un lote mientras se verifica y se borra.
+    predio = await exigir_predio(session, admin, predio_id, escribir=True)
     tiene_lotes = await session.scalar(
         select(Lote.id).where(Lote.predio_id == predio.id, Lote.deleted_at.is_(None)).limit(1)
     )
@@ -196,7 +198,11 @@ async def asignar_usuario(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
     if await _asignacion(session, predio_id, usuario_id) is None:
         session.add(PredioUsuario(predio_id=predio_id, usuario_id=usuario_id))
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            # Otra petición igual lo asignó al mismo tiempo: el resultado es el mismo.
+            await session.rollback()
 
 
 @router.delete(

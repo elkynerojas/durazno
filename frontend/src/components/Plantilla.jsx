@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink } from 'react-router'
 
 import { useSesion } from '../features/auth/useSesion'
+import { usePredio } from '../features/predios/usePredio'
 import { ROLES } from '../features/usuarios/roles'
 import { rangoSemana, semanaIso } from '../utils/fechas'
 import EstadoApi from './EstadoApi'
@@ -12,12 +13,14 @@ const SECCIONES = [
   { a: '/mapa', texto: 'Mapa del predio' },
   { a: '/lotes', texto: 'Lotes' },
   { a: '/trampas', texto: 'Trampas y QR' },
-  { a: '/predio', texto: 'Predio' },
-  { a: '/usuarios', texto: 'Usuarios', roles: ['agronomo'] },
+  { a: '/predio', texto: 'Datos del predio' },
+  { a: '/predios', texto: 'Predios', roles: ['administrador'] },
+  { a: '/usuarios', texto: 'Usuarios', roles: ['administrador'] },
 ]
 
 export default function Plantilla({ children }) {
   const { usuario, salir } = useSesion()
+  const { predios, predio, seleccionar } = usePredio()
   const [abierto, setAbierto] = useState(false)
   const semana = semanaIso()
 
@@ -28,7 +31,9 @@ export default function Plantilla({ children }) {
           <Logo />
           <span>
             <span className="marca__nombre">Trazabilidad Durazno</span>
-            <span className="marca__lugar">Vereda Icota · Cácota</span>
+            <span className="marca__lugar">
+              {predio ? `${predio.vereda} · ${predio.municipio}` : 'Sin predio asignado'}
+            </span>
           </span>
         </Link>
         <button
@@ -40,6 +45,23 @@ export default function Plantilla({ children }) {
         >
           Menú
         </button>
+
+        {predios?.length > 1 && (
+          <div className="lateral__predio">
+            <label htmlFor="predio_actual">Predio</label>
+            <select
+              id="predio_actual"
+              value={predio?.id ?? ''}
+              onChange={(e) => seleccionar(e.target.value)}
+            >
+              {predios.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <nav id="menu-principal" className="lateral__nav" aria-label="Principal">
           {SECCIONES.filter((s) => !s.roles || s.roles.includes(usuario.rol)).map((s) => (

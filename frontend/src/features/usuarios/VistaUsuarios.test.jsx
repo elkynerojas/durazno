@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { respuestaJson, simularFetch } from '../../test/utilidades'
-import { ContextoSesion } from '../auth/useSesion'
+import { ConContextos } from '../../test/contextos'
 import VistaUsuarios from './VistaUsuarios'
 
 vi.mock('../../components/EstadoApi', () => ({ default: () => null }))
@@ -26,11 +26,11 @@ const TECNICO = {
 
 function renderizar() {
   render(
-    <ContextoSesion.Provider value={{ usuario: AGRONOMO, salir: vi.fn() }}>
+    <ConContextos usuario={AGRONOMO}>
       <MemoryRouter>
         <VistaUsuarios />
       </MemoryRouter>
-    </ContextoSesion.Provider>,
+    </ConContextos>,
   )
 }
 

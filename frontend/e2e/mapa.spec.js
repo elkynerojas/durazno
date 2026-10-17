@@ -90,7 +90,7 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Exportar KML' }).click(),
   ])
-  expect(kml.suggestedFilename()).toBe('predio-icota.kml')
+  expect(kml.suggestedFilename()).toBe('predio-Predio-E2E.kml')
 
   // HU-16: escanear el QR sin sesión lleva a la ficha después de iniciar sesión.
   await page.context().clearCookies()
@@ -113,4 +113,23 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
 
   await page.goto('/t/ZZZZ2345')
   await expect(page.getByRole('alert')).toContainText('No hay ninguna trampa con el código QR')
+})
+
+test('el administrador crea un predio desde Predios y lo elimina', async ({ page }) => {
+  const nombre = `E2E Predio ${Date.now() % 1_000_000}`
+  await page.goto('/predios')
+  await page.getByRole('button', { name: '+ Nuevo predio' }).click()
+  const formulario = page.getByRole('form', { name: 'Datos del predio' })
+  await formulario.getByLabel('Nombre').fill(nombre)
+  await formulario.getByLabel('Vereda').fill('Icota')
+  await formulario.getByLabel('Área (hectáreas)').fill('12')
+  await formulario.getByRole('button', { name: 'Crear predio' }).click()
+
+  // Al crearlo queda abierto su personal para asignar cuentas.
+  await expect(page.getByRole('heading', { name: `Personal de ${nombre}` })).toBeVisible()
+  await expect(page.getByRole('row', { name: new RegExp(nombre) })).toBeVisible()
+
+  await page.getByRole('button', { name: `Eliminar ${nombre}` }).click()
+  await page.getByRole('button', { name: `Confirmar: eliminar ${nombre}` }).click()
+  await expect(page.getByRole('row', { name: new RegExp(nombre) })).toHaveCount(0)
 })

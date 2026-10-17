@@ -18,14 +18,15 @@ for (const [nombre, ancho, alto] of [
     await page.screenshot({ path: `test-results/capturas/${nombre}-00-inicio.png`, fullPage: true })
     await ingresar(page)
     await expect(page).toHaveURL('/mapa')
-    await asegurarPredio(page)
+    const predioId = await asegurarPredio(page)
     await limpiarDatosE2E(page)
-    await sembrarMuestra(page)
+    await sembrarMuestra(page, predioId)
     for (const [ruta, archivo] of [
       ['/mapa', '01-mapa'],
       ['/lotes', '02-lotes'],
       ['/trampas', '03-trampas'],
       ['/predio', '04-predio'],
+      ['/predios', '07-predios'],
       ['/usuarios', '05-usuarios'],
     ]) {
       await page.goto(ruta)
@@ -47,8 +48,8 @@ for (const [nombre, ancho, alto] of [
 }
 
 // Dos lotes con tres trampas cerca del centro de Cácota, creados con la API.
-async function sembrarMuestra(page) {
-  await page.evaluate(async () => {
+async function sembrarMuestra(page, predioId) {
+  await page.evaluate(async (predio_id) => {
     const cabeceras = {
       Authorization: `Bearer ${(await (await fetch('/api/v1/auth/renovar', { method: 'POST' })).json()).access_token}`,
       'Content-Type': 'application/json',
@@ -74,11 +75,13 @@ async function sembrarMuestra(page) {
       ],
     })
     const a = await crear('/lotes', {
+      predio_id,
       codigo: 'E2E-01',
       nombre: 'Lote del río',
       geom: cuadro(-72.644, 7.265, -72.6415, 7.2675),
     })
     const b = await crear('/lotes', {
+      predio_id,
       codigo: 'E2E-02',
       geom: cuadro(-72.6415, 7.265, -72.639, 7.2675),
     })
@@ -94,5 +97,5 @@ async function sembrarMuestra(page) {
     await trampa(a, 'ICA-E2E-0030', 'jackson', -72.6432, 7.2662)
     await trampa(a, 'ICA-E2E-0031', 'mcphail', -72.6424, 7.2668)
     await trampa(b, 'ICA-E2E-0032', 'jackson', -72.6402, 7.2663)
-  })
+  }, predioId)
 }

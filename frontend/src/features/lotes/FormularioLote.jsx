@@ -13,6 +13,7 @@ function mensajeDeError(error) {
 // «Datos del lote». Sin `lote` registra uno nuevo con `geomNueva` (dibujada en el mapa).
 // `advertencias` (o null) viene del último guardado; `obtenerForma` da el polígono editado.
 export default function FormularioLote({
+  predioId,
   lote,
   geomNueva,
   advertencias = null,
@@ -45,6 +46,7 @@ export default function FormularioLote({
       const guardado = nuevo
         ? await crearLote({
             ...(id && { id }),
+            predio_id: predioId,
             codigo,
             ...(nombre.trim() && { nombre }),
             geom: geomNueva,

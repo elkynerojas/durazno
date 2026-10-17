@@ -5,6 +5,7 @@ import uuid
 import pytest
 from sqlalchemy import func, update
 
+from app.api.v1.endpoints import predios as endpoints
 from app.models.lote import Lote
 from app.models.predio import Predio
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
@@ -197,3 +198,19 @@ async def test_solo_el_administrador_asigna(cliente, crear_usuario, admin, dos_p
     assert (await cliente.put(url, headers=encabezados(agronomo))).status_code == 403
     inexistente = f"{URL}/{a.id}/usuarios/{uuid.uuid4()}"
     assert (await cliente.put(inexistente, headers=encabezados(admin))).status_code == 404
+
+
+async def test_una_asignacion_simultanea_no_falla(
+    cliente, crear_usuario, admin, dos_predios, monkeypatch
+):
+    # Simula la carrera: la verificación no ve la asignación que otra petición ya guardó, y el
+    # índice único la rechaza al confirmar. Debe responder 204, no 500.
+    a, _ = dos_predios
+    tecnico = await crear_usuario(_correo("tecnico"), predios=[a])
+
+    async def sin_asignacion(*_):
+        return None
+
+    monkeypatch.setattr(endpoints, "_asignacion", sin_asignacion)
+    url = f"{URL}/{a.id}/usuarios/{tecnico.id}"
+    assert (await cliente.put(url, headers=encabezados(admin))).status_code == 204

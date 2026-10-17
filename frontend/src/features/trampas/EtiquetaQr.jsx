@@ -6,7 +6,7 @@ import { TIPOS_TRAMPA } from './catalogo'
 
 // «Etiqueta QR»: vista de la etiqueta como se imprimirá y descarga en PNG o SVG.
 // Las imágenes se piden con la sesión, por eso no basta un <img src> a la API.
-export default function EtiquetaQr({ trampa, lote }) {
+export default function EtiquetaQr({ trampa, lote, predio }) {
   const [vista, setVista] = useState(null)
   const [error, setError] = useState(null)
 
@@ -43,7 +43,7 @@ export default function EtiquetaQr({ trampa, lote }) {
         3 · Etiqueta QR
       </h2>
       <div className="etiqueta-qr">
-        <p className="etiqueta-qr__predio">Predio Icota · PNMF</p>
+        <p className="etiqueta-qr__predio">{predio?.nombre ?? 'Predio'} · PNMF</p>
         {trampa && vista ? (
           <img src={vista} alt={`QR de la trampa ${trampa.codigo_ica}`} />
         ) : (

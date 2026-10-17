@@ -106,7 +106,8 @@ La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose dow
 
 | Entidad (tabla)        | Descripción |
 |------------------------|-------------|
-| `predio`               | Finca/cultivo. Único en esta versión (sin multi-tenancy). Nivel al que se consolida el MTD. |
+| `predio`               | Finca/cultivo. Hay varios; el administrador los crea. Nivel al que se consolida el MTD. |
+| `predio_usuario`       | Asignación de un usuario a un predio: cada usuario solo ve y trabaja en sus predios asignados. |
 | `lote`                 | Unidad del predio con su polígono (`Geometry(POLYGON, 4326)`). El predio tiene más de 20. |
 | `trampa`               | Punto (`Geometry(POINT, 4326)`) que debe quedar contenido en el polígono de su lote. Tiene `codigo_ica` (identificador oficial), tipo y atrayente, y un QR propio. |
 | `ruta`                 | Orden de visita de las trampas activas de un lote. Sin omisiones ni duplicados. |
@@ -118,7 +119,12 @@ Tipos de trampa (Manual ICA): **Jackson** con trimedlure → *Ceratitis capitata
 Mediterráneo, plaga priorizada para durazno por la Res. ICA 995 de 2019); **McPhail** con proteína
 hidrolizada → *Anastrepha* spp.
 
-Roles: `tecnico` (registra lecturas), `agronomo` (define rutas, planea, valida), `productor` (consulta).
+Roles: `tecnico` (registra lecturas), `agronomo` (define rutas, planea, valida; gestiona lotes y
+trampas de sus predios), `productor` (consulta), `administrador` (crea predios, asigna personal,
+administra cuentas y ve todos los predios). El acceso por predio vive en `app/api/acceso.py`
+(`exigir_predio`, `exigir_lote`): todo recurso del dominio se valida contra el predio al que
+pertenece y responde 404 si el usuario no lo tiene asignado. Código de lote único por predio;
+código ICA y código QR únicos en todo el sistema.
 
 ### Índice MTD (moscas/trampa/día)
 
@@ -204,7 +210,6 @@ antes de implementar; los **criterios de aceptación** de cada historia son la d
 ## Fuera de alcance (no implementar salvo que se pida)
 
 - App móvil, trabajo sin conexión y sincronización (fase 2; solo dejar la API preparada).
-- Múltiples predios o clientes (multi-tenancy).
 - Registro fenológico, de enfermedades u hongos, y variables agroclimáticas (trabajo futuro).
 
 ## Pruebas

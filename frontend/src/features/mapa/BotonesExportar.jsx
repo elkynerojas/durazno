@@ -9,14 +9,17 @@ const FORMATOS = [
 ]
 
 // Descarga los lotes y trampas (de todo el predio o de un lote) para QGIS o Google Earth.
-export default function BotonesExportar({ lote }) {
+export default function BotonesExportar({ predio, lote }) {
   const [error, setError] = useState(null)
 
   async function exportar({ formato, extension }) {
     setError(null)
     try {
-      const nombre = lote ? `lote-${lote.codigo}` : 'predio-icota'
-      descargar(await exportarPredio(formato, lote?.id), `${nombre}.${extension}`)
+      const nombre = lote ? `lote-${lote.codigo}` : `predio-${predio.nombre}`
+      descargar(
+        await exportarPredio(formato, { predioId: predio?.id, loteId: lote?.id }),
+        `${nombre.replace(/[^\w-]+/g, '-')}.${extension}`,
+      )
     } catch {
       setError('No se pudo exportar. Intente de nuevo.')
     }

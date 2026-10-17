@@ -6,6 +6,8 @@ import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
 import { geojsonALeaflet, puntoALeaflet, puntoEnPoligono } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import { usePredio } from '../predios/usePredio'
+import { ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
 import { useDatosPredio } from '../mapa/useDatosPredio'
 import BotonEtiquetas from './BotonEtiquetas'
@@ -19,8 +21,9 @@ const SIN_COORDENADAS = { lat: '', lng: '' }
 
 export default function VistaTrampas() {
   const { usuario } = useSesion()
-  const editable = usuario.rol === 'agronomo'
-  const datos = useDatosPredio()
+  const editable = ROLES_GESTION.includes(usuario.rol)
+  const { predio } = usePredio()
+  const datos = useDatosPredio(predio?.id)
   const [parametros, setParametros] = useSearchParams()
   const [mapa, setMapa] = useState(null)
   const [trampaId, setTrampaId] = useState(parametros.get('trampa'))
@@ -95,7 +98,7 @@ export default function VistaTrampas() {
       : null
   const titulo = trampa ? `Trampa ${trampa.codigo_ica}` : editable ? 'Registrar trampa' : 'Trampas'
   const migas = [
-    { texto: 'Predio Icota', a: '/mapa' },
+    { texto: predio?.nombre ?? 'Predio', a: '/mapa' },
     ...(lote ? [{ texto: `Lote ${lote.codigo}`, a: `/lotes?lote=${lote.id}` }] : []),
     { texto: 'Trampas' },
   ]
@@ -182,6 +185,7 @@ export default function VistaTrampas() {
             key={trampa ? `${trampa.id}-${trampa.codigo_qr}` : 'nueva'}
             trampa={trampa}
             lote={lote}
+            predio={predio}
           />
           {trampa && (
             <ReponerEtiqueta
