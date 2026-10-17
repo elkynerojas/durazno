@@ -118,7 +118,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-04 · Integración continua
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S0 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S0 · **Responsable:** Luis
 - **Historia:** Como equipo del proyecto, quiero que cada cambio pase linters y pruebas automáticamente, para no romper lo que ya funciona.
 
 **Criterios de aceptación**
@@ -129,11 +129,19 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 **Tareas**
 
-- [ ] `HU-04.1` [DevOps] Workflow del backend: PostGIS, ruff y pytest
-- [ ] `HU-04.2` [DevOps] Workflow del frontend: npm ci, lint y build
+- [x] `HU-04.1` [DevOps] Workflow del backend: PostGIS, ruff y pytest
+- [x] `HU-04.2` [DevOps] Workflow del frontend: npm ci, lint y build
 - [ ] `HU-04.3` [DevOps] Proteger la rama main y exigir revisión
-- [ ] `HU-04.4` [DevOps] Pruebas del frontend (vitest) y E2E (Playwright) en el flujo
-- [ ] `HU-04.5` [DevOps] Escaneo de seguridad: pip-audit, npm audit y gitleaks
+- [x] `HU-04.4` [DevOps] Pruebas del frontend (vitest) y E2E (Playwright) en el flujo
+- [x] `HU-04.5` [DevOps] Escaneo de seguridad: pip-audit, npm audit y gitleaks
+
+> `.github/workflows/ci.yml` en cada push y pull request: backend (servicio PostGIS 18, ruff,
+> `alembic upgrade head`, pytest con cobertura), frontend (oxlint, vitest, build), E2E (stack de
+> Docker Compose + Playwright, reporte como artefacto si falla) y seguridad (pip-audit, `npm audit
+> --omit=dev --audit-level=high`, gitleaks sobre todo el historial). Primera corrida en verde.
+> HU-04.3 queda para decidir en equipo: exigir revisión en `main` obliga a trabajar con pull
+> requests aprobados por el otro integrante (`gh api repos/elkynerojas/durazno/branches/main/
+> protection` con la verificación «CI» obligatoria).
 
 ### HU-05 · Iniciar sesión según el rol
 
