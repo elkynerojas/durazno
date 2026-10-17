@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  areaAproximadaHa,
+  contarVertices,
   geojsonALeaflet,
   latLngAPunto,
   leafletAGeojson,
@@ -85,5 +87,22 @@ describe('geo', () => {
     expect(puntoEnPoligono([7.2705, -72.635], cuadro)).toBe(false)
     // Coordenadas invertidas: nunca caen dentro.
     expect(puntoEnPoligono([-72.6395, 7.2705], cuadro)).toBe(false)
+  })
+
+  it('aproxima el área en hectáreas como el servidor (1,22 ha calculadas a mano)', () => {
+    const cuadro = {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [-72.64, 7.27],
+          [-72.639, 7.27],
+          [-72.639, 7.271],
+          [-72.64, 7.271],
+          [-72.64, 7.27],
+        ],
+      ],
+    }
+    expect(areaAproximadaHa(cuadro)).toBeCloseTo(1.22, 1)
+    expect(contarVertices(cuadro)).toBe(4)
   })
 })

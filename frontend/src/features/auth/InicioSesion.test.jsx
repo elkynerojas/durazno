@@ -25,7 +25,7 @@ function renderizar(entrar) {
 
 async function ingresar(correo, clave) {
   const usuarioEvento = userEvent.setup()
-  await usuarioEvento.type(screen.getByLabelText('Correo'), correo)
+  await usuarioEvento.type(screen.getByLabelText('Correo electrónico'), correo)
   await usuarioEvento.type(screen.getByLabelText('Contraseña'), clave)
   await usuarioEvento.click(screen.getByRole('button', { name: 'Ingresar' }))
 }

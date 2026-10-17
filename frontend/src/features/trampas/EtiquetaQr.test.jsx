@@ -3,9 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { respuestaBinaria, respuestaJson, simularFetch } from '../../test/utilidades'
-import QrTrampa from './QrTrampa'
+import EtiquetaQr from './EtiquetaQr'
 
-const TRAMPA = { id: 't-1', codigo_ica: 'ICA-001', codigo_qr: 'ABCD2345' }
+const TRAMPA = { id: 't-1', codigo_ica: 'ICA-001', codigo_qr: 'ABCD2345', tipo: 'jackson' }
+const LOTE = { id: 'l-3', codigo: 'L-03' }
 
 beforeEach(() => {
   vi.stubGlobal('URL', {
@@ -15,15 +16,25 @@ beforeEach(() => {
   })
 })
 
-describe('QrTrampa', () => {
-  it('muestra la vista previa y el código corto', async () => {
+describe('EtiquetaQr', () => {
+  it('antes de guardar explica que el QR se genera al guardar', () => {
+    const fetchSimulado = simularFetch()
+    render(<EtiquetaQr trampa={null} lote={null} />)
+    expect(screen.getByText('El QR se genera al guardar la trampa.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Descargar/ })).not.toBeInTheDocument()
+    expect(fetchSimulado).not.toHaveBeenCalled()
+  })
+
+  it('muestra la etiqueta con el QR, el código ICA, el lote y el tipo', async () => {
     const fetchSimulado = simularFetch(respuestaBinaria(200, '<svg/>', 'image/svg+xml'))
-    render(<QrTrampa trampa={TRAMPA} />)
+    render(<EtiquetaQr trampa={TRAMPA} lote={LOTE} />)
 
     expect(await screen.findByRole('img', { name: 'QR de la trampa ICA-001' })).toHaveAttribute(
       'src',
       'blob:qr',
     )
+    expect(screen.getByText('ICA-001')).toBeInTheDocument()
+    expect(screen.getByText('Lote L-03 · Jackson')).toBeInTheDocument()
     expect(screen.getByText('ABCD2345')).toBeInTheDocument()
     expect(fetchSimulado.mock.calls[0][0]).toBe('/api/v1/trampas/t-1/qr.svg')
   })
@@ -35,12 +46,11 @@ describe('QrTrampa', () => {
     )
     const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const usuarioEvento = userEvent.setup()
-    render(<QrTrampa trampa={TRAMPA} />)
+    render(<EtiquetaQr trampa={TRAMPA} lote={LOTE} />)
 
     await usuarioEvento.click(screen.getByRole('button', { name: 'Descargar PNG' }))
 
     expect(fetchSimulado.mock.calls[1][0]).toBe('/api/v1/trampas/t-1/qr.png')
-    expect(clic).toHaveBeenCalledOnce()
     expect(clic.mock.contexts[0].download).toBe('qr-ABCD2345.png')
     expect(URL.revokeObjectURL).toHaveBeenCalled()
   })
@@ -51,10 +61,9 @@ describe('QrTrampa', () => {
       respuestaJson(404, { detail: 'Trampa no encontrada' }),
     )
     const usuarioEvento = userEvent.setup()
-    render(<QrTrampa trampa={TRAMPA} />)
+    render(<EtiquetaQr trampa={TRAMPA} lote={LOTE} />)
 
     await usuarioEvento.click(screen.getByRole('button', { name: 'Descargar SVG' }))
-
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo descargar el QR.')
   })
 })

@@ -14,6 +14,8 @@ test('inicio de sesión correcto lleva al mapa del predio', async ({ page }) => 
   await ingresar(page, CORREO, CLAVE)
   await expect(page).toHaveURL('/mapa')
   await expect(page.locator('.leaflet-container')).toBeVisible()
+  // En el teléfono el menú lateral está plegado.
+  await page.getByRole('button', { name: 'Menú' }).click()
   await page.getByRole('button', { name: 'Salir' }).click()
   await expect(page).toHaveURL('/')
 })

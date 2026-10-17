@@ -39,3 +39,22 @@ export function puntoEnPoligono([lat, lng], poligono) {
   }
   return dentro
 }
+
+const RADIO_TIERRA_M = 6_378_137
+const aRadianes = (grados) => (grados * Math.PI) / 180
+
+// Área aproximada (esfera) del anillo exterior, en hectáreas. Solo para mostrarla mientras se
+// dibuja: la oficial la calcula el servidor con ST_Area sobre geography.
+export function areaAproximadaHa(poligono) {
+  const anillo = poligono.coordinates[0]
+  let suma = 0
+  for (let i = 0; i < anillo.length - 1; i++) {
+    const [lng1, lat1] = anillo[i]
+    const [lng2, lat2] = anillo[i + 1]
+    suma += aRadianes(lng2 - lng1) * (2 + Math.sin(aRadianes(lat1)) + Math.sin(aRadianes(lat2)))
+  }
+  return Math.abs((suma * RADIO_TIERRA_M * RADIO_TIERRA_M) / 2) / 10_000
+}
+
+// Vértices del anillo exterior, sin contar el punto de cierre.
+export const contarVertices = (poligono) => poligono.coordinates[0].length - 1

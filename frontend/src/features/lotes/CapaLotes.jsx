@@ -3,8 +3,14 @@ import { Polygon, Tooltip, useMap } from 'react-leaflet'
 
 import { geojsonALeaflet } from '../../utils/geo'
 
-const ESTILO = { color: '#c8642b', weight: 2, fillOpacity: 0.15 }
-const ESTILO_SELECCIONADO = { color: '#ffd166', weight: 3, fillOpacity: 0.3 }
+const ESTILO = { color: '#1e5a43', weight: 2, fillColor: '#2b6e54', fillOpacity: 0.3 }
+const ESTILO_SELECCIONADO = {
+  color: '#c4572e',
+  weight: 3,
+  dashArray: '6 4',
+  fillColor: '#e8875a',
+  fillOpacity: 0.25,
+}
 
 // Polígonos de los lotes. Con `editandoId`, activa la edición de vértices de ese lote y
 // expone su forma actual a través de `refCapas` (id → capa de Leaflet).

@@ -1,7 +1,17 @@
 // Tipos de trampa del Manual Técnico de Trampeo del ICA, con su atrayente habitual.
 export const TIPOS_TRAMPA = {
-  jackson: { nombre: 'Jackson', sigla: 'J', atrayente: 'Trimedlure' },
-  mcphail: { nombre: 'McPhail', sigla: 'M', atrayente: 'Proteína hidrolizada' },
+  jackson: {
+    nombre: 'Jackson',
+    atrayente: 'Trimedlure',
+    vigilancia: 'Vigilancia de',
+    especie: 'Ceratitis capitata',
+  },
+  mcphail: {
+    nombre: 'McPhail',
+    atrayente: 'Proteína hidrolizada',
+    vigilancia: 'Especies nativas de',
+    especie: 'Anastrepha',
+  },
 }
 
 export const ESTADOS_TRAMPA = { activa: 'Activa', inactiva: 'Inactiva', retirada: 'Retirada' }

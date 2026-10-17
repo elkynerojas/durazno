@@ -108,4 +108,5 @@ export const crearTrampa = (datos) => api('/trampas', { metodo: 'POST', cuerpo: 
 export const actualizarTrampa = (id, cambios) =>
   api(`/trampas/${id}`, { metodo: 'PATCH', cuerpo: cambios })
 
-export const obtenerQrTrampa = (id, formato) => api(`/trampas/${id}/qr.${formato}`, { binario: true })
+export const obtenerQrTrampa = (id, formato) =>
+  api(`/trampas/${id}/qr.${formato}`, { binario: true })

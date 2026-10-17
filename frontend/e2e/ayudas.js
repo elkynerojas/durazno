@@ -12,27 +12,28 @@ export async function ingresar(page, correo = CORREO, clave = CLAVE) {
 
 // Los lotes exigen el predio registrado: lo registra si la base está vacía.
 export async function asegurarPredio(page) {
-  await page.getByRole('link', { name: 'Predio' }).click()
-  const titulo = page.getByRole('heading', { level: 2 })
-  await expect(titulo).toBeVisible()
+  await page.goto('/predio')
+  const titulo = page.getByRole('heading', { level: 1 })
+  await expect(titulo).toHaveText(/predio/)
   if ((await titulo.textContent()) === 'Registrar el predio') {
     await page.getByLabel('Nombre').fill('Finca E2E')
     await page.getByLabel('Área (hectáreas)').fill('30')
     await page.getByRole('button', { name: 'Guardar' }).click()
     await expect(page.getByText('Datos del predio guardados.')).toBeVisible()
   }
-  await page.getByRole('link', { name: 'Mapa' }).click()
 }
 
 // Punto del mapa en fracciones de su ancho y alto.
 export async function puntoDelMapa(page, fx, fy) {
-  const caja = await page.locator('.leaflet-container').boundingBox()
+  const mapa = page.locator('.leaflet-container')
+  await mapa.scrollIntoViewIfNeeded()
+  const caja = await mapa.boundingBox()
   return [caja.x + caja.width * fx, caja.y + caja.height * fy]
 }
 
-// Dibuja un rectángulo con Geoman y lo guarda con el código dado.
-export async function dibujarLote(page, codigo, [x0, y0, x1, y1] = [0.35, 0.3, 0.65, 0.6]) {
-  await page.locator('.leaflet-pm-icon-polygon').click()
+// En /lotes dibuja un rectángulo con «Dibujar polígono» y lo guarda con el código dado.
+export async function dibujarLote(page, codigo, [x0, y0, x1, y1] = [0.3, 0.3, 0.7, 0.7]) {
+  await page.getByRole('button', { name: 'Dibujar polígono' }).click()
   for (const [fx, fy] of [
     [x0, y0],
     [x1, y0],
@@ -42,10 +43,12 @@ export async function dibujarLote(page, codigo, [x0, y0, x1, y1] = [0.35, 0.3, 0
   ]) {
     await page.mouse.click(...(await puntoDelMapa(page, fx, fy)))
   }
-  const panel = page.getByRole('complementary', { name: 'Nuevo lote' })
-  await panel.getByLabel('Código').fill(codigo)
-  await panel.getByRole('button', { name: 'Guardar' }).click()
-  return page.getByRole('complementary', { name: `Lote ${codigo}` })
+  const formulario = page.getByRole('form', { name: 'Datos del lote' })
+  await expect(formulario.getByText(/Polígono cerrado con 4 vértices/)).toBeVisible()
+  await formulario.getByLabel('Código').fill(codigo)
+  await formulario.getByRole('button', { name: 'Guardar lote' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Lote ${codigo}`)
+  return formulario
 }
 
 // Borra con la API (con la sesión del navegador) las trampas y lotes de corridas anteriores

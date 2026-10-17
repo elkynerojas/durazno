@@ -3,8 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { ProveedorSesion } from './features/auth/ProveedorSesion'
 import InicioSesion from './features/auth/InicioSesion'
 import RutaProtegida from './features/auth/RutaProtegida'
+import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
 import VistaPredio from './features/predio/VistaPredio'
+import VistaTrampas from './features/trampas/VistaTrampas'
 import VistaUsuarios from './features/usuarios/VistaUsuarios'
 
 export default function App() {
@@ -15,6 +17,8 @@ export default function App() {
           <Route path="/" element={<InicioSesion />} />
           <Route element={<RutaProtegida />}>
             <Route path="/mapa" element={<VistaMapa />} />
+            <Route path="/lotes" element={<VistaLotes />} />
+            <Route path="/trampas" element={<VistaTrampas />} />
             <Route path="/predio" element={<VistaPredio />} />
           </Route>
           <Route element={<RutaProtegida roles={['agronomo']} />}>

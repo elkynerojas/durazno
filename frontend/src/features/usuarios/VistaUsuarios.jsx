@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { actualizarUsuario, listarUsuarios } from '../../api/client'
-import BarraSuperior from '../../components/BarraSuperior'
+import Encabezado from '../../components/Encabezado'
+import Plantilla from '../../components/Plantilla'
 import { useSesion } from '../auth/useSesion'
 import FormularioUsuario from './FormularioUsuario'
 import { ROLES } from './roles'
@@ -35,29 +36,33 @@ export default function VistaUsuarios() {
   }
 
   return (
-    <div className="app">
-      <BarraSuperior />
-      <main className="pagina">
+    <Plantilla>
+      <Encabezado
+        migas={[{ texto: 'Predio Icota', a: '/mapa' }, { texto: 'Usuarios' }]}
+        titulo="Usuarios del predio"
+      >
+        {!edicion && (
+          <button type="button" className="boton-primario" onClick={() => setEdicion('nuevo')}>
+            Nuevo usuario
+          </button>
+        )}
+      </Encabezado>
+      <div className="contenido-angosto">
         {edicion ? (
-          <FormularioUsuario
-            key={edicion === 'nuevo' ? 'nuevo' : edicion.id}
-            usuario={edicion === 'nuevo' ? null : edicion}
-            esPropio={edicion !== 'nuevo' && edicion.id === actual.id}
-            alGuardar={(guardado) => {
-              reemplazar(guardado)
-              setEdicion(null)
-            }}
-            alCancelar={() => setEdicion(null)}
-          />
+          <section className="tarjeta">
+            <FormularioUsuario
+              key={edicion === 'nuevo' ? 'nuevo' : edicion.id}
+              usuario={edicion === 'nuevo' ? null : edicion}
+              esPropio={edicion !== 'nuevo' && edicion.id === actual.id}
+              alGuardar={(guardado) => {
+                reemplazar(guardado)
+                setEdicion(null)
+              }}
+              alCancelar={() => setEdicion(null)}
+            />
+          </section>
         ) : (
           <>
-            <div className="pagina__encabezado">
-              <h2>Usuarios del predio</h2>
-              <button type="button" className="boton-primario" onClick={() => setEdicion('nuevo')}>
-                Nuevo usuario
-              </button>
-            </div>
-
             {error && (
               <p className="formulario__error" role="alert">
                 {error}
@@ -65,42 +70,47 @@ export default function VistaUsuarios() {
             )}
             {!usuarios && !error && <p className="cargando">Cargando…</p>}
 
-            <ul className="lista-usuarios">
-              {usuarios?.map((u) => (
-                <li key={u.id} className={u.activo ? '' : 'lista-usuarios__inactivo'}>
-                  <div>
-                    <strong>{u.nombre_completo}</strong>
-                    <span>{u.correo}</span>
-                    <span>
-                      {ROLES[u.rol]} · {u.activo ? 'Activo' : 'Desactivado'}
-                    </span>
-                  </div>
-                  <div className="lista-usuarios__acciones">
-                    <button
-                      type="button"
-                      className="boton-secundario"
-                      onClick={() => setEdicion(u)}
-                      aria-label={`Editar a ${u.nombre_completo}`}
-                    >
-                      Editar
-                    </button>
-                    {u.id !== actual.id && (
+            <section className="tarjeta tarjeta--sin-relleno" aria-label="Cuentas">
+              <div className="tarjeta__cabecera">
+                <h2 className="tarjeta__titulo">Cuentas del personal</h2>
+              </div>
+              <ul className="lista-usuarios">
+                {usuarios?.map((u) => (
+                  <li key={u.id} className={u.activo ? '' : 'lista-usuarios__inactivo'}>
+                    <div>
+                      <strong>{u.nombre_completo}</strong>
+                      <span>{u.correo}</span>
+                      <span>
+                        {ROLES[u.rol]} · {u.activo ? 'Activo' : 'Desactivado'}
+                      </span>
+                    </div>
+                    <div className="lista-usuarios__acciones">
                       <button
                         type="button"
                         className="boton-secundario"
-                        onClick={() => alternarActivo(u)}
-                        aria-label={`${u.activo ? 'Desactivar' : 'Activar'} a ${u.nombre_completo}`}
+                        onClick={() => setEdicion(u)}
+                        aria-label={`Editar a ${u.nombre_completo}`}
                       >
-                        {u.activo ? 'Desactivar' : 'Activar'}
+                        Editar
                       </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      {u.id !== actual.id && (
+                        <button
+                          type="button"
+                          className="boton-secundario"
+                          onClick={() => alternarActivo(u)}
+                          aria-label={`${u.activo ? 'Desactivar' : 'Activar'} a ${u.nombre_completo}`}
+                        >
+                          {u.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </Plantilla>
   )
 }

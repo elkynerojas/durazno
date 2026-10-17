@@ -4,10 +4,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { respuestaJson, simularFetch } from '../../test/utilidades'
-import PanelTrampa from './PanelTrampa'
-
-// El QR tiene sus propias pruebas; aquí no debe consumir las respuestas simuladas.
-vi.mock('./QrTrampa', () => ({ default: () => null }))
+import FormularioTrampa from './FormularioTrampa'
 
 const cuadro = (x0, y0, x1, y1) => ({
   type: 'Polygon',
@@ -29,6 +26,7 @@ const TRAMPA = {
   id: 't-1',
   lote_id: 'l-a',
   codigo_ica: 'ICA-001',
+  codigo_qr: 'ABCD2345',
   tipo: 'jackson',
   atrayente: 'Trimedlure',
   fecha_instalacion: '2026-10-01',
@@ -39,35 +37,42 @@ const TRAMPA = {
 
 const cuerpoEnviado = (fetchSimulado) => JSON.parse(fetchSimulado.mock.calls.at(-1)[1].body)
 
-// Envuelve el panel con el estado de coordenadas que en la app maneja VistaMapa.
-function ConCoordenadas({ inicial, ...props }) {
+// Simula la vista: controla el lote y las coordenadas como lo hace VistaTrampas.
+function ConEstado({ inicial = { lat: '', lng: '' }, lote = null, ...props }) {
   const [coordenadas, setCoordenadas] = useState(inicial)
+  const [loteId, setLoteId] = useState(lote)
   return (
-    <PanelTrampa
+    <FormularioTrampa
       lotes={LOTES}
-      editable
+      loteId={loteId}
+      alCambiarLote={setLoteId}
       coordenadas={coordenadas}
       alCambiarCoordenadas={setCoordenadas}
+      editable
+      alCapturar={vi.fn()}
       {...props}
     />
   )
 }
 
-describe('PanelTrampa', () => {
-  it('registra una trampa por coordenadas y sugiere el lote que la contiene', async () => {
+describe('FormularioTrampa', () => {
+  it('registra una trampa McPhail con su atrayente y avisa que el punto está en el lote', async () => {
     const fetchSimulado = simularFetch(respuestaJson(201, TRAMPA))
     const usuarioEvento = userEvent.setup()
     const alGuardar = vi.fn()
-    render(<ConCoordenadas inicial={{ lat: '', lng: '' }} capturando alGuardar={alGuardar} />)
+    render(<ConEstado lote="l-b" alGuardar={alGuardar} />)
 
+    await usuarioEvento.type(screen.getByLabelText('Código ICA (oficial)'), 'ICA-002')
+    await usuarioEvento.click(
+      screen.getByRole('radio', { name: /McPhail \+ proteína hidrolizada/ }),
+    )
+    expect(screen.getByLabelText('Atrayente')).toHaveValue('Proteína hidrolizada')
     await usuarioEvento.type(screen.getByLabelText('Latitud'), '7.2705')
     await usuarioEvento.type(screen.getByLabelText('Longitud'), '-72.6295')
-    expect(screen.getByLabelText('Lote')).toHaveValue('l-b')
-
-    await usuarioEvento.type(screen.getByLabelText('Código ICA'), 'ICA-002')
-    await usuarioEvento.selectOptions(screen.getByLabelText('Tipo'), 'mcphail')
-    expect(screen.getByLabelText('Atrayente')).toHaveValue('Proteína hidrolizada')
-    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'El punto está dentro del polígono de L-B.',
+    )
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar y generar QR' }))
 
     expect(alGuardar).toHaveBeenCalledWith(TRAMPA)
     const cuerpo = cuerpoEnviado(fetchSimulado)
@@ -83,15 +88,19 @@ describe('PanelTrampa', () => {
     expect(cuerpo).not.toHaveProperty('estado')
   })
 
+  it('advierte si el punto no cae dentro del lote elegido', () => {
+    render(<ConEstado lote="l-a" inicial={{ lat: '7.2705', lng: '-72.635' }} alGuardar={vi.fn()} />)
+    expect(screen.getByRole('status')).toHaveTextContent('no cae dentro de L-A')
+  })
+
   it('no cambia un atrayente escrito a mano al cambiar el tipo', async () => {
-    simularFetch()
     const usuarioEvento = userEvent.setup()
-    render(<ConCoordenadas inicial={{ lat: '', lng: '' }} alGuardar={vi.fn()} />)
+    render(<ConEstado alGuardar={vi.fn()} />)
 
     const atrayente = screen.getByLabelText('Atrayente')
     await usuarioEvento.clear(atrayente)
     await usuarioEvento.type(atrayente, 'Cebo casero')
-    await usuarioEvento.selectOptions(screen.getByLabelText('Tipo'), 'mcphail')
+    await usuarioEvento.click(screen.getByRole('radio', { name: /McPhail/ }))
     expect(atrayente).toHaveValue('Cebo casero')
   })
 
@@ -102,11 +111,10 @@ describe('PanelTrampa', () => {
       }),
     )
     const usuarioEvento = userEvent.setup()
-    render(<ConCoordenadas inicial={{ lat: '7.2705', lng: '-72.635' }} alGuardar={vi.fn()} />)
+    render(<ConEstado lote="l-a" inicial={{ lat: '7.2705', lng: '-72.635' }} alGuardar={vi.fn()} />)
 
-    await usuarioEvento.selectOptions(screen.getByLabelText('Lote'), 'l-a')
-    await usuarioEvento.type(screen.getByLabelText('Código ICA'), 'ICA-003')
-    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    await usuarioEvento.type(screen.getByLabelText('Código ICA (oficial)'), 'ICA-003')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar y generar QR' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('dentro del polígono de su lote')
   })
@@ -115,8 +123,9 @@ describe('PanelTrampa', () => {
     const fetchSimulado = simularFetch(respuestaJson(200, { ...TRAMPA, estado: 'inactiva' }))
     const usuarioEvento = userEvent.setup()
     render(
-      <ConCoordenadas
+      <ConEstado
         trampa={TRAMPA}
+        lote="l-a"
         inicial={{ lat: '7.2705', lng: '-72.6395' }}
         alGuardar={vi.fn()}
       />,
@@ -124,10 +133,10 @@ describe('PanelTrampa', () => {
 
     expect(screen.getByText('Precisión del GPS: ±4.5 m')).toBeInTheDocument()
     await usuarioEvento.selectOptions(screen.getByLabelText('Estado'), 'inactiva')
-    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
-    const cuerpo = cuerpoEnviado(fetchSimulado)
     expect(fetchSimulado.mock.calls[0][0]).toBe('/api/v1/trampas/t-1')
+    const cuerpo = cuerpoEnviado(fetchSimulado)
     expect(cuerpo.estado).toBe('inactiva')
     expect(cuerpo).not.toHaveProperty('geom')
   })
@@ -136,8 +145,9 @@ describe('PanelTrampa', () => {
     const fetchSimulado = simularFetch(respuestaJson(200, TRAMPA))
     const usuarioEvento = userEvent.setup()
     render(
-      <ConCoordenadas
+      <ConEstado
         trampa={TRAMPA}
+        lote="l-a"
         inicial={{ lat: '7.2705', lng: '-72.6395' }}
         alGuardar={vi.fn()}
       />,
@@ -146,7 +156,7 @@ describe('PanelTrampa', () => {
     const latitud = screen.getByLabelText('Latitud')
     await usuarioEvento.clear(latitud)
     await usuarioEvento.type(latitud, '7.2708')
-    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(cuerpoEnviado(fetchSimulado)).toMatchObject({
       geom: { type: 'Point', coordinates: [-72.6395, 7.2708] },
@@ -156,15 +166,15 @@ describe('PanelTrampa', () => {
 
   it('sin permiso solo consulta', () => {
     render(
-      <ConCoordenadas
+      <ConEstado
         trampa={TRAMPA}
+        lote="l-a"
         inicial={{ lat: '7.2705', lng: '-72.6395' }}
         editable={false}
       />,
     )
-
-    expect(screen.getByLabelText('Código ICA')).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Mover en el mapa' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Código ICA (oficial)')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /Guardar/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ubicar en el mapa' })).not.toBeInTheDocument()
   })
 })

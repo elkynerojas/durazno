@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
 import { guardarPredio, obtenerPredio } from '../../api/client'
-import BarraSuperior from '../../components/BarraSuperior'
+import Encabezado from '../../components/Encabezado'
+import Plantilla from '../../components/Plantilla'
 import { useSesion } from '../auth/useSesion'
 
 const VACIO = { nombre: '', vereda: 'Icota', municipio: 'Cácota', registro_ica: '', area_ha: '' }
@@ -64,16 +65,19 @@ export default function VistaPredio() {
   }
 
   return (
-    <div className="app">
-      <BarraSuperior />
-      <main className="pagina">
+    <Plantilla>
+      <Encabezado
+        migas={[{ texto: 'Predio Icota', a: '/mapa' }, { texto: 'Predio' }]}
+        titulo={predio === null && editable ? 'Registrar el predio' : 'Datos del predio'}
+      />
+      <div className="contenido-angosto">
         {predio === undefined && !estado && <p className="cargando">Cargando…</p>}
         {predio === null && !editable && (
           <p className="cargando">El agrónomo aún no ha registrado el predio.</p>
         )}
         {(predio || (predio === null && editable)) && (
-          <form className="formulario" onSubmit={enviar}>
-            <h2>{predio ? 'Datos del predio' : 'Registrar el predio'}</h2>
+          <form className="formulario tarjeta" onSubmit={enviar}>
+            <h2>Identificación ante el ICA</h2>
             <fieldset disabled={!editable || enviando}>
               <label htmlFor="nombre_predio">Nombre</label>
               <input
@@ -152,7 +156,7 @@ export default function VistaPredio() {
             {estado.error}
           </p>
         )}
-      </main>
-    </div>
+      </div>
+    </Plantilla>
   )
 }

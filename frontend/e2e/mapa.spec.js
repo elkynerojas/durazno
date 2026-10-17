@@ -17,6 +17,7 @@ test.beforeEach(async ({ page }) => {
   await ingresar(page)
   await expect(page).toHaveURL('/mapa')
   await asegurarPredio(page)
+  await page.goto('/lotes')
   await limpiarDatosE2E(page)
   await expect(page.locator('.leaflet-container')).toBeVisible()
 })
@@ -27,42 +28,45 @@ test.afterEach(async ({ page }) => {
 
 test('el agrónomo dibuja un lote, ve su área y lo elimina', async ({ page }) => {
   const codigo = `E2E-${Date.now() % 1_000_000}`
-  const panel = await dibujarLote(page, codigo, [0.15, 0.1, 0.45, 0.35])
-  await expect(panel.getByText(/^Área: [\d.,]+ ha$/)).toBeVisible()
-  await expect(page.locator('.etiqueta-lote', { hasText: codigo })).toBeVisible()
+  const formulario = await dibujarLote(page, codigo)
+  await expect(formulario.getByLabel('Área calculada')).toHaveValue(/^[\d.,]+ ha$/)
+  await expect(page.getByRole('row', { name: new RegExp(codigo) })).toBeVisible()
 
-  await panel.getByRole('button', { name: 'Eliminar lote' }).click()
-  await panel.getByRole('button', { name: `Confirmar: eliminar ${codigo}` }).click()
-  await expect(page.locator('.etiqueta-lote', { hasText: codigo })).toHaveCount(0)
+  await formulario.getByRole('button', { name: 'Eliminar lote' }).click()
+  await formulario.getByRole('button', { name: `Confirmar: eliminar ${codigo}` }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nuevo lote')
+  await expect(page.getByRole('row', { name: new RegExp(codigo) })).toHaveCount(0)
 })
 
-test('el agrónomo ubica una trampa tocando el mapa dentro de un lote', async ({ page }) => {
+test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page }) => {
   const sufijo = Date.now() % 1_000_000
-  const lote = await dibujarLote(page, `E2E-T${sufijo}`, [0.55, 0.1, 0.85, 0.4])
-  await expect(lote.getByText(/^Área:/)).toBeVisible()
-  await lote.getByRole('button', { name: 'Cancelar' }).click()
+  const codigoLote = `E2E-T${sufijo}`
+  await dibujarLote(page, codigoLote)
 
-  await page.getByRole('button', { name: 'Nueva trampa' }).click()
-  const panel = page.getByRole('complementary', { name: 'Nueva trampa' })
-  await page.mouse.click(...(await puntoDelMapa(page, 0.7, 0.25)))
-  await expect(panel.getByLabel('Latitud')).not.toHaveValue('')
-  await expect(panel.getByLabel('Lote')).toHaveValue(/.+/)
+  await page.goto('/trampas')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigoLote })
+  // El mapa encuadra el lote: su centro queda en el centro del mapa.
+  await page.waitForTimeout(400)
+  await page.mouse.click(...(await puntoDelMapa(page, 0.5, 0.5)))
+  await expect(page.getByLabel('Latitud')).not.toHaveValue('')
+  await expect(page.getByText(`El punto está dentro del polígono de ${codigoLote}.`)).toBeVisible()
 
   const codigo = `ICA-E2E-${sufijo}`
-  await panel.getByLabel('Código ICA').fill(codigo)
-  await panel.getByRole('button', { name: 'Guardar' }).click()
+  await page.getByLabel('Código ICA (oficial)').fill(codigo)
+  await page.getByRole('radio', { name: /McPhail/ }).check()
+  await page.getByRole('button', { name: 'Guardar y generar QR' }).click()
 
-  const guardada = page.getByRole('complementary', { name: `Trampa ${codigo}` })
-  await expect(guardada.getByLabel('Estado')).toHaveValue('activa')
-  await expect(page.locator('.marcador-trampa--activa')).not.toHaveCount(0)
-
-  // HU-14: la trampa recibe su QR, que se ve en el panel y se descarga.
-  await expect(guardada.getByRole('img', { name: `QR de la trampa ${codigo}` })).toBeVisible()
-  const codigoQr = await guardada.locator('.qr-trampa__codigo').textContent()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Trampa ${codigo}`)
+  await expect(page.getByLabel('Estado')).toHaveValue('activa')
+  await expect(page.getByRole('img', { name: `QR de la trampa ${codigo}` })).toBeVisible()
+  const fila = page.getByRole('row', { name: new RegExp(codigo) })
+  await expect(fila).toContainText('McPhail + proteína hidrolizada')
+  const codigoQr = (await page.locator('.qr-codigo').textContent()).trim()
   expect(codigoQr).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/)
+
   const [descarga] = await Promise.all([
     page.waitForEvent('download'),
-    guardada.getByRole('button', { name: 'Descargar PNG' }).click(),
+    page.getByRole('button', { name: 'Descargar PNG' }).click(),
   ])
   expect(descarga.suggestedFilename()).toBe(`qr-${codigoQr}.png`)
 })
