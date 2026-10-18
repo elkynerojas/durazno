@@ -87,7 +87,7 @@ describe('VistaPlan', () => {
     )
     expect(screen.getByRole('heading', { name: /Semana 42 · 12–18 oct 2026/ })).toBeInTheDocument()
     const cumplimiento = await screen.findByRole('region', { name: 'Cumplimiento S1–S42' })
-    expect(cumplimiento).toHaveTextContent('40\u00a0%')
+    expect(cumplimiento).toHaveTextContent('40 %')
     expect(cumplimiento).toHaveTextContent('2 de 5 cumplidas')
     expect(
       within(cumplimiento).getByRole('table', { name: 'Cumplimiento por lote' }),
