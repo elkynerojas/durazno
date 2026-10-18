@@ -12,7 +12,12 @@ from app.models.ruta import Ruta, RutaTrampa
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services.qr import generar_codigo
-from app.services.rutas import errores_de_orden, longitud, vecino_mas_cercano
+from app.services.rutas import (
+    avisos_por_cambio,
+    errores_de_orden,
+    longitud,
+    vecino_mas_cercano,
+)
 from tests.utilidades import encabezados
 
 URL = "/api/v1/rutas"
@@ -373,3 +378,144 @@ async def test_id_de_ruta_de_otro_lote_responde_409(cliente, datos, agronomo, se
         headers=encabezados(agronomo),
     )
     assert respuesta.status_code == 409
+
+
+# --- Rutas que requieren revisión (HU-20) ---
+
+L1, L2 = uuid.uuid4(), uuid.uuid4()
+
+
+@pytest.mark.parametrize(
+    ("cambio", "esperado"),
+    [
+        (dict(estado_despues="retirada"), [(L1, "ICA-01 quedó retirada")]),
+        (dict(estado_despues="inactiva"), [(L1, "ICA-01 quedó inactiva")]),
+        (dict(estado_antes="inactiva"), [(L1, "ICA-01 volvió a estar activa")]),
+        (dict(movida=True), [(L1, "ICA-01 cambió de ubicación")]),
+        (
+            dict(lote_despues=L2),
+            [(L1, "ICA-01 se movió a otro lote"), (L2, "ICA-01 llegó desde otro lote")],
+        ),
+        (dict(lote_despues=L2, estado_antes="inactiva", estado_despues="inactiva"), []),
+        (dict(estado_antes="inactiva", estado_despues="inactiva", movida=True), []),
+        ({}, []),
+    ],
+    ids=[
+        "retirada",
+        "inactivada",
+        "reactivada",
+        "movida",
+        "otro-lote",
+        "inactiva-a-otro-lote",
+        "inactiva-movida",
+        "sin-cambios",
+    ],
+)
+def test_avisos_por_cambio(cambio, esperado):
+    datos = dict(
+        lote_antes=L1,
+        lote_despues=L1,
+        estado_antes="activa",
+        estado_despues="activa",
+        movida=False,
+    )
+    assert avisos_por_cambio("ICA-01", **{**datos, **cambio}) == esperado
+
+
+async def _ruta(cliente, usuario, ruta_id):
+    return (await cliente.get(f"{URL}/{ruta_id}", headers=encabezados(usuario))).json()
+
+
+async def test_cambios_en_las_trampas_marcan_la_ruta(cliente, datos, agronomo):
+    ruta = (await _crear(cliente, agronomo, datos, "t1", "t3", "t2")).json()
+    assert (ruta["requiere_revision"], ruta["motivo_revision"]) == (False, None)
+    h = encabezados(agronomo)
+
+    nueva = await cliente.post(
+        "/api/v1/trampas",
+        json={
+            "lote_id": str(datos["lote"].id),
+            "codigo_ica": "ICA-06",
+            "tipo": "jackson",
+            "atrayente": "Trimedlure",
+            "fecha_instalacion": "2026-10-10",
+            "geom": {"type": "Point", "coordinates": [-72.6395, 7.2703]},
+        },
+        headers=h,
+    )
+    assert nueva.status_code == 201
+    await cliente.patch(f"/api/v1/trampas/{datos['t1'].id}", json={"estado": "retirada"}, headers=h)
+    marcada = await _ruta(cliente, agronomo, ruta["id"])
+    assert marcada["requiere_revision"] is True
+    assert marcada["motivo_revision"] == "Se instaló ICA-06; ICA-01 quedó retirada"
+
+    # El mapa muestra el aviso en el lote.
+    mapa = await cliente.get("/api/v1/mapa", params={"lote_id": str(datos["lote"].id)}, headers=h)
+    [lote] = [f for f in mapa.json()["features"] if f["properties"]["elemento"] == "lote"]
+    assert lote["properties"]["ruta"] == {
+        "id": ruta["id"],
+        "requiere_revision": True,
+        "motivo_revision": "Se instaló ICA-06; ICA-01 quedó retirada",
+    }
+
+    # Guardar la ruta revisada (con todas las activas) quita la marca.
+    orden = [str(datos[c].id) for c in ("t3", "t2")] + [nueva.json()["id"]]
+    revisada = await cliente.put(f"{URL}/{ruta['id']}", json={"trampas": orden}, headers=h)
+    assert revisada.status_code == 200
+    assert (revisada.json()["requiere_revision"], revisada.json()["motivo_revision"]) == (
+        False,
+        None,
+    )
+
+
+async def test_confirmar_el_mismo_orden_quita_la_marca(cliente, datos, agronomo):
+    ruta = (await _crear(cliente, agronomo, datos, "t1", "t3", "t2")).json()
+    h = encabezados(agronomo)
+    await cliente.patch(
+        f"/api/v1/trampas/{datos['t3'].id}",
+        json={"geom": {"type": "Point", "coordinates": [-72.6396, 7.2704]}},
+        headers=h,
+    )
+    assert (await _ruta(cliente, agronomo, ruta["id"]))["motivo_revision"] == (
+        "ICA-03 cambió de ubicación"
+    )
+    orden = [p["trampa_id"] for p in ruta["paradas"]]
+    confirmada = await cliente.put(f"{URL}/{ruta['id']}", json={"trampas": orden}, headers=h)
+    assert confirmada.json()["requiere_revision"] is False
+
+
+async def test_eliminar_una_trampa_activa_marca_la_ruta(cliente, datos, agronomo):
+    ruta = (await _crear(cliente, agronomo, datos, "t1", "t3", "t2")).json()
+    await cliente.delete(f"/api/v1/trampas/{datos['t2'].id}", headers=encabezados(agronomo))
+    assert (await _ruta(cliente, agronomo, ruta["id"]))["motivo_revision"] == "Se eliminó ICA-02"
+
+
+async def test_cambios_que_no_afectan_la_ruta(cliente, datos, agronomo):
+    ruta = (await _crear(cliente, agronomo, datos, "t1", "t3", "t2")).json()
+    h = encabezados(agronomo)
+    # Cambiar el atrayente o tocar una trampa retirada no altera el recorrido.
+    await cliente.patch(
+        f"/api/v1/trampas/{datos['t1'].id}", json={"atrayente": "Trimedlure nuevo"}, headers=h
+    )
+    await cliente.patch(
+        f"/api/v1/trampas/{datos['retirada'].id}",
+        json={"geom": {"type": "Point", "coordinates": [-72.6396, 7.2708]}},
+        headers=h,
+    )
+    # Un registro rechazado (código ICA repetido) tampoco marca la ruta.
+    repetida = await cliente.post(
+        "/api/v1/trampas",
+        json={
+            "lote_id": str(datos["lote"].id),
+            "codigo_ica": "ICA-01",
+            "tipo": "jackson",
+            "atrayente": "Trimedlure",
+            "fecha_instalacion": "2026-10-10",
+            "geom": {"type": "Point", "coordinates": [-72.6395, 7.2703]},
+        },
+        headers=h,
+    )
+    assert repetida.status_code == 409
+    # Tras el rollback del 409 el usuario de la prueba quedó expirado: se reusan los encabezados.
+    leida = await cliente.get(f"{URL}/{ruta['id']}", headers=h)
+    assert leida.json()["requiere_revision"] is False

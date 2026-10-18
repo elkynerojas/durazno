@@ -120,7 +120,7 @@ export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
 
 export const listarTrampas = (predioId) => api(`/trampas?predio_id=${predioId}`)
 
-export const listarRutas = (loteId) => api(`/rutas?lote_id=${loteId}`)
+export const listarRutasPredio = (predioId) => api(`/rutas?predio_id=${predioId}`)
 
 // Orden propuesto por vecino más cercano (no se guarda).
 export const proponerRuta = (loteId) => api(`/rutas/propuesta?lote_id=${loteId}`)

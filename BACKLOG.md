@@ -609,7 +609,7 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 ### HU-20 · Avisar rutas desactualizadas
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S3 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S3 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero saber qué rutas revisar cuando se instala o retira una trampa, para mantener los recorridos completos.
 
 **Criterios de aceptación**
@@ -619,8 +619,17 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 **Tareas**
 
-- [ ] `HU-20.1` [API] Marcar rutas al crear, mover o retirar trampas
-- [ ] `HU-20.2` [Web] Indicador en el mapa y en la lista
+- [x] `HU-20.1` [API] Marcar rutas al crear, mover o retirar trampas
+- [x] `HU-20.2` [Web] Indicador en el mapa y en la lista
+
+> `ruta.requiere_revision` y `motivo_revision` (acumula los cambios, máx. 500 caracteres) se
+> marcan en la misma transacción al instalar una trampa activa, moverla de ubicación o de lote,
+> inactivarla, retirarla, reactivarla o eliminarla (`services/rutas.avisos_por_cambio`). Cambios
+> de atributos que no alteran el recorrido (atrayente, código) no marcan. `PUT /rutas/{id}`
+> limpia la marca, aunque el orden sea el mismo (confirmación). `GET /rutas` y `GET /mapa`
+> (`properties.ruta` de cada lote) la exponen. Web: aviso en la tarjeta del mapa con enlace al
+> lote, estado de la ruta en la ficha del lote, lista «Rutas del predio» en `/rutas` (sin ruta,
+> al día o requiere revisión) y botón «Confirmar ruta» cuando no hay cambios de orden.
 
 ## E5 · Planeación de actividades
 

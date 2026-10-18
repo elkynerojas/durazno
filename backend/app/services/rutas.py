@@ -4,7 +4,7 @@ import uuid
 from collections import Counter
 from collections.abc import Hashable, Mapping, Sequence
 
-from sqlalchemy import func, select, true
+from sqlalchemy import func, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -108,3 +108,42 @@ async def ruta_de_trampa(session: AsyncSession, trampa_id: uuid.UUID) -> dict | 
     posicion = next(i for i, (id_, _) in enumerate(paradas) if id_ == trampa_id)
     siguiente = paradas[posicion + 1][1] if posicion + 1 < len(paradas) else None
     return {"id": ruta_id, "orden": posicion + 1, "total": len(paradas), "siguiente": siguiente}
+
+
+def avisos_por_cambio(
+    codigo: str,
+    *,
+    lote_antes: uuid.UUID,
+    lote_despues: uuid.UUID,
+    estado_antes: str,
+    estado_despues: str,
+    movida: bool,
+) -> list[tuple[uuid.UUID, str]]:
+    """Rutas afectadas (`lote → motivo`) al editar una trampa (HU-20). Solo importan las trampas
+    activas: son las únicas que van en una ruta."""
+    activa_antes, activa_despues = estado_antes == "activa", estado_despues == "activa"
+    if lote_antes != lote_despues:
+        return [
+            *([(lote_antes, f"{codigo} se movió a otro lote")] if activa_antes else []),
+            *([(lote_despues, f"{codigo} llegó desde otro lote")] if activa_despues else []),
+        ]
+    if activa_antes and not activa_despues:
+        return [(lote_antes, f"{codigo} quedó {estado_despues}")]
+    if activa_despues and not activa_antes:
+        return [(lote_despues, f"{codigo} volvió a estar activa")]
+    if activa_despues and movida:
+        return [(lote_despues, f"{codigo} cambió de ubicación")]
+    return []
+
+
+async def marcar_revision(session: AsyncSession, lote_id: uuid.UUID, motivo: str) -> None:
+    """Marca la ruta vigente del lote (si tiene) como «requiere revisión» y suma el motivo."""
+    await session.execute(
+        update(Ruta)
+        .where(Ruta.lote_id == lote_id, Ruta.deleted_at.is_(None))
+        .values(
+            requiere_revision=True,
+            # concat_ws omite el motivo anterior si es NULL.
+            motivo_revision=func.left(func.concat_ws("; ", Ruta.motivo_revision, motivo), 500),
+        )
+    )

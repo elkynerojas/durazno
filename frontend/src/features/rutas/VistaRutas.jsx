@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
-import { actualizarRuta, crearRuta, listarRutas, proponerRuta } from '../../api/client'
+import { actualizarRuta, crearRuta, listarRutasPredio, proponerRuta } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
@@ -21,7 +21,8 @@ function mensajeDeError(error) {
   return 'No se pudo guardar la ruta. Intente de nuevo.'
 }
 
-// Rutas de monitoreo (HU-19): orden de visita de las trampas activas de cada lote.
+// Rutas de monitoreo (HU-19): orden de visita de las trampas activas de cada lote, con el aviso
+// de las que requieren revisión porque cambiaron sus trampas (HU-20).
 export default function VistaRutas() {
   const { usuario } = useSesion()
   const editable = ROLES_GESTION.includes(usuario.rol)
@@ -38,6 +39,22 @@ export default function VistaRutas() {
   )
   // Al proponer, la ruta del lote vuelve a montarse con la propuesta (sube la versión).
   const [propuestas, setPropuestas] = useState(0)
+  // Rutas vigentes del predio (null mientras cargan).
+  const [rutas, setRutas] = useState(null)
+  const [errorRutas, setErrorRutas] = useState(null)
+
+  useEffect(() => {
+    let vigente = true
+    listarRutasPredio(predio.id)
+      .then((lista) => vigente && setRutas(lista))
+      .catch(() => vigente && setErrorRutas('No se pudieron cargar las rutas del predio.'))
+    return () => {
+      vigente = false
+    }
+  }, [predio.id])
+
+  const rutaDe = (id) => rutas?.find((r) => r.lote_id === id) ?? null
+  const elegir = (id) => setParametros({ lote: id }, { replace: true })
 
   return (
     <Plantilla>
@@ -48,14 +65,11 @@ export default function VistaRutas() {
         {datos.lotes.length > 0 && (
           <div className="filtro-lote">
             <label htmlFor="lote_ruta">Lote</label>
-            <select
-              id="lote_ruta"
-              value={loteId ?? ''}
-              onChange={(e) => setParametros({ lote: e.target.value }, { replace: true })}
-            >
+            <select id="lote_ruta" value={loteId ?? ''} onChange={(e) => elegir(e.target.value)}>
               {datos.lotes.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.codigo} · {activasDe(l.id).length} trampas
+                  {rutaDe(l.id)?.requiere_revision ? ' · revisar' : ''}
                 </option>
               ))}
             </select>
@@ -71,9 +85,9 @@ export default function VistaRutas() {
           </button>
         )}
       </Encabezado>
-      {datos.error && (
+      {(datos.error || errorRutas) && (
         <p className="formulario__error" role="alert">
-          {datos.error}
+          {datos.error ?? errorRutas}
         </p>
       )}
       {!datos.cargando && !lote && (
@@ -81,21 +95,36 @@ export default function VistaRutas() {
           <p>Registre los lotes del predio y sus trampas para definir las rutas.</p>
         </section>
       )}
-      {!datos.cargando && lote && (
+      {!datos.cargando && lote && rutas && (
         <RutaDelLote
           key={`${lote.id}-${propuestas}`}
           lote={lote}
           activas={activas}
+          rutaGuardada={rutaDe(lote.id)}
           proponer={propuestas > 0}
           editable={editable}
+          alGuardar={(guardada) =>
+            setRutas((lista) => [...lista.filter((r) => r.id !== guardada.id), guardada])
+          }
+        />
+      )}
+      {rutas && datos.lotes.length > 0 && (
+        <ListaRutas
+          lotes={datos.lotes}
+          activasDe={activasDe}
+          rutaDe={rutaDe}
+          seleccionadoId={loteId}
+          alElegir={elegir}
         />
       )}
     </Plantilla>
   )
 }
 
-function RutaDelLote({ lote, activas, proponer, editable }) {
-  const [ruta, setRuta] = useState(undefined)
+function RutaDelLote({ lote, activas, rutaGuardada, proponer, editable, alGuardar }) {
+  // La ruta con la que se montó; luego `ruta` sigue los guardados de esta vista.
+  const [rutaInicial] = useState(rutaGuardada)
+  const [ruta, setRuta] = useState(rutaGuardada)
   const [orden, setOrden] = useState([])
   const [aviso, setAviso] = useState(null)
   const [error, setError] = useState(null)
@@ -109,9 +138,7 @@ function RutaDelLote({ lote, activas, proponer, editable }) {
     let vigente = true
     async function cargar() {
       try {
-        const [guardada] = await listarRutas(lote.id)
-        if (!vigente) return
-        setRuta(guardada ?? null)
+        const guardada = rutaInicial
         if (guardada && !proponer) {
           const inicial = ordenInicial(guardada, activas)
           setOrden(inicial.orden)
@@ -136,11 +163,13 @@ function RutaDelLote({ lote, activas, proponer, editable }) {
     return () => {
       vigente = false
     }
-  }, [lote.id, activas, proponer])
+  }, [lote.id, activas, proponer, rutaInicial])
 
   const porId = new Map(activas.map((t) => [t.id, t]))
   const guardado = ruta?.paradas.map((p) => p.trampa_id) ?? []
   const sinCambios = ruta && JSON.stringify(orden) === JSON.stringify(guardado)
+  // Con el aviso de HU-20, guardar el mismo orden confirma que la ruta se revisó.
+  const porRevisar = ruta?.requiere_revision ?? false
   // Guardada, las distancias son las del servidor; mientras se edita, aproximadas.
   const aproximadas = tramos(
     orden.filter((t) => porId.has(t)),
@@ -177,6 +206,7 @@ function RutaDelLote({ lote, activas, proponer, editable }) {
         ? await actualizarRuta(ruta.id, orden)
         : await crearRuta({ ...(id && { id }), lote_id: lote.id, trampas: orden })
       setRuta(guardada)
+      alGuardar(guardada)
       setOrden(guardada.paradas.map((p) => p.trampa_id))
       setAviso('Ruta guardada.')
     } catch (e) {
@@ -233,6 +263,14 @@ function RutaDelLote({ lote, activas, proponer, editable }) {
       </section>
 
       <div className="columna">
+        {porRevisar && (
+          <p className="formulario__aviso" role="alert">
+            <strong>Requiere revisión.</strong> {ruta.motivo_revision}.{' '}
+            {editable
+              ? 'Revise el orden y guárdelo (o confírmelo si sigue igual).'
+              : 'El agrónomo debe revisarla.'}
+          </p>
+        )}
         <section className="tarjeta" aria-labelledby="titulo-orden">
           <div className="ficha__encabezado">
             <h2 id="titulo-orden" className="tarjeta__titulo">
@@ -285,14 +323,63 @@ function RutaDelLote({ lote, activas, proponer, editable }) {
             <button
               type="button"
               className="boton-primario"
-              disabled={!completa || sinCambios || guardando || ordenandoEnMapa}
+              disabled={!completa || (sinCambios && !porRevisar) || guardando || ordenandoEnMapa}
               onClick={guardar}
             >
-              {guardando ? 'Guardando…' : 'Guardar ruta'}
+              {guardando
+                ? 'Guardando…'
+                : sinCambios && porRevisar
+                  ? 'Confirmar ruta'
+                  : 'Guardar ruta'}
             </button>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+const ESTADOS_RUTA = {
+  sin_ruta: ['Sin ruta', 'retirada'],
+  al_dia: ['Al día', 'activa'],
+  revisar: ['Requiere revisión', 'inactiva'],
+}
+
+function estadoRuta(ruta) {
+  if (!ruta) return 'sin_ruta'
+  return ruta.requiere_revision ? 'revisar' : 'al_dia'
+}
+
+// «Rutas del predio»: estado de la ruta de cada lote; tocar un lote lo abre.
+function ListaRutas({ lotes, activasDe, rutaDe, seleccionadoId, alElegir }) {
+  return (
+    <section className="tarjeta lista-rutas" aria-labelledby="titulo-rutas">
+      <h2 id="titulo-rutas" className="tarjeta__titulo">
+        Rutas del predio
+      </h2>
+      <ul className="lista-simple">
+        {lotes.map((lote) => {
+          const ruta = rutaDe(lote.id)
+          const [texto, insignia] = ESTADOS_RUTA[estadoRuta(ruta)]
+          return (
+            <li key={lote.id} aria-current={lote.id === seleccionadoId || undefined}>
+              <button type="button" className="enlace mono" onClick={() => alElegir(lote.id)}>
+                {lote.codigo}
+              </button>
+              <span>
+                {activasDe(lote.id).length} trampas
+                {ruta && ` · ${Math.round(ruta.distancia_total_m).toLocaleString('es-CO')} m`}
+              </span>
+              <span
+                className={`insignia insignia--${insignia}`}
+                title={ruta?.motivo_revision ?? ''}
+              >
+                {texto}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }

@@ -28,7 +28,7 @@ from app.schemas.trampa import (
 )
 from app.services.etiquetas import Etiqueta, generar_pdf
 from app.services.qr import ALFABETO, LONGITUD, generar_codigo, qr_png, qr_svg
-from app.services.rutas import ruta_de_trampa
+from app.services.rutas import avisos_por_cambio, marcar_revision, ruta_de_trampa
 from app.services.trampas import punto_en_lote
 
 router = APIRouter(tags=["trampas"])
@@ -98,8 +98,14 @@ async def _codigo_qr_libre(session: SessionDep) -> str:
             return codigo
 
 
-async def _guardar(session: SessionDep, trampa: Trampa) -> Trampa:
+async def _guardar(
+    session: SessionDep, trampa: Trampa, avisos: list[tuple[uuid.UUID, str]] = ()
+) -> Trampa:
+    """Guarda la trampa y marca las rutas afectadas (`avisos`: lote → motivo, HU-20)."""
     try:
+        await session.flush()
+        for lote_id, motivo in avisos:
+            await marcar_revision(session, lote_id, motivo)
         await session.commit()
     except IntegrityError as error:
         await session.rollback()
@@ -266,7 +272,10 @@ async def crear_trampa(
         trampa.id = entrada.id
     await _exigir_ubicacion(session, trampa)
     session.add(trampa)
-    return await _guardar(session, trampa)
+    avisos = (
+        [(trampa.lote_id, f"Se instaló {trampa.codigo_ica}")] if trampa.estado == "activa" else []
+    )
+    return await _guardar(session, trampa, avisos)
 
 
 @router.patch(
@@ -283,6 +292,7 @@ async def actualizar_trampa(
     trampa_id: uuid.UUID, entrada: TrampaActualizar, usuario: GestionDep, session: SessionDep
 ) -> Trampa:
     trampa = await _obtener(session, usuario, trampa_id, escribir=True)
+    lote_antes, estado_antes = trampa.lote_id, trampa.estado
     cambios = entrada.model_dump(exclude_unset=True, exclude={"geom"})
     if "lote_id" in cambios and cambios["lote_id"] != trampa.lote_id:
         actual = await session.get(Lote, trampa.lote_id)
@@ -301,7 +311,15 @@ async def actualizar_trampa(
             trampa.precision_m = None
     if entrada.geom is not None or "lote_id" in cambios:
         await _exigir_ubicacion(session, trampa)
-    return await _guardar(session, trampa)
+    avisos = avisos_por_cambio(
+        trampa.codigo_ica,
+        lote_antes=lote_antes,
+        lote_despues=trampa.lote_id,
+        estado_antes=estado_antes,
+        estado_despues=trampa.estado,
+        movida=entrada.geom is not None,
+    )
+    return await _guardar(session, trampa, avisos)
 
 
 @router.delete(
@@ -315,6 +333,8 @@ async def actualizar_trampa(
 async def eliminar_trampa(trampa_id: uuid.UUID, usuario: GestionDep, session: SessionDep) -> None:
     trampa = await _obtener(session, usuario, trampa_id, escribir=True)
     trampa.deleted_at = datetime.now(UTC)
+    if trampa.estado == "activa":
+        await marcar_revision(session, trampa.lote_id, f"Se eliminó {trampa.codigo_ica}")
     await session.commit()
 
 

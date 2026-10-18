@@ -42,6 +42,8 @@ export default function VistaMapa() {
   const porMonitoreo = (estado) => activas.filter((t) => t.monitoreo === estado).length
   const areaTotal = lotes.reduce((suma, l) => suma + l.area_ha, 0)
   const noActivas = trampas.length - activas.length
+  // HU-20: rutas que quedaron desactualizadas al cambiar las trampas de su lote.
+  const porRevisar = mapa.lotes.filter((l) => l.ruta?.requiere_revision)
 
   function filtrar(loteId) {
     setLoteFiltro(loteId)
@@ -130,6 +132,21 @@ export default function VistaMapa() {
             </div>
             <p className="mapa-tarjeta__ayuda">Toque un lote o una trampa para ver su ficha</p>
           </div>
+          {porRevisar.length > 0 && (
+            <p className="formulario__aviso aviso-mapa" role="status">
+              {porRevisar.length === 1
+                ? 'La ruta de 1 lote requiere revisión:'
+                : `Las rutas de ${porRevisar.length} lotes requieren revisión:`}{' '}
+              {porRevisar.map((l, i) => (
+                <span key={l.id}>
+                  {i > 0 && ', '}
+                  <Link to={`/rutas?lote=${l.id}`} title={l.ruta.motivo_revision}>
+                    {l.codigo}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
           <div className="mapa-tarjeta__lienzo">
             <MapaPredio>
               <CapaLimitePredio
@@ -328,13 +345,31 @@ function FichaLote({ lote, trampas, editable }) {
         <dd>
           {trampas.length} ({activasDe(trampas)})
         </dd>
+        <dt>Ruta</dt>
+        <dd>
+          {!lote.ruta ? (
+            'Sin ruta definida'
+          ) : lote.ruta.requiere_revision ? (
+            <span className="insignia insignia--inactiva" title={lote.ruta.motivo_revision}>
+              Requiere revisión
+            </span>
+          ) : (
+            'Al día'
+          )}
+        </dd>
       </dl>
+      {lote.ruta?.requiere_revision && (
+        <p className="formulario__nota">{lote.ruta.motivo_revision}.</p>
+      )}
       <div className="grupo-botones">
         <Link to={`/lotes?lote=${lote.id}`} className="boton-secundario">
           {editable ? 'Editar lote' : 'Ver lote'}
         </Link>
         <Link to={`/trampas?lote=${lote.id}`} className="boton-primario">
           {editable ? 'Registrar trampa' : 'Ver trampas'}
+        </Link>
+        <Link to={`/rutas?lote=${lote.id}`} className="boton-secundario">
+          Ver ruta
         </Link>
       </div>
       <div className="grupo-botones ficha__etiquetas">

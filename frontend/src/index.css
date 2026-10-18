@@ -1476,3 +1476,38 @@ button {
   border-color: var(--durazno-oscuro);
   border-style: dashed;
 }
+
+.lista-rutas {
+  margin-top: 1.25rem;
+}
+
+.lista-rutas li {
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.lista-rutas li > span:first-of-type {
+  flex: 1;
+  color: var(--texto-suave);
+}
+
+.lista-rutas li[aria-current] .enlace {
+  font-weight: 700;
+}
+
+.lista-rutas .enlace {
+  min-width: 5.5rem;
+  min-height: 44px;
+  text-align: left;
+}
+
+.aviso-mapa {
+  margin: 0;
+  border-radius: 0;
+}
+
+.aviso-mapa a {
+  font-weight: 600;
+  color: inherit;
+}

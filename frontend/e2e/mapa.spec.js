@@ -335,3 +335,42 @@ test('se reordena arrastrando la lista', async ({ page }) => {
   await tocar('touchEnd')
   await expect.poll(() => ordenEnLista(page)).toEqual([antes[1], antes[2], antes[0]])
 })
+
+test('al instalar una trampa, la ruta del lote queda por revisar en el mapa y en la lista', async ({
+  page,
+}) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await crearTrampasE2E(page, lote, [
+    [0.2, 0.2],
+    [0.8, 0.8],
+  ])
+  await page.goto('/rutas')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: `${lote} · 2 trampas` })
+  await expect(page.getByText(/Propuesta por cercanía/)).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar ruta' }).click()
+  await expect(page.getByText('Ruta guardada.')).toBeVisible()
+  const fila = page.getByRole('region', { name: 'Rutas del predio' }).locator('li')
+  await expect(fila.filter({ hasText: lote })).toContainText('Al día')
+
+  const [nueva] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+
+  await page.goto('/mapa')
+  const aviso = page.getByText('La ruta de 1 lote requiere revisión:')
+  await expect(aviso).toBeVisible()
+  await aviso.getByRole('link', { name: lote }).click()
+
+  await expect(page).toHaveURL(/\/rutas\?lote=/)
+  await expect(page.getByRole('alert')).toContainText(`Requiere revisión. Se instaló ${nueva}`)
+  await expect(fila.filter({ hasText: lote })).toContainText('Requiere revisión')
+  // La trampa nueva se agrega al final: el agrónomo revisa el orden y guarda.
+  await expect(page.getByText('La ruta incluye las 3 trampas activas del lote')).toBeVisible()
+  await page.getByRole('button', { name: 'Guardar ruta' }).click()
+  await expect(page.getByText('Ruta guardada.')).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(fila.filter({ hasText: lote })).toContainText('Al día')
+
+  await page.goto('/mapa')
+  await expect(page.locator('.mapa-tarjeta__lienzo')).toBeVisible()
+  await expect(page.getByText(/requiere(n)? revisión:/)).toHaveCount(0)
+})

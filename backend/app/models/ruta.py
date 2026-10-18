@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, EntidadSincronizable
@@ -21,6 +21,12 @@ class Ruta(EntidadSincronizable, Base):
     )
 
     lote_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("lote.id"), nullable=False)
+    # HU-20: se marca al instalar, mover, retirar o eliminar una trampa del lote, y se limpia
+    # cuando el agrónomo vuelve a guardar la ruta. `motivo_revision` acumula los cambios.
+    requiere_revision: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    motivo_revision: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class RutaTrampa(EntidadSincronizable, Base):

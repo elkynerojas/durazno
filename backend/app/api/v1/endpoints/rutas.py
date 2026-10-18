@@ -82,6 +82,8 @@ async def _leer(session: SessionDep, ruta: Ruta) -> RutaLeer:
         id=ruta.id,
         lote_id=ruta.lote_id,
         lote_codigo=lote.codigo,
+        requiere_revision=ruta.requiere_revision,
+        motivo_revision=ruta.motivo_revision,
         paradas=paradas,
         distancia_total_m=total,
         created_at=ruta.created_at,
@@ -274,7 +276,8 @@ async def crear_ruta(
     response_model=RutaLeer,
     summary="Cambiar el orden de una ruta",
     description="Reemplaza el orden de visita con las mismas reglas que al crearla. Las paradas "
-    "anteriores quedan en el historial (borrado lógico). Enviar el mismo orden no cambia nada.",
+    "anteriores quedan en el historial (borrado lógico). Guardar la ruta quita la marca "
+    "`requiere_revision`; enviar el mismo orden solo confirma la ruta revisada.",
     responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_422},
 )
 async def actualizar_ruta(
@@ -296,6 +299,10 @@ async def actualizar_ruta(
             .values(deleted_at=func.now())
         )
         _agregar_paradas(session, ruta, entrada.trampas)
+    # Guardarla, aun con el mismo orden, es la revisión que pedía el aviso (HU-20).
+    if actual != entrada.trampas or ruta.requiere_revision:
+        ruta.requiere_revision = False
+        ruta.motivo_revision = None
         ruta.updated_at = func.now()
     return await _guardar(session, ruta)
 

@@ -49,5 +49,10 @@ class RutaPropuesta(BaseModel):
 class RutaLeer(RutaPropuesta):
     id: uuid.UUID
     lote_codigo: str
+    requiere_revision: bool = Field(
+        description="Las trampas del lote cambiaron desde que se guardó (HU-20); se limpia al "
+        "volver a guardar la ruta con `PUT`"
+    )
+    motivo_revision: str | None = Field(description="Cambios que dejaron la ruta por revisar")
     created_at: datetime
     updated_at: datetime

@@ -9,6 +9,12 @@ from app.schemas.trampa import EstadoTrampa, TipoTrampa
 from app.services.monitoreo import EstadoMonitoreo
 
 
+class RutaDeLote(BaseModel):
+    id: uuid.UUID
+    requiere_revision: bool
+    motivo_revision: str | None
+
+
 class PropiedadesLote(BaseModel):
     elemento: Literal["lote"] = "lote"
     id: uuid.UUID
@@ -16,6 +22,9 @@ class PropiedadesLote(BaseModel):
     nombre: str | None
     area_ha: float
     color: str | None = Field(description="Color en los mapas (`#rrggbb`); `null`: el de la app")
+    ruta: RutaDeLote | None = Field(
+        description="Ruta de monitoreo del lote y si requiere revisión; `null` si no tiene"
+    )
 
 
 class PropiedadesTrampa(BaseModel):

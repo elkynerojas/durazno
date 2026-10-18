@@ -149,6 +149,7 @@ async def test_mapa_del_predio_con_estado_de_monitoreo(cliente, datos, productor
         "nombre": "Alto",
         "area_ha": 1.22,
         "color": "#4ade80",
+        "ruta": None,
     }
     assert lotes[0]["geometry"] == {"type": "Polygon", "coordinates": [A]}
 

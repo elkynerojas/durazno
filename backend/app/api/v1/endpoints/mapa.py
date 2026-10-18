@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.api.acceso import exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep
 from app.models.lote import Lote
+from app.models.ruta import Ruta
 from app.models.trampa import Trampa
 from app.schemas.geo import a_geojson
 from app.schemas.mapa import (
@@ -15,6 +16,7 @@ from app.schemas.mapa import (
     PropiedadesLote,
     PropiedadesTrampa,
     ResumenMonitoreo,
+    RutaDeLote,
     Umbrales,
 )
 from app.services.monitoreo import DIAS_REVISION, DIAS_VENCIDA, hoy_bogota, monitoreo_trampa
@@ -57,6 +59,12 @@ async def obtener_mapa(
         consulta_lotes = consulta_lotes.where(Lote.id == lote_id)
     lotes = (await session.scalars(consulta_lotes.order_by(Lote.codigo))).all()
     codigos = {lote.id: lote.codigo for lote in lotes}
+    rutas = {
+        ruta.lote_id: ruta
+        for ruta in await session.scalars(
+            select(Ruta).where(Ruta.lote_id.in_(list(codigos)), Ruta.deleted_at.is_(None))
+        )
+    }
 
     trampas = (
         await session.scalars(
@@ -77,6 +85,15 @@ async def obtener_mapa(
                 nombre=lote.nombre,
                 area_ha=float(lote.area_ha),
                 color=lote.color,
+                ruta=(
+                    RutaDeLote(
+                        id=ruta.id,
+                        requiere_revision=ruta.requiere_revision,
+                        motivo_revision=ruta.motivo_revision,
+                    )
+                    if (ruta := rutas.get(lote.id))
+                    else None
+                ),
             ),
         )
         for lote in lotes
