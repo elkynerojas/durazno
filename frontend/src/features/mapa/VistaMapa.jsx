@@ -8,6 +8,7 @@ import { fechaCorta } from '../../utils/fechas'
 import { formatoCoordenada, formatoHa } from '../../utils/formato'
 import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
@@ -100,6 +101,10 @@ export default function VistaMapa() {
           </div>
           <div className="mapa-tarjeta__lienzo">
             <MapaPredio>
+              <CapaLimitePredio
+                limite={predio.limite}
+                encuadrar={datos.lotesIniciales?.length === 0}
+              />
               {capas.lotes && (
                 <CapaLotes
                   lotes={datos.lotes}

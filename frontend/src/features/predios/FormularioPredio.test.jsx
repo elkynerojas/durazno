@@ -76,4 +76,61 @@ describe('FormularioPredio', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Revise los datos del formulario.')
   })
+
+  it('con un límite nuevo el área es de solo lectura y no se envía', async () => {
+    const fetchSimulado = simularFetch(
+      respuestaJson(200, {
+        ...PREDIO,
+        limite: LIMITE,
+        area_ha: 61.2,
+        advertencias: ['El lote L-02 sale del límite del predio (120 m²)'],
+      }),
+    )
+    const alGuardar = vi.fn()
+    const usuarioEvento = userEvent.setup()
+    render(<FormularioPredio predio={PREDIO} limite={LIMITE} editable alGuardar={alGuardar} />)
+
+    const area = screen.getByLabelText('Área (hectáreas)')
+    expect(area).toHaveAttribute('readonly')
+    expect(area.value).toMatch(/^≈ [\d.,]+ ha$/)
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    const cuerpo = cuerpoEnviado(fetchSimulado)
+    expect(cuerpo.limite).toEqual(LIMITE)
+    expect(cuerpo).not.toHaveProperty('area_ha')
+    expect(
+      await screen.findByText('El lote L-02 sale del límite del predio (120 m²)'),
+    ).toBeInTheDocument()
+  })
+
+  it('al editar vértices lee el límite del mapa al guardar', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(200, { ...PREDIO, limite: LIMITE }))
+    const obtenerLimite = vi.fn(() => LIMITE)
+    render(
+      <FormularioPredio
+        predio={{ ...PREDIO, limite: LIMITE }}
+        obtenerLimite={obtenerLimite}
+        editable
+        alGuardar={vi.fn()}
+      />,
+    )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(obtenerLimite).toHaveBeenCalled()
+    expect(cuerpoEnviado(fetchSimulado).limite).toEqual(LIMITE)
+  })
+
+  it('al quitar el límite vuelve a pedir el área', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(200, PREDIO))
+    render(
+      <FormularioPredio
+        predio={{ ...PREDIO, limite: LIMITE }}
+        limite={null}
+        editable
+        alGuardar={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText('Área (hectáreas)')).not.toHaveAttribute('readonly')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(cuerpoEnviado(fetchSimulado)).toMatchObject({ limite: null, area_ha: 32.5 })
+  })
 })

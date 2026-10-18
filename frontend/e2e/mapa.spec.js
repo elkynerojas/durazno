@@ -133,3 +133,31 @@ test('el administrador crea un predio desde Predios y lo elimina', async ({ page
   await page.getByRole('button', { name: `Confirmar: eliminar ${nombre}` }).click()
   await expect(page.getByRole('row', { name: new RegExp(nombre) })).toHaveCount(0)
 })
+
+test('se dibuja el límite del predio y el servidor calcula su área', async ({ page }) => {
+  await page.goto('/predio')
+  const formulario = page.getByRole('form', { name: 'Datos del predio' })
+  await expect(formulario.getByLabel('Nombre')).toHaveValue('Predio E2E')
+
+  await page.getByRole('button', { name: 'Dibujar límite' }).click()
+  for (const [fx, fy] of [
+    [0.2, 0.2],
+    [0.8, 0.2],
+    [0.8, 0.8],
+    [0.2, 0.8],
+    [0.2, 0.2],
+  ]) {
+    await page.mouse.click(...(await puntoDelMapa(page, fx, fy)))
+  }
+  await expect(formulario.getByLabel('Área (hectáreas)')).toHaveValue(/^≈ [\d.,]+ ha$/)
+  await formulario.getByRole('button', { name: 'Guardar' }).click()
+  await expect(formulario.getByText('Datos del predio guardados.')).toBeVisible()
+  // Ya guardada, el área es la calculada por el servidor (sin «≈»).
+  await expect(formulario.getByLabel('Área (hectáreas)')).toHaveValue(/^[\d.,]+ ha$/)
+
+  // Deja el predio de pruebas como estaba.
+  await page.getByRole('button', { name: 'Quitar límite' }).click()
+  await formulario.getByLabel('Área (hectáreas)').fill('30')
+  await formulario.getByRole('button', { name: 'Guardar' }).click()
+  await expect(formulario.getByText('Datos del predio guardados.')).toBeVisible()
+})

@@ -58,3 +58,6 @@ export function areaAproximadaHa(poligono) {
 
 // Vértices del anillo exterior, sin contar el punto de cierre.
 export const contarVertices = (poligono) => poligono.coordinates[0].length - 1
+
+// Dos geometrías GeoJSON (o null) iguales por contenido, no por referencia.
+export const mismaGeometria = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)

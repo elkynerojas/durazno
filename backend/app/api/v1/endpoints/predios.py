@@ -13,8 +13,8 @@ from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
-from app.schemas.predio import PersonaPredio, PredioGuardar, PredioLeer
-from app.services.geo import motivo_invalidez
+from app.schemas.predio import PersonaPredio, PredioGuardado, PredioGuardar, PredioLeer
+from app.services.geo import UMBRAL_M2, area_fuera_m2, calcular_area_ha, motivo_invalidez
 
 router = APIRouter(prefix="/predios", tags=["predios"])
 
@@ -30,9 +30,36 @@ async def _aplicar(session: SessionDep, predio: Predio, entrada: PredioGuardar) 
     limite = a_geometria(entrada.limite) if entrada.limite else None
     if limite is not None and (motivo := await motivo_invalidez(session, limite)):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=motivo)
-    for campo, valor in entrada.model_dump(exclude={"id", "limite"}).items():
+    for campo, valor in entrada.model_dump(exclude={"id", "limite", "area_ha"}).items():
         setattr(predio, campo, valor)
     predio.limite = limite
+    # Con límite, el área es la del polígono (geodésica); sin límite, la declarada.
+    predio.area_ha = (
+        await calcular_area_ha(session, limite) if limite is not None else entrada.area_ha
+    )
+    if predio.area_ha <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="El límite es demasiado pequeño: su área no alcanza 0,01 ha",
+        )
+
+
+async def _con_advertencias(session: SessionDep, predio: Predio) -> PredioGuardado:
+    """Lotes vigentes del predio que quedan por fuera de su límite."""
+    guardado = PredioGuardado.model_validate(predio)
+    if predio.limite is None:
+        return guardado
+    lotes = await session.execute(
+        select(Lote.codigo, Lote.geom)
+        .where(Lote.predio_id == predio.id, Lote.deleted_at.is_(None))
+        .order_by(Lote.codigo)
+    )
+    for codigo, geom in lotes:
+        fuera = await area_fuera_m2(session, geom, predio.limite)
+        if fuera > UMBRAL_M2:
+            texto = f"{fuera:,.0f} m²".replace(",", ".")
+            guardado.advertencias.append(f"El lote {codigo} sale del límite del predio ({texto})")
+    return guardado
 
 
 @router.get(
@@ -48,13 +75,14 @@ async def listar_predios(usuario: UsuarioActualDep, session: SessionDep) -> list
 
 @router.post(
     "",
-    response_model=PredioLeer,
+    response_model=PredioGuardado,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un predio",
-    description="Solo el administrador. El `limite` es opcional y debe ser un polígono válido. "
-    "Reenviar el mismo `id` devuelve el predio existente con 200.",
+    description="Solo el administrador. El `limite` es opcional y debe ser un polígono válido; "
+    "con límite, el área la calcula el servidor. Reenviar el mismo `id` devuelve el predio "
+    "existente con 200.",
     responses={
-        200: {"description": "El predio con ese `id` ya existía", "model": PredioLeer},
+        200: {"description": "El predio con ese `id` ya existía", "model": PredioGuardado},
         **ERROR_401,
         **ERROR_403,
         409: {"description": "El `id` pertenece a un predio eliminado"},
@@ -63,14 +91,14 @@ async def listar_predios(usuario: UsuarioActualDep, session: SessionDep) -> list
 )
 async def crear_predio(
     entrada: PredioGuardar, _admin: AdministradorDep, session: SessionDep, response: Response
-) -> Predio:
+) -> PredioGuardado:
     if entrada.id is not None and (existente := await session.get(Predio, entrada.id)):
         if existente.deleted_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="El id pertenece a un predio eliminado"
             )
         response.status_code = status.HTTP_200_OK
-        return existente
+        return await _con_advertencias(session, existente)
     predio = Predio()
     if entrada.id is not None:
         predio.id = entrada.id
@@ -78,7 +106,7 @@ async def crear_predio(
     session.add(predio)
     await session.commit()
     await session.refresh(predio)
-    return predio
+    return await _con_advertencias(session, predio)
 
 
 @router.get(
@@ -95,20 +123,21 @@ async def obtener_predio(
 
 @router.put(
     "/{predio_id}",
-    response_model=PredioLeer,
+    response_model=PredioGuardado,
     summary="Actualizar los datos de un predio",
-    description="Reemplaza los datos del predio (un `limite` en `null` lo elimina). Lo hace el "
-    "administrador o un agrónomo asignado al predio.",
+    description="Reemplaza los datos del predio (un `limite` en `null` lo elimina). Con límite, "
+    "el área la calcula el servidor y `advertencias` lista los lotes que quedan por fuera. Lo "
+    "hace el administrador o un agrónomo asignado al predio.",
     responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_422},
 )
 async def actualizar_predio(
     predio_id: uuid.UUID, entrada: PredioGuardar, usuario: UsuarioActualDep, session: SessionDep
-) -> Predio:
+) -> PredioGuardado:
     predio = await exigir_predio(session, usuario, predio_id, escribir=True)
     await _aplicar(session, predio, entrada)
     await session.commit()
     await session.refresh(predio)
-    return predio
+    return await _con_advertencias(session, predio)
 
 
 @router.delete(

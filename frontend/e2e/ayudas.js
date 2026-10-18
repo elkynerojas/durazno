@@ -11,7 +11,7 @@ export async function ingresar(page, correo = CORREO, clave = CLAVE) {
 }
 
 // Las pruebas trabajan en su propio predio («Predio E2E»), que crean si no existe, y lo dejan
-// como predio actual del navegador.
+// como predio actual del navegador, sin límite.
 export async function asegurarPredio(page) {
   const predioId = await page.evaluate(async () => {
     const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
@@ -20,19 +20,22 @@ export async function asegurarPredio(page) {
       'Content-Type': 'application/json',
     }
     const predios = await (await fetch('/api/v1/predios', { headers: cabeceras })).json()
-    let predio = predios.find((p) => p.nombre === 'Predio E2E')
+    const datos = { nombre: 'Predio E2E', vereda: 'Icota', municipio: 'Cácota', area_ha: 30 }
+    let predio = predios.find((p) => p.nombre === datos.nombre)
     if (!predio) {
       const creado = await fetch('/api/v1/predios', {
         method: 'POST',
         headers: cabeceras,
-        body: JSON.stringify({
-          nombre: 'Predio E2E',
-          vereda: 'Icota',
-          municipio: 'Cácota',
-          area_ha: 30,
-        }),
+        body: JSON.stringify(datos),
       })
       predio = await creado.json()
+    } else if (predio.limite) {
+      // Una corrida que falló pudo dejarle límite: se quita para empezar igual siempre.
+      await fetch(`/api/v1/predios/${predio.id}`, {
+        method: 'PUT',
+        headers: cabeceras,
+        body: JSON.stringify(datos),
+      })
     }
     localStorage.setItem('icota.predio', predio.id)
     return predio.id

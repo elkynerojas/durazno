@@ -3,7 +3,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas.geo import PoligonoGeoJSON, a_geojson
 
@@ -24,10 +31,22 @@ class PredioGuardar(BaseModel):
     registro_ica: RegistroIca | None = Field(
         default=None, description="Registro del predio ante el ICA"
     )
-    area_ha: Decimal = Field(gt=0, max_digits=10, decimal_places=2, description="Hectáreas")
+    area_ha: Decimal | None = Field(
+        default=None,
+        gt=0,
+        max_digits=10,
+        decimal_places=2,
+        description="Hectáreas. Obligatoria sin `limite`; con `limite` la calcula el servidor.",
+    )
     limite: PoligonoGeoJSON | None = Field(
         default=None, description="Límite del predio (opcional). `null` lo elimina."
     )
+
+    @model_validator(mode="after")
+    def _area_o_limite(self) -> "PredioGuardar":
+        if self.limite is None and self.area_ha is None:
+            raise ValueError("Indique el área del predio o dibuje su límite")
+        return self
 
 
 class PredioLeer(BaseModel):
@@ -59,3 +78,9 @@ class PersonaPredio(BaseModel):
     correo: str
     rol: str
     activo: bool
+
+
+class PredioGuardado(PredioLeer):
+    advertencias: list[str] = Field(
+        default_factory=list, description="Avisos que no impiden guardar, p. ej. lotes por fuera"
+    )

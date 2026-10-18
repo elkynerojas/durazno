@@ -216,12 +216,15 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 - Nombre, vereda, municipio, registro ICA del predio y área.
 - Puede haber varios predios (HU-39); el agrónomo asignado o el administrador editan sus datos.
 - El límite del predio como polígono es opcional.
+- Con límite, el área la calcula el servidor (geodésica); un lote que sale del límite se guarda con advertencia.
 
 **Tareas**
 
 - [x] `HU-07.1` [BD] Modelo predio y migración
 - [x] `HU-07.2` [API] GET y PUT /predio
 - [x] `HU-07.3` [Web] Formulario de datos del predio
+- [x] `HU-07.4` [Web] Dibujar, editar y quitar el límite del predio; verlo en los mapas
+- [x] `HU-07.5` [API] Área desde el límite y advertencia de lotes por fuera
 
 > Un solo predio garantizado en la base (índice único parcial `uq_predio_unico` sobre las filas
 > sin `deleted_at`). `GET /predio` para cualquier rol con sesión; `PUT /predio` solo el agrónomo

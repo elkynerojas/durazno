@@ -6,6 +6,7 @@ import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
 import { geojsonALeaflet, puntoALeaflet, puntoEnPoligono } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
+import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
@@ -156,6 +157,10 @@ export default function VistaTrampas() {
           </div>
           <div className="mapa-tarjeta__lienzo mapa-tarjeta__lienzo--bajo">
             <MapaPredio ref={setMapa}>
+              <CapaLimitePredio
+                limite={predio.limite}
+                encuadrar={datos.lotesIniciales?.length === 0}
+              />
               <CapaLotes
                 lotes={datos.lotes}
                 lotesIniciales={loteId ? null : datos.lotesIniciales}

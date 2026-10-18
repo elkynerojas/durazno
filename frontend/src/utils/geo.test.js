@@ -5,6 +5,7 @@ import {
   contarVertices,
   geojsonALeaflet,
   latLngAPunto,
+  mismaGeometria,
   leafletAGeojson,
   puntoALeaflet,
   puntoEnPoligono,
@@ -104,5 +105,11 @@ describe('geo', () => {
     }
     expect(areaAproximadaHa(cuadro)).toBeCloseTo(1.22, 1)
     expect(contarVertices(cuadro)).toBe(4)
+  })
+
+  it('compara geometrías por contenido', () => {
+    expect(mismaGeometria(POLIGONO, JSON.parse(JSON.stringify(POLIGONO)))).toBe(true)
+    expect(mismaGeometria(null, undefined)).toBe(true)
+    expect(mismaGeometria(POLIGONO, null)).toBe(false)
   })
 })

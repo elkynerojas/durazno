@@ -1,6 +1,8 @@
 import { useState } from 'react'
 
 import { actualizarPredio, crearPredio } from '../../api/client'
+import { formatoHa } from '../../utils/formato'
+import { areaAproximadaHa, mismaGeometria } from '../../utils/geo'
 
 const VACIO = { nombre: '', vereda: '', municipio: 'Cácota', registro_ica: '', area_ha: '' }
 
@@ -11,7 +13,16 @@ function aFormulario(predio) {
 }
 
 // Datos de un predio. Sin `predio` crea uno nuevo (administrador); con `predio` lo actualiza.
-export default function FormularioPredio({ predio, editable, alGuardar, alCancelar }) {
+// `limite`: límite a enviar si se dibujó uno nuevo (`null` lo quita; sin la prop, se conserva el
+// actual). `obtenerLimite`: lo lee del mapa al guardar, si se están editando los vértices.
+export default function FormularioPredio({
+  predio,
+  limite,
+  obtenerLimite,
+  editable,
+  alGuardar,
+  alCancelar,
+}) {
   const nuevo = !predio
   // El id se genera una sola vez: si el registro se reenvía, la API no duplica el predio.
   const [id] = useState(() => globalThis.crypto?.randomUUID?.())
@@ -22,22 +33,35 @@ export default function FormularioPredio({ predio, editable, alGuardar, alCancel
   const cambiar = (campo) => (evento) =>
     setDatos((previos) => ({ ...previos, [campo]: evento.target.value }))
 
+  const limiteActual = limite !== undefined ? limite : (predio?.limite ?? null)
+  // Con límite, el área la calcula el servidor: aquí solo se muestra (aproximada si cambió).
+  const areaDelLimite = !limiteActual
+    ? null
+    : mismaGeometria(limiteActual, predio?.limite)
+      ? `${formatoHa.format(predio.area_ha)} ha`
+      : `≈ ${formatoHa.format(areaAproximadaHa(limiteActual))} ha`
+
   async function enviar(evento) {
     evento.preventDefault()
     setEnviando(true)
     setEstado(null)
+    // PUT reemplaza todo: se reenvía el límite (el actual si no cambió) para no borrarlo.
+    const limiteEnviado = obtenerLimite ? obtenerLimite() : limiteActual
+    const { area_ha, ...resto } = datos
     const cuerpo = {
-      ...datos,
+      ...resto,
       registro_ica: datos.registro_ica.trim() || null,
-      area_ha: Number(datos.area_ha),
-      // PUT reemplaza todo: se reenvía el límite que ya tenía para no borrarlo.
-      limite: predio?.limite ?? null,
+      ...(!limiteEnviado && { area_ha: Number(area_ha) }),
+      limite: limiteEnviado,
     }
     try {
       const guardado = nuevo
         ? await crearPredio({ ...(id && { id }), ...cuerpo })
         : await actualizarPredio(predio.id, cuerpo)
-      setEstado({ exito: nuevo ? 'Predio creado.' : 'Datos del predio guardados.' })
+      setEstado({
+        exito: nuevo ? 'Predio creado.' : 'Datos del predio guardados.',
+        advertencias: guardado.advertencias ?? [],
+      })
       alGuardar(guardado)
     } catch (e) {
       setEstado({
@@ -94,25 +118,34 @@ export default function FormularioPredio({ predio, editable, alGuardar, alCancel
           </div>
           <div>
             <label htmlFor="area_ha">Área (hectáreas)</label>
-            <input
-              id="area_ha"
-              type="number"
-              inputMode="decimal"
-              min="0.01"
-              step="0.01"
-              value={datos.area_ha}
-              onChange={cambiar('area_ha')}
-              required
-            />
+            {areaDelLimite ? (
+              <input id="area_ha" value={areaDelLimite} readOnly />
+            ) : (
+              <input
+                id="area_ha"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                step="0.01"
+                value={datos.area_ha}
+                onChange={cambiar('area_ha')}
+                required
+              />
+            )}
           </div>
         </div>
       </fieldset>
 
-      {predio && (
-        <p className="formulario__nota">
-          {predio.limite ? 'Tiene límite dibujado en el mapa.' : 'Sin límite dibujado.'}
+      <p className="formulario__nota">
+        {limiteActual
+          ? 'El área se calcula del límite dibujado.'
+          : 'Sin límite dibujado: escriba el área o dibuje el límite en el mapa.'}
+      </p>
+      {estado?.advertencias?.map((aviso) => (
+        <p key={aviso} className="formulario__aviso" role="status">
+          {aviso}
         </p>
-      )}
+      ))}
       {estado?.error && (
         <p className="formulario__error" role="alert">
           {estado.error}

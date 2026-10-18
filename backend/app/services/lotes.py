@@ -1,17 +1,17 @@
-"""Cálculos espaciales de los lotes en PostGIS: área geodésica y traslapes."""
+"""Cálculos espaciales de los lotes en PostGIS: traslapes (el área está en services/geo.py)."""
 
 import uuid
 from dataclasses import dataclass
-from decimal import Decimal
 
-from geoalchemy2 import Geography, Geometry, WKBElement
-from sqlalchemy import Numeric, cast, func, literal, select
+from geoalchemy2 import Geography, WKBElement
+from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lote import Lote
+from app.services.geo import UMBRAL_M2, como_poligono
 
-# Área común mínima para avisar de un traslape: ignora vértices compartidos dibujados a mano.
-UMBRAL_TRASLAPE_M2 = 1.0
+# Área común mínima para avisar de un traslape (ver UMBRAL_M2 en services/geo.py).
+UMBRAL_TRASLAPE_M2 = UMBRAL_M2
 
 
 @dataclass(frozen=True)
@@ -19,16 +19,6 @@ class Traslape:
     id: uuid.UUID
     codigo: str
     area_m2: float
-
-
-def _poligono(geometria: WKBElement):
-    return literal(geometria, Geometry("POLYGON", srid=4326))
-
-
-async def calcular_area_ha(session: AsyncSession, geometria: WKBElement) -> Decimal:
-    """Área geodésica en hectáreas, redondeada a dos decimales."""
-    area_m2 = func.ST_Area(cast(_poligono(geometria), Geography))
-    return await session.scalar(select(func.round(cast(area_m2 / 10000, Numeric), 2)))
 
 
 async def lotes_traslapados(
@@ -42,7 +32,7 @@ async def lotes_traslapados(
     `geometria` debe ser válida (ST_Intersection falla con polígonos inválidos). Un borde
     compartido no cuenta: su intersección es una línea, sin área.
     """
-    poligono = _poligono(geometria)
+    poligono = como_poligono(geometria)
     area_comun = func.ST_Area(
         cast(func.ST_CollectionExtract(func.ST_Intersection(Lote.geom, poligono), 3), Geography)
     )

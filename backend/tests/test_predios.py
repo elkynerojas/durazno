@@ -214,3 +214,77 @@ async def test_una_asignacion_simultanea_no_falla(
     monkeypatch.setattr(endpoints, "_asignacion", sin_asignacion)
     url = f"{URL}/{a.id}/usuarios/{tecnico.id}"
     assert (await cliente.put(url, headers=encabezados(admin))).status_code == 204
+
+
+# --- Límite del predio ---
+
+# 0,01° × 0,01° en Cácota: ≈ 1.105,9 m × 1.103,2 m ≈ 122,0 ha (cálculo a mano a 7,26° N).
+LIMITE_KM = {
+    "type": "Polygon",
+    "coordinates": [
+        [[-72.59, 7.26], [-72.58, 7.26], [-72.58, 7.27], [-72.59, 7.27], [-72.59, 7.26]]
+    ],
+}
+
+
+def _cuadro(x0, y0, x1, y1):
+    return PoligonoGeoJSON(
+        type="Polygon", coordinates=[[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]
+    )
+
+
+async def test_con_limite_el_area_la_calcula_el_servidor(cliente, admin):
+    datos = _datos(limite=LIMITE_KM, area_ha=1)  # el área enviada se ignora
+    respuesta = await cliente.post(URL, json=datos, headers=encabezados(admin))
+    assert respuesta.status_code == 201
+    assert respuesta.json()["area_ha"] == pytest.approx(122.0, abs=0.5)
+    sin_area = {k: v for k, v in _datos(limite=LIMITE_KM).items() if k != "area_ha"}
+    assert (await cliente.post(URL, json=sin_area, headers=encabezados(admin))).status_code == 201
+
+
+async def test_sin_limite_el_area_es_obligatoria(cliente, admin):
+    sin_area = {k: v for k, v in _datos().items() if k != "area_ha"}
+    respuesta = await cliente.post(URL, json=sin_area, headers=encabezados(admin))
+    assert respuesta.status_code == 422
+    creado = await cliente.post(URL, json=_datos(limite=LIMITE_KM), headers=encabezados(admin))
+    quitar = {k: v for k, v in _datos(limite=None).items() if k != "area_ha"}
+    respuesta = await cliente.put(
+        f"{URL}/{creado.json()['id']}", json=quitar, headers=encabezados(admin)
+    )
+    assert respuesta.status_code == 422
+
+
+async def test_advierte_los_lotes_por_fuera_del_limite(cliente, admin, dos_predios, session):
+    a, _ = dos_predios
+    session.add_all(
+        [
+            # Dentro del límite.
+            Lote(
+                predio_id=a.id,
+                codigo="L-1",
+                area_ha=1,
+                geom=a_geometria(_cuadro(-72.589, 7.261, -72.588, 7.262)),
+            ),
+            # Sale a medias por el este.
+            Lote(
+                predio_id=a.id,
+                codigo="L-2",
+                area_ha=1,
+                geom=a_geometria(_cuadro(-72.5805, 7.261, -72.5795, 7.262)),
+            ),
+            # Dentro, tocando el borde este: no avisa.
+            Lote(
+                predio_id=a.id,
+                codigo="L-3",
+                area_ha=1,
+                geom=a_geometria(_cuadro(-72.581, 7.263, -72.580, 7.264)),
+            ),
+        ]
+    )
+    await session.flush()
+    respuesta = await cliente.put(
+        f"{URL}/{a.id}", json=_datos(limite=LIMITE_KM), headers=encabezados(admin)
+    )
+    assert respuesta.status_code == 200
+    [aviso] = respuesta.json()["advertencias"]
+    assert aviso.startswith("El lote L-2 sale del límite del predio (")

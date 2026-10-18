@@ -9,12 +9,13 @@ from sqlalchemy.exc import IntegrityError
 from app.api.acceso import ROLES_GESTION, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
+from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
 from app.schemas.lote import LoteActualizar, LoteCrear, LoteGuardado, LoteLeer
-from app.services.geo import motivo_invalidez
-from app.services.lotes import calcular_area_ha, lotes_traslapados
+from app.services.geo import UMBRAL_M2, area_fuera_m2, calcular_area_ha, motivo_invalidez
+from app.services.lotes import lotes_traslapados
 from app.services.trampas import trampas_fuera
 
 router = APIRouter(prefix="/lotes", tags=["lotes"])
@@ -67,14 +68,23 @@ async def _guardar(session: SessionDep, lote: Lote) -> LoteGuardado:
     return await _con_advertencias(session, lote)
 
 
+def _m2(valor: float) -> str:
+    return f"{valor:,.0f} m²".replace(",", ".")
+
+
 async def _con_advertencias(session: SessionDep, lote: Lote) -> LoteGuardado:
     guardado = LoteGuardado.model_validate(lote)
     guardado.advertencias = [
-        f"Se traslapa con el lote {t.codigo} ({t.area_m2:,.0f} m² en común)".replace(",", ".")
+        f"Se traslapa con el lote {t.codigo} ({_m2(t.area_m2)} en común)"
         for t in await lotes_traslapados(
             session, lote.geom, excluir_id=lote.id, predio_id=lote.predio_id
         )
     ]
+    limite = await session.scalar(select(Predio.limite).where(Predio.id == lote.predio_id))
+    if limite is not None:
+        fuera = await area_fuera_m2(session, lote.geom, limite)
+        if fuera > UMBRAL_M2:
+            guardado.advertencias.append(f"El lote sale del límite del predio ({_m2(fuera)})")
     return guardado
 
 

@@ -8,7 +8,8 @@ from sqlalchemy import func, update
 from app.models.lote import Lote
 from app.models.predio import Predio
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
-from app.services.lotes import calcular_area_ha, lotes_traslapados
+from app.services.geo import calcular_area_ha
+from app.services.lotes import lotes_traslapados
 from tests.utilidades import encabezados
 
 URL = "/api/v1/lotes"
@@ -335,3 +336,16 @@ async def test_poligono_diminuto_responde_422(cliente, predio, agronomo):
     )
     assert respuesta.status_code == 422
     assert "demasiado pequeño" in respuesta.json()["detail"]
+
+
+async def test_advierte_si_el_lote_sale_del_limite_del_predio(cliente, predio, agronomo, session):
+    predio.limite = geometria(cuadro(-72.641, 7.269, -72.6395, 7.272))
+    await session.flush()
+    respuesta = await cliente.post(
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-01", "geom": A},
+        headers=encabezados(agronomo),
+    )
+    assert respuesta.status_code == 201
+    [aviso] = respuesta.json()["advertencias"]
+    assert aviso.startswith("El lote sale del límite del predio (")
