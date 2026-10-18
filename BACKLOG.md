@@ -1011,7 +1011,7 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 ### HU-34 · Guía de integración de servicios
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 2 · **Sprint:** S5 · **Responsable:** Luis
+- **Estado:** Hecho · **Prioridad:** Debe · **Puntos:** 2 · **Sprint:** S5 · **Responsable:** Luis
 - **Historia:** Como desarrollador de la app móvil, quiero una guía con el flujo de autenticación, QR y envío de lecturas, para empezar la fase 2 sin depender del equipo actual.
 
 **Criterios de aceptación**
@@ -1021,7 +1021,13 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 **Tareas**
 
-- [ ] `HU-34.1` [Doc] Redactar la guía de integración
+- [x] `HU-34.1` [Doc] Redactar la guía de integración
+
+> `docs/guia-integracion.md`: convenciones (ids del dispositivo, fechas con zona, GeoJSON
+> `[longitud, latitud]`), roles, autenticación con `X-Cliente: movil` y ciclo de renovación,
+> sincronización con `/sync/cambios`, del QR a la lectura (`/trampas/qr`, preparar, campos y
+> reglas, envío en bloque y qué hacer con cada resultado), MTD, tabla de errores, datos
+> personales y cómo probar la integración con `flujo_movil`. Ejemplos tomados del servidor local.
 
 ## E8 · Validación y cierre
 
