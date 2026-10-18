@@ -4,6 +4,7 @@ import {
   CLAVE,
   asegurarPredio,
   asegurarTecnicoE2E,
+  colorEnElMapa,
   crearTrampasE2E,
   dibujarLote,
   ingresar,
@@ -46,14 +47,14 @@ test('el color elegido del lote se ve en el mapa y se conserva al abrirlo por en
   const codigo = `E2E-${Date.now() % 1_000_000}`
   const formulario = await dibujarLote(page, codigo)
   await formulario.getByLabel('Color en el mapa').fill('#00b4d8')
-  await expect(page.locator('.leaflet-overlay-pane path[stroke="#00b4d8"]')).toHaveCount(1)
+  await expect.poll(() => colorEnElMapa(page, '#00b4d8')).toBe(true)
   await formulario.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(formulario.getByText('Polígono válido.', { exact: false })).toBeVisible()
 
   await page.reload()
   await expect(formulario.getByLabel('Código')).toHaveValue(codigo)
   await expect(formulario.getByLabel('Color en el mapa')).toHaveValue('#00b4d8')
-  await expect(page.locator('.leaflet-overlay-pane path[stroke="#00b4d8"]')).toHaveCount(1)
+  await expect.poll(() => colorEnElMapa(page, '#00b4d8')).toBe(true)
 })
 
 test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page }) => {
@@ -171,7 +172,7 @@ test('se dibuja el límite del predio con su color y el servidor calcula su áre
   }
   await expect(formulario.getByLabel('Área (hectáreas)')).toHaveValue(/^≈ [\d.,]+ ha$/)
   await formulario.getByLabel('Color del límite en el mapa').fill('#ff006e')
-  await expect(page.locator('.leaflet-overlay-pane path[stroke="#ff006e"]')).toHaveCount(1)
+  await expect.poll(() => colorEnElMapa(page, '#ff006e')).toBe(true)
   await formulario.getByRole('button', { name: 'Guardar' }).click()
   await expect(formulario.getByText('Datos del predio guardados.')).toBeVisible()
   // Ya guardada, el área es la calculada por el servidor (sin «≈»).
@@ -275,7 +276,8 @@ test('el agrónomo define la ruta de un lote: propuesta, ajuste, mapa y guardado
   const propuesta = await ordenEnLista(page)
   expect([propuesta, [...propuesta].reverse()]).toContainEqual([c1, c3, c2])
   await expect(page.getByText('La ruta incluye las 3 trampas activas del lote')).toBeVisible()
-  await expect(page.locator('.leaflet-overlay-pane path')).not.toHaveCount(0)
+  // Línea del recorrido (color #e8875a, CapaRuta).
+  await expect.poll(() => colorEnElMapa(page, '#e8875a')).toBe(true)
   await expect(page.locator('.mapa-tarjeta__leyenda')).toContainText(/Recorrido: ≈ [\d.]+ m/)
 
   // Ajuste con las flechas y guardado: el servidor calcula la distancia.

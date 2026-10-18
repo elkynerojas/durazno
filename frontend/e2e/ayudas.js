@@ -184,3 +184,19 @@ export async function asegurarTecnicoE2E(page) {
     return tecnico
   })
 }
+
+// ¿Hay algún píxel de ese color (#rrggbb) en el canvas donde Leaflet dibuja los polígonos?
+export async function colorEnElMapa(page, hex) {
+  return page.evaluate((hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    return [...document.querySelectorAll('.leaflet-overlay-pane canvas')].some((canvas) => {
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] === r && data[i + 1] === g && data[i + 2] === b && data[i + 3] === 255) {
+          return true
+        }
+      }
+      return false
+    })
+  }, hex)
+}
