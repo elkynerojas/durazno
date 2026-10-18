@@ -820,7 +820,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-27 · Consultar el historial por trampa y por lote
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero ver las capturas en el tiempo de una trampa o un lote, para analizar el comportamiento de la plaga.
 
 **Criterios de aceptación**
@@ -831,9 +831,17 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 **Tareas**
 
-- [ ] `HU-27.1` [API] GET /historial con filtros y paginación
-- [ ] `HU-27.2` [Web] Tabla y gráfico de capturas
-- [ ] `HU-27.3` [API] Exportación CSV
+- [x] `HU-27.1` [API] GET /historial con filtros y paginación
+- [x] `HU-27.2` [Web] Tabla y gráfico de capturas
+- [x] `HU-27.3` [API] Exportación CSV
+
+> `GET /historial?trampa_id=|lote_id=|predio_id=&desde=&hasta=&especie=&pagina=&por_pagina=`
+> (grupo MTD): lecturas no rechazadas, paginadas (máx. 200 por página), con el MTD de cada
+> trampa (moscas de su especie ÷ (1 × días)) y la serie de capturas por fecha. La especie limita
+> al tipo de trampa (Jackson / McPhail), como el MTD. `GET /historial.csv`: lo mismo sin paginar
+> (máx. 50 000), separador «;», coma decimal y UTF-8 con BOM para Excel en español; sin datos
+> personales. Web `/historial` (desde el MTD, la ficha del QR y la trampa o el lote en el mapa):
+> filtros, gráfico de barras por fecha y especie, tabla paginada y «Exportar CSV».
 
 ### HU-28 · Calcular el MTD del predio
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 
 import { obtenerMtd } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
@@ -43,7 +44,11 @@ export default function VistaMtd() {
       <Encabezado
         migas={[{ texto: predio.nombre, a: '/mapa' }, { texto: 'MTD' }]}
         titulo="Índice MTD del predio"
-      />
+      >
+        <Link to="/historial" className="boton-secundario">
+          Historial de capturas
+        </Link>
+      </Encabezado>
       <form
         className="formulario filtro-mtd"
         aria-label="Periodo"

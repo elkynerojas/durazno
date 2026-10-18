@@ -1785,7 +1785,8 @@ button {
   color: var(--texto-suave);
 }
 
-.formulario.filtro-mtd input {
+.formulario.filtro-mtd input,
+.formulario.filtro-mtd select {
   margin-bottom: 0;
 }
 
@@ -1883,4 +1884,37 @@ button {
 
 .cumplimiento__cifra--vencidas {
   color: var(--error);
+}
+
+/* ---------- Historial de capturas (HU-27) ---------- */
+.grafico-capturas {
+  margin: 0 0 1rem;
+}
+
+.grafico-capturas svg {
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  fill: var(--texto-suave);
+}
+
+.grafico-capturas .mapa-tarjeta__leyenda {
+  padding: 0.5rem 0 0;
+  border-top: 0;
+}
+
+.grafico-capturas__capitata {
+  fill: var(--durazno-oscuro);
+  background: var(--durazno-oscuro);
+}
+
+.grafico-capturas__anastrepha {
+  fill: var(--verde-600);
+  background: var(--verde-600);
+}
+
+.paginacion {
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
 }

@@ -145,6 +145,16 @@ export const obtenerMtd = (predioId, desde, hasta) =>
     `/mtd?predio_id=${predioId}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`,
   )
 
+// Historial de capturas (HU-27). `filtros`: predio_id | lote_id | trampa_id, desde, hasta,
+// especie, pagina, por_pagina (los vacíos se omiten).
+const consultaHistorial = (filtros) =>
+  new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== '' && v != null)).toString()
+
+export const historialCapturas = (filtros) => api(`/historial?${consultaHistorial(filtros)}`)
+
+export const historialCsv = (filtros) =>
+  api(`/historial.csv?${consultaHistorial(filtros)}`, { binario: true })
+
 export const listarRutasPredio = (predioId) => api(`/rutas?predio_id=${predioId}`)
 
 // Orden propuesto por vecino más cercano (no se guarda).

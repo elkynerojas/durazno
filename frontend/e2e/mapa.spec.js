@@ -757,3 +757,56 @@ test('el MTD del predio muestra M, T y D de la semana con la lectura', async ({ 
     'sin dato (T × D = 0)',
   )
 })
+
+// --- Historial de capturas (HU-27) ---
+
+test('el historial de una trampa muestra sus lecturas y se exporta a CSV', async ({ page }) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  const codigoQr = await page.evaluate(async (codigo) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const predioId = localStorage.getItem('icota.predio')
+    const trampas = await (
+      await fetch(`/api/v1/trampas?predio_id=${predioId}`, { headers: cabeceras })
+    ).json()
+    const trampa = trampas.find((t) => t.codigo_ica === codigo)
+    await fetch('/api/v1/visitas/lecturas', {
+      method: 'POST',
+      headers: cabeceras,
+      body: JSON.stringify({
+        trampa_id: trampa.id,
+        observado_en: new Date().toISOString(),
+        capitata_machos: 3,
+        capitata_hembras: 1,
+        anastrepha: 0,
+        dias_exposicion: 7,
+        justificacion_dias: 'Prueba E2E del historial',
+        estado_trampa: 'buena',
+        cambio_atrayente: false,
+      }),
+    })
+    return trampa.codigo_qr
+  }, codigo)
+
+  await page.goto(`/t/${codigoQr}`)
+  await page.getByRole('link', { name: 'Ver historial de capturas' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Historial de capturas')
+  const tabla = page.getByRole('table', { name: 'Lecturas' })
+  await expect(tabla.getByRole('row')).toHaveCount(2)
+  // 4 moscas en 7 días: 4 ÷ (1 × 7) = 0,5714.
+  await expect(tabla.getByRole('row').nth(1)).toContainText('0,5714')
+
+  const [descarga] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Exportar CSV' }).click(),
+  ])
+  const ruta = await descarga.path()
+  const texto = (await import('node:fs')).readFileSync(ruta, 'utf-8')
+  expect(texto).toContain('Fecha y hora;Lote;Trampa (código ICA)')
+  expect(texto).toContain(`;${lote};${codigo};Jackson;3;1;0;7;0,5714;registrada`)
+})

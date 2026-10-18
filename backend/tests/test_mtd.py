@@ -283,3 +283,114 @@ async def test_permisos_y_rango_invalido(cliente, predio, crear_usuario, session
         URL, params={**params, "desde": "2020-01-01", "hasta": "2026-10-01"}, headers=h
     )
     assert largo.status_code == 422
+
+
+# --- Historial de capturas y CSV (HU-27) ---
+
+URL_HISTORIAL = "/api/v1/historial"
+
+
+async def _escenario(cliente, predio):
+    """Las lecturas del MTD calculado a mano, con una rechazada."""
+    await _registrar(cliente, predio, "J1", 14, machos=3, hembras=1)
+    await _registrar(cliente, predio, "J2", 14, machos=2)
+    await _registrar(cliente, predio, "M1", 14, machos=1, anastrepha=5)
+    await _registrar(cliente, predio, "J1", 21)
+    rechazada = await _registrar(cliente, predio, "J2", 21, machos=50)
+    await cliente.post(
+        f"/api/v1/visitas/lecturas/{rechazada['id']}/revision",
+        json={"estado": "rechazada", "motivo": "Conteo imposible"},
+        headers=encabezados(predio["agronomo"]),
+    )
+
+
+async def test_historial_del_predio_con_serie_y_mtd_por_trampa(cliente, predio):
+    await _escenario(cliente, predio)
+    respuesta = await cliente.get(
+        URL_HISTORIAL,
+        params={
+            "predio_id": str(predio["predio"].id),
+            "desde": "2026-10-12",
+            "hasta": "2026-10-25",
+        },
+        headers=encabezados(predio["tecnico"]),
+    )
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["total"] == 4  # la rechazada no aparece
+    assert [(x["trampa_codigo_ica"], x["observado_en"][:10]) for x in cuerpo["lecturas"]][0] == (
+        "J1",
+        "2026-10-21",
+    )
+    # Serie: el 14, C. capitata en Jackson = 4 + 2 = 6 (la de McPhail no suma); Anastrepha = 5.
+    assert cuerpo["serie"] == [
+        {"fecha": "2026-10-14", "capitata": 6, "anastrepha": 5, "lecturas": 3},
+        {"fecha": "2026-10-21", "capitata": 0, "anastrepha": 0, "lecturas": 1},
+    ]
+    j1 = next(
+        x
+        for x in cuerpo["lecturas"]
+        if x["trampa_codigo_ica"] == "J1" and x["observado_en"].startswith("2026-10-14")
+    )
+    # MTD de J1 el 14: 4 ÷ (1 × 7) = 0,5714.
+    assert j1["mtd"] == pytest.approx(0.5714, abs=1e-4)
+    m1 = next(x for x in cuerpo["lecturas"] if x["trampa_codigo_ica"] == "M1")
+    assert m1["mtd"] == pytest.approx(5 / 7, abs=1e-4)  # McPhail: Anastrepha
+
+
+async def test_historial_filtra_por_especie_trampa_y_pagina(cliente, predio):
+    await _escenario(cliente, predio)
+    h = encabezados(predio["tecnico"])
+    rango = {"desde": "2026-10-12", "hasta": "2026-10-25"}
+    anastrepha = await cliente.get(
+        URL_HISTORIAL,
+        params={"predio_id": str(predio["predio"].id), "especie": "anastrepha", **rango},
+        headers=h,
+    )
+    assert [x["trampa_codigo_ica"] for x in anastrepha.json()["lecturas"]] == ["M1"]
+
+    params = {"trampa_id": str(predio["trampas"]["J1"].id), "por_pagina": 1, **rango}
+    pagina2 = (await cliente.get(URL_HISTORIAL, params={**params, "pagina": 2}, headers=h)).json()
+    assert (pagina2["total"], pagina2["pagina"]) == (2, 2)
+    assert [x["observado_en"][:10] for x in pagina2["lecturas"]] == ["2026-10-14"]
+    assert len(pagina2["serie"]) == 2  # la serie no se pagina
+
+
+async def test_exportar_el_historial_a_csv(cliente, predio):
+    await _escenario(cliente, predio)
+    respuesta = await cliente.get(
+        f"{URL_HISTORIAL}.csv",
+        params={
+            "lote_id": str(next(iter(predio["trampas"].values())).lote_id),
+            "desde": "2026-10-12",
+            "hasta": "2026-10-25",
+        },
+        headers=encabezados(predio["tecnico"]),
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"] == "text/csv; charset=utf-8"
+    assert respuesta.headers["content-disposition"] == (
+        'attachment; filename="historial-lote-L-01-20261012-20261025.csv"'
+    )
+    texto = respuesta.content.decode("utf-8")
+    assert texto.startswith("﻿")
+    lineas = texto.lstrip("﻿").splitlines()
+    assert lineas[0].split(";")[:3] == ["Fecha y hora", "Lote", "Trampa (código ICA)"]
+    assert len(lineas) == 5  # encabezado + 4 lecturas (sin la rechazada)
+    # De la más antigua a la más reciente, hora de Bogotá y coma decimal: 4 ÷ 7 = 0,5714.
+    assert lineas[1] == "14/10/2026 08:00;L-01;J1;Jackson;3;1;0;7;0,5714;registrada"
+    assert "Persona de Prueba" not in texto  # sin datos personales
+
+
+async def test_historial_permisos_y_ambito(cliente, predio, crear_usuario, session):
+    params = {"predio_id": str(predio["predio"].id)}
+    assert (await cliente.get(URL_HISTORIAL, params=params)).status_code == 401
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[otro])
+    h = encabezados(ajeno)
+    assert (await cliente.get(URL_HISTORIAL, params=params, headers=h)).status_code == 404
+    assert (await cliente.get(f"{URL_HISTORIAL}.csv", params=params, headers=h)).status_code == 404
+    sin_ambito = await cliente.get(URL_HISTORIAL, headers=encabezados(predio["tecnico"]))
+    assert sin_ambito.status_code == 422

@@ -28,6 +28,7 @@ api_router.include_router(rutas.router)
 api_router.include_router(plan.router)
 api_router.include_router(visitas.router)
 api_router.include_router(mtd.router)
+api_router.include_router(mtd.router_historial)
 
 # Grupos de servicios previstos (Tabla 2 de la propuesta). Regístralos aquí
 # a medida que se implementen, cada uno en app/api/v1/endpoints/<grupo>.py:

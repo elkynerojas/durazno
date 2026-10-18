@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -25,3 +25,38 @@ class MtdPredio(BaseModel):
     hasta: date
     semanas: list[FilaMtdLeer] = Field(description="Por especie y semana ISO, también sin lecturas")
     periodo: list[FilaMtdLeer] = Field(description="Consolidado del predio en todo el periodo")
+
+
+class LecturaHistorial(BaseModel):
+    id: uuid.UUID
+    observado_en: datetime
+    trampa_id: uuid.UUID
+    trampa_codigo_ica: str
+    tipo: str = Field(description="`jackson` o `mcphail`")
+    lote_id: uuid.UUID
+    lote_codigo: str
+    capitata_machos: int
+    capitata_hembras: int
+    anastrepha: int
+    dias_exposicion: int
+    estado: str = Field(description="`registrada` o `validada` (las rechazadas no se incluyen)")
+    mtd: float | None = Field(
+        description="MTD de la trampa en esta lectura: moscas de su especie ÷ (1 × días)"
+    )
+
+
+class PuntoSerie(BaseModel):
+    fecha: date
+    capitata: int = Field(description="*C. capitata* (machos + hembras) en trampas Jackson")
+    anastrepha: int = Field(description="*Anastrepha* en trampas McPhail")
+    lecturas: int
+
+
+class Historial(BaseModel):
+    desde: date
+    hasta: date
+    total: int = Field(description="Lecturas que cumplen los filtros")
+    pagina: int
+    por_pagina: int
+    serie: list[PuntoSerie] = Field(description="Capturas por fecha (todas, no solo la página)")
+    lecturas: list[LecturaHistorial]

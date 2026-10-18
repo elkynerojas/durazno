@@ -345,6 +345,9 @@ function FichaTrampa({ trampa, umbrales, registra }) {
         <Link to={`/trampas?trampa=${trampa.id}`} className="boton-secundario">
           Ver ficha y QR
         </Link>
+        <Link to={`/historial?trampa=${trampa.id}`} className="boton-secundario">
+          Historial
+        </Link>
       </div>
     </section>
   )
@@ -388,6 +391,9 @@ function FichaLote({ lote, trampas, editable }) {
         </Link>
         <Link to={`/rutas?lote=${lote.id}`} className="boton-secundario">
           Ver ruta
+        </Link>
+        <Link to={`/historial?lote=${lote.id}`} className="boton-secundario">
+          Historial
         </Link>
       </div>
       <div className="grupo-botones ficha__etiquetas">

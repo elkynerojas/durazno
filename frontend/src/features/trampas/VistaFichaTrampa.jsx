@@ -164,6 +164,11 @@ function Ficha({ trampa, lote, ruta, ultima_lectura }) {
               Registrar lectura
             </Link>
           )}
+          {ultima_lectura && (
+            <Link to={`/historial?trampa=${trampa.id}`} className="boton-secundario boton-bloque">
+              Ver historial de capturas
+            </Link>
+          )}
         </section>
       </div>
     </>

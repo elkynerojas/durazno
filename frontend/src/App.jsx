@@ -10,6 +10,7 @@ import VistaLecturas from './features/lecturas/VistaLecturas'
 import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
 import VistaMiSemana from './features/plan/VistaMiSemana'
+import VistaHistorial from './features/mtd/VistaHistorial'
 import VistaMtd from './features/mtd/VistaMtd'
 import VistaPlan from './features/plan/VistaPlan'
 import VistaPredio from './features/predio/VistaPredio'
@@ -68,6 +69,14 @@ export default function App() {
                 }
               />
               <Route path="/mi-semana" element={<VistaMiSemana />} />
+              <Route
+                path="/historial"
+                element={
+                  <PorPredio>
+                    <VistaHistorial />
+                  </PorPredio>
+                }
+              />
               <Route
                 path="/mtd"
                 element={
