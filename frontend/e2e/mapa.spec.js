@@ -810,3 +810,46 @@ test('el historial de una trampa muestra sus lecturas y se exporta a CSV', async
   expect(texto).toContain('Fecha y hora;Lote;Trampa (código ICA)')
   expect(texto).toContain(`;${lote};${codigo};Jackson;3;1;0;7;0,5714;registrada`)
 })
+
+// --- Registrar una lectura desde el menú, sin escanear el QR ---
+
+test('el técnico registra una lectura desde «Lecturas de trampa» eligiendo la trampa', async ({
+  page,
+}) => {
+  await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('button', { name: 'Salir' }).click()
+  await ingresar(page, CORREO_TECNICO)
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Lecturas de trampa' }).click()
+  await expect(page.getByRole('heading', { name: 'Mis lecturas' })).toBeVisible()
+  await page.getByRole('button', { name: 'Registrar lectura' }).click()
+  await page.getByLabel('Código ICA').fill(codigo)
+  await page
+    .getByRole('list', { name: 'Trampas activas' })
+    .getByRole('button', { name: new RegExp(codigo) })
+    .click()
+
+  const formulario = page.getByRole('form', { name: 'Lectura de trampa' })
+  await formulario.getByRole('button', { name: 'Sumar Ceratitis capitata machos' }).click()
+  await formulario.getByRole('button', { name: 'Registrar lectura' }).click()
+  await expect(page.getByText(`Lectura de ${codigo} registrada.`)).toBeVisible()
+
+  await page.getByRole('link', { name: 'Registrar otra' }).click()
+  await expect(page.getByRole('list', { name: 'Trampas activas' })).toBeVisible()
+  await expect(page.getByRole('listitem', { name: `Lectura de ${codigo}` })).toContainText(
+    'Pendiente',
+  )
+
+  // El agrónomo (aquí, el administrador) la ve en su bandeja de pendientes.
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('button', { name: 'Salir' }).click()
+  await ingresar(page)
+  // Vuelve a la página donde estaba (RutaProtegida recuerda la ruta pedida).
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lecturas de trampa')
+  await expect(page.getByRole('listitem', { name: `Lectura de ${codigo}` })).toBeVisible()
+})

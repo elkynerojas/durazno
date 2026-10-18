@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ConContextos } from '../../test/contextos'
@@ -39,6 +39,29 @@ const PENDIENTES = [
 
 function simularApi() {
   const fetchSimulado = vi.fn(async (url, opciones) => {
+    if (url.startsWith('/api/v1/lotes')) {
+      return respuestaJson(200, [{ id: 'l-1', codigo: 'L-01', nombre: null }])
+    }
+    if (url.startsWith('/api/v1/trampas')) {
+      return respuestaJson(200, [
+        {
+          id: 't-1',
+          lote_id: 'l-1',
+          codigo_ica: 'ICA-0031',
+          codigo_qr: 'ABCD2345',
+          tipo: 'jackson',
+          estado: 'activa',
+        },
+        {
+          id: 't-2',
+          lote_id: 'l-1',
+          codigo_ica: 'ICA-0032',
+          codigo_qr: 'EFGH6789',
+          tipo: 'mcphail',
+          estado: 'retirada',
+        },
+      ])
+    }
     if (opciones?.method === 'POST') {
       const id = url.split('/').at(-2)
       const datos = JSON.parse(opciones.body)
@@ -54,8 +77,11 @@ function simularApi() {
 function renderizar(rol = 'agronomo') {
   render(
     <ConContextos usuario={{ nombre_completo: 'Luis', rol }}>
-      <MemoryRouter>
-        <VistaLecturas />
+      <MemoryRouter initialEntries={['/lecturas']}>
+        <Routes>
+          <Route path="/lecturas" element={<VistaLecturas />} />
+          <Route path="/t/:codigo/lectura" element={<p>Formulario de lectura</p>} />
+        </Routes>
       </MemoryRouter>
     </ConContextos>,
   )
@@ -123,5 +149,25 @@ describe('VistaLecturas', () => {
     await screen.findByRole('listitem', { name: 'Lectura de ICA-01' })
     await usuarioEvento.click(screen.getByRole('button', { name: 'Rechazadas' }))
     expect(await screen.findByText('No hay lecturas en este estado.')).toBeInTheDocument()
+  })
+
+  it('el técnico ve sus lecturas sin acciones y registra una eligiendo la trampa', async () => {
+    const fetchSimulado = simularApi()
+    const usuarioEvento = userEvent.setup()
+    renderizar('tecnico')
+
+    const tarjeta = await screen.findByRole('listitem', { name: 'Lectura de ICA-01' })
+    expect(screen.getByRole('heading', { name: 'Mis lecturas' })).toBeInTheDocument()
+    expect(within(tarjeta).queryByRole('button')).not.toBeInTheDocument()
+    expect(fetchSimulado.mock.calls.map(([u]) => u)).toContainEqual(
+      expect.stringContaining('&mias=true'),
+    )
+
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Registrar lectura' }))
+    const trampas = await screen.findByRole('list', { name: 'Trampas activas' })
+    // Solo las activas: la retirada no aparece.
+    expect(within(trampas).getAllByRole('button')).toHaveLength(1)
+    await usuarioEvento.click(within(trampas).getByRole('button', { name: /ICA-0031/ }))
+    expect(screen.getByText('Formulario de lectura')).toBeInTheDocument()
   })
 })

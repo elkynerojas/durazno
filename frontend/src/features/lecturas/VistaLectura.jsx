@@ -76,7 +76,10 @@ export default function VistaLectura() {
                 </p>
               )}
               <div className="grupo-botones">
-                <Link to="/mi-semana" className="boton-primario">
+                <Link to="/lecturas?registrar=1" className="boton-primario">
+                  Registrar otra
+                </Link>
+                <Link to="/mi-semana" className="boton-secundario">
                   Mi semana
                 </Link>
                 {ruta && (

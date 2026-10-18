@@ -16,7 +16,7 @@ const SECCIONES = [
   { a: '/trampas', texto: 'Trampas y QR' },
   { a: '/rutas', texto: 'Rutas de monitoreo' },
   { a: '/plan', texto: 'Planeación' },
-  { a: '/lecturas', texto: 'Lecturas de trampa', roles: ['agronomo', 'administrador'] },
+  { a: '/lecturas', texto: 'Lecturas de trampa', roles: ['tecnico', 'agronomo', 'administrador'] },
   { a: '/mtd', texto: 'MTD e historial' },
   { a: '/predio', texto: 'Datos del predio' },
   { a: '/predios', texto: 'Predios', roles: ['administrador'] },

@@ -812,7 +812,9 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 > trampa (umbral **provisional**, acordar con Icota), sin ubicación o con días de exposición
 > cambiados. Las rechazadas ya no cuentan como revisión anterior ni en el monitoreo del mapa.
 > Web `/lecturas`: pendientes (las más antiguas primero), validadas y rechazadas; validar,
-> rechazar con motivo y «Validar las N sin avisos». Con `estado_esperado` la API responde 409 si
+> rechazar con motivo y «Validar las N sin avisos». La sección también la ve el técnico: sus
+> lecturas (`mias=true`) sin acciones y «Registrar lectura» con un selector de trampa (lote y
+> código ICA), para registrar sin escanear el QR. Con `estado_esperado` la API responde 409 si
 > otra persona ya revisó la lectura (no se pisan decisiones). Los avisos solo los ven agrónomo y
 > administrador. **Decisión a confirmar:** el agrónomo puede validar las lecturas que él mismo
 > registró (en un predio con un solo agrónomo no habría quién más). HU-26.3: la exclusión de las rechazadas en el MTD

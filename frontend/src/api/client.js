@@ -130,9 +130,10 @@ export const registrarLectura = (datos) =>
   api('/visitas/lecturas', { metodo: 'POST', cuerpo: datos })
 
 // Lecturas del predio en un estado (p. ej. `registrada`: bandeja de validación, HU-26).
-export const lecturasDelPredio = (predioId, estado) =>
+// Con `mias`, solo las que registró el usuario (vista del técnico).
+export const lecturasDelPredio = (predioId, estado, mias = false) =>
   api(
-    `/visitas/lecturas?predio_id=${predioId}&estado=${estado}&antiguas_primero=${estado === 'registrada'}&limite=200`,
+    `/visitas/lecturas?predio_id=${predioId}&estado=${estado}&antiguas_primero=${estado === 'registrada'}&limite=200${mias ? '&mias=true' : ''}`,
   )
 
 // Valida o rechaza una lectura (`{ estado, motivo }`).

@@ -64,6 +64,11 @@ describe('Plantilla', () => {
     expect(enlacesDelMenu()[0]).toBe('Mi semana')
   })
 
+  it('al técnico le muestra «Lecturas de trampa» para registrarlas', () => {
+    renderizar('tecnico')
+    expect(enlacesDelMenu()).toContain('Lecturas de trampa')
+  })
+
   it.each(['productor', 'administrador'])('al rol %s no le muestra «Mi semana»', (rol) => {
     renderizar(rol)
     expect(enlacesDelMenu()).not.toContain('Mi semana')

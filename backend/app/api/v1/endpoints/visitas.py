@@ -260,7 +260,8 @@ async def registrar_lectura(
     response_model=list[LecturaLeer],
     summary="Lecturas de una trampa, un lote o un predio",
     description="Lecturas vigentes de la trampa, el lote o el predio, filtradas por `estado` "
-    "(p. ej. `registrada` para la bandeja de validación). De la más reciente a la más antigua, "
+    "(p. ej. `registrada` para la bandeja de validación); con `mias`, solo las que registró el "
+    "usuario. De la más reciente a la más antigua, "
     "o al revés con `antiguas_primero`. Cualquier rol con el predio asignado.",
     responses={
         **ERROR_401,
@@ -275,6 +276,7 @@ async def listar_lecturas(
     lote_id: uuid.UUID | None = None,
     predio_id: uuid.UUID | None = None,
     estado: EstadoLectura | None = None,
+    mias: bool = False,
     antiguas_primero: bool = False,
     limite: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[LecturaLeer]:
@@ -292,6 +294,8 @@ async def listar_lecturas(
     consulta = _consulta().where(condicion, Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None))
     if estado is not None:
         consulta = consulta.where(LecturaTrampa.estado == estado)
+    if mias:
+        consulta = consulta.where(LecturaTrampa.responsable_id == usuario.id)
     orden = (
         LecturaTrampa.observado_en.asc() if antiguas_primero else LecturaTrampa.observado_en.desc()
     )

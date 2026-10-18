@@ -514,3 +514,15 @@ async def test_los_avisos_son_solo_para_quien_valida(cliente, datos, agronomo):
     assert lectura["avisos"] == []  # el técnico no los ve
     vista = await cliente.get(f"{URL}/{lectura['id']}", headers=encabezados(agronomo))
     assert vista.json()["avisos"] == ["Sin ubicación del teléfono"]
+
+
+async def test_cada_tecnico_puede_ver_solo_sus_lecturas(cliente, datos, crear_usuario):
+    otro = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[datos["predio"]])
+    propia = (await _registrar(cliente, datos)).json()
+    await _registrar(cliente, datos, usuario=otro, observado_en="2026-10-15T07:00:00-05:00")
+    respuesta = await cliente.get(
+        URL,
+        params={"predio_id": str(datos["predio"].id), "mias": True},
+        headers=encabezados(datos["tecnico"]),
+    )
+    assert [x["id"] for x in respuesta.json()] == [propia["id"]]

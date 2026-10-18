@@ -1918,3 +1918,30 @@ button {
   justify-content: flex-end;
   margin-top: 0.75rem;
 }
+
+/* ---------- Registrar lectura sin QR ---------- */
+.selector-trampa {
+  margin-bottom: 1.25rem;
+}
+
+.selector-trampa__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selector-trampa__lista .boton-secundario {
+  display: grid;
+  justify-items: start;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.selector-trampa__detalle {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--texto-suave);
+}
