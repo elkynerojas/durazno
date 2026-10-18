@@ -113,6 +113,8 @@ async def crear_predio(
     "/{predio_id}",
     response_model=PredioLeer,
     summary="Obtener un predio",
+    description="Con su límite en GeoJSON. Un predio no asignado al usuario responde 404, sin "
+    "revelar que existe.",
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_predio(

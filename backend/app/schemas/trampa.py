@@ -12,6 +12,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas import ejemplos as ej
 from app.schemas.geo import PuntoGeoJSON, a_geojson
 
 TipoTrampa = Literal["jackson", "mcphail"]
@@ -26,7 +27,24 @@ PrecisionM = Annotated[
 
 
 class TrampaCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.TRAMPA_ID,
+                    "lote_id": ej.LOTE_ID,
+                    "codigo_ica": "NS-CAC-0001",
+                    "tipo": "jackson",
+                    "atrayente": "Trimedlure",
+                    "fecha_instalacion": "2026-10-05",
+                    "estado": "activa",
+                    "geom": ej.PUNTO_TRAMPA,
+                    "precision_m": 4.5,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: si se envía, reenviar el mismo `id` no duplica"
@@ -44,7 +62,9 @@ class TrampaCrear(BaseModel):
 
 
 class TrampaActualizar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid", json_schema_extra={"examples": [{"estado": "inactiva"}]}
+    )
 
     lote_id: uuid.UUID | None = None
     codigo_ica: CodigoIca | None = None
@@ -70,7 +90,27 @@ class TrampaActualizar(BaseModel):
 
 
 class TrampaLeer(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.TRAMPA_ID,
+                    "lote_id": ej.LOTE_ID,
+                    "codigo_ica": "NS-CAC-0001",
+                    "codigo_qr": "K7MD3QXA",
+                    "tipo": "jackson",
+                    "atrayente": "Trimedlure",
+                    "fecha_instalacion": "2026-10-05",
+                    "estado": "activa",
+                    "geom": ej.PUNTO_TRAMPA,
+                    "precision_m": 4.5,
+                    "created_at": ej.CREADO_EN,
+                    "updated_at": ej.CREADO_EN,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID
     lote_id: uuid.UUID
@@ -139,7 +179,9 @@ class TrampaResuelta(BaseModel):
 
 
 class ReemplazoQrCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid", json_schema_extra={"examples": [{"motivo": "Etiqueta rota por el viento"}]}
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: reenviar el mismo `id` no genera otro código"

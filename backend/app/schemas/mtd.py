@@ -1,12 +1,29 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.mtd import Especie
 
 
 class FilaMtdLeer(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "especie": "capitata",
+                    "anio": 2026,
+                    "semana": 42,
+                    "moscas": 12,
+                    "trampas": 4,
+                    "dias_promedio": 7.0,
+                    "mtd": 0.428571,
+                    "pendientes": 1,
+                }
+            ]
+        }
+    )
+
     especie: Especie = Field(description="`capitata` (trampas Jackson) o `anastrepha` (McPhail)")
     anio: int | None = Field(description="Año ISO de la semana; `null` en el resumen del periodo")
     semana: int | None = Field(description="Semana ISO; `null` en el resumen del periodo")

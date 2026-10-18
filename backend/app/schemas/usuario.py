@@ -12,6 +12,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas import ejemplos as ej
+
 Rol = Literal["tecnico", "agronomo", "productor", "administrador"]
 NombreCompleto = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)
@@ -20,7 +22,21 @@ Clave = Annotated[str, Field(min_length=8, max_length=128)]
 
 
 class UsuarioCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.USUARIO_ID,
+                    "correo": "tecnico@example.com",
+                    "nombre_completo": "Técnico de campo",
+                    "rol": "tecnico",
+                    "clave": "cambiar-esta-clave",
+                    "autorizacion_datos": True,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: si se envía, reenviar el mismo `id` no duplica"
@@ -48,7 +64,7 @@ class UsuarioCrear(BaseModel):
 
 
 class UsuarioActualizar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"rol": "agronomo"}]})
 
     correo: EmailStr | None = None
     nombre_completo: NombreCompleto | None = None

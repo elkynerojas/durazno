@@ -13,7 +13,13 @@ class EstadoSalud(BaseModel):
     postgis: str | None = None
 
 
-@router.get("/health", response_model=EstadoSalud, summary="Estado de la API y de PostGIS")
+@router.get(
+    "/health",
+    response_model=EstadoSalud,
+    summary="Estado de la API y de PostGIS",
+    description="Público, sin sesión. Si la base no responde, devuelve 200 con `base_datos: "
+    '"sin conexión"` en lugar de un 500, para que el monitoreo lea el estado.',
+)
 async def health(session: SessionDep) -> EstadoSalud:
     try:
         version = (await session.execute(text("SELECT postgis_lib_version()"))).scalar_one()

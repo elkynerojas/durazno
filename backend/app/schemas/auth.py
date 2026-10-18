@@ -4,6 +4,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Token(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIs…",
+                    "refresh_token": None,
+                    "token_type": "bearer",
+                    "expires_in": 900,
+                }
+            ]
+        }
+    )
+
     access_token: str
     refresh_token: str | None = Field(
         default=None,
@@ -15,6 +28,10 @@ class Token(BaseModel):
 
 
 class RenovarEntrada(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"refresh_token": "eyJhbGciOiJIUzI1NiIs…"}]}
+    )
+
     refresh_token: str | None = Field(
         default=None,
         description="Solo clientes nativos. El navegador no envía cuerpo: usa la cookie.",

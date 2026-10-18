@@ -13,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas import ejemplos as ej
 from app.schemas.geo import PuntoGeoJSON, a_geojson
 from app.schemas.trampa import EstadoLectura, LecturaResumen, PrecisionM
 
@@ -23,7 +24,26 @@ Texto500 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1,
 
 
 class LecturaCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.LECTURA_ID,
+                    "trampa_id": ej.TRAMPA_ID,
+                    "observado_en": ej.OBSERVADO_EN,
+                    "capitata_machos": 3,
+                    "capitata_hembras": 1,
+                    "anastrepha": 0,
+                    "estado_trampa": "buena",
+                    "cambio_atrayente": False,
+                    "observaciones": "Frutos maduros caídos cerca de la trampa",
+                    "posicion": ej.PUNTO_TECNICO,
+                    "precision_m": 6.0,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None,
@@ -109,7 +129,18 @@ Motivo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, m
 
 
 class Revision(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "estado": "rechazada",
+                    "motivo": "Las capturas no coinciden con la foto",
+                    "estado_esperado": "registrada",
+                }
+            ]
+        },
+    )
 
     estado: Literal["validada", "rechazada"]
     motivo: Motivo | None = Field(default=None, description="Obligatorio para rechazar")

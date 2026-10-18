@@ -210,6 +210,8 @@ async def proponer_ruta(
     "/{ruta_id}",
     response_model=RutaLeer,
     summary="Obtener una ruta",
+    description="Paradas en orden con la distancia de cada tramo. `requiere_revision` avisa si "
+    "las trampas del lote cambiaron desde que se guardó.",
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_ruta(

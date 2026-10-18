@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas import ejemplos as ej
 from app.schemas.geo import PuntoGeoJSON
 from app.schemas.trampa import EstadoTrampa, TipoTrampa
 
@@ -13,7 +14,14 @@ DESCRIPCION_ORDEN = (
 
 
 class RutaCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {"id": ej.RUTA_ID, "lote_id": ej.LOTE_ID, "trampas": [ej.TRAMPA_ID, ej.TRAMPA_2_ID]}
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: si se envía, reenviar el mismo `id` no duplica"
@@ -23,7 +31,10 @@ class RutaCrear(BaseModel):
 
 
 class RutaActualizar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"examples": [{"trampas": [ej.TRAMPA_2_ID, ej.TRAMPA_ID]}]},
+    )
 
     trampas: OrdenTrampas = Field(min_length=1, max_length=500, description=DESCRIPCION_ORDEN)
 

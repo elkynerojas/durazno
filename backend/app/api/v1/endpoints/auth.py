@@ -183,6 +183,8 @@ async def salir(respuesta: Response) -> None:
     "/yo",
     response_model=UsuarioLeer,
     summary="Usuario de la sesión actual",
+    description="Identidad y rol de quien envía el token; la app lo usa al abrir para saber qué "
+    "menús mostrar.",
     responses=ERROR_401,
 )
 async def yo(usuario: UsuarioActualDep) -> Usuario:

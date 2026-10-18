@@ -55,6 +55,13 @@ jobs:
       - run: ruff format --check .
       - run: alembic upgrade head
       - run: pytest --cov --cov-report=term
+      - name: Exportar openapi.json (HU-31) y verificar que el versionado esté al día
+        run: python -m app.scripts.exportar_openapi && git diff --exit-code openapi.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: backend/openapi.json
+          retention-days: 30
 
   frontend:
     name: Frontend (oxlint + vitest + build)

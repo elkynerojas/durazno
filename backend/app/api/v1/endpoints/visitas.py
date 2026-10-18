@@ -307,6 +307,8 @@ async def listar_lecturas(
     "/lecturas/{lectura_id}",
     response_model=LecturaLeer,
     summary="Obtener una lectura",
+    description="Con sus avisos de revisión. La posición GPS solo la ven el agrónomo, el "
+    "administrador y quien la registró; el productor no ve al responsable (Ley 1581).",
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_lectura(

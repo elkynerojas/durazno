@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+from app.schemas import ejemplos as ej
 from app.schemas.trampa import TipoTrampa
 
 TipoActividad = Literal["visita_monitoreo", "cambio_atrayente", "labor_cultural"]
@@ -23,7 +24,22 @@ class Repeticion(BaseModel):
 
 
 class ActividadCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.ACTIVIDAD_ID,
+                    "lote_id": ej.LOTE_ID,
+                    "tipo": "visita_monitoreo",
+                    "anio": 2026,
+                    "semana": 43,
+                    "responsable_id": ej.USUARIO_ID,
+                    "repetir": {"cada_semanas": 1, "hasta_semana": 52},
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None,
@@ -57,7 +73,12 @@ class ActividadCrear(BaseModel):
 
 
 class ActividadActualizar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [{"responsable_id": ej.USUARIO_ID, "notas": "Revisar primero el lote alto"}]
+        },
+    )
 
     responsable_id: uuid.UUID | None = None
     notas: Notas | None = Field(default=None, description="`null` borra las notas")
@@ -107,7 +128,7 @@ class AvanceLeer(BaseModel):
 
 
 class Cumplimiento(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"cumplida": True}]})
 
     cumplida: bool = Field(description="`true` la marca cumplida; `false` la desmarca")
 
@@ -167,7 +188,19 @@ Motivo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, m
 
 
 class Reprogramacion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.CAMBIO_ID,
+                    "anio": 2026,
+                    "semana": 44,
+                    "motivo": "Lluvias fuertes impidieron la visita",
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Id del cambio: reenviar el mismo no reprograma dos veces"
@@ -197,7 +230,10 @@ class CambioLeer(BaseModel):
 
 
 class VisitaAdicional(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={"examples": [{"lectura_id": ej.LECTURA_ID, "semana": 43}]},
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: reenviar el mismo `id` no duplica la visita"

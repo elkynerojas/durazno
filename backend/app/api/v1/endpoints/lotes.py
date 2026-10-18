@@ -112,6 +112,8 @@ async def listar_lotes(
     "/{lote_id}",
     response_model=LoteLeer,
     summary="Obtener un lote",
+    description="Con su polígono en GeoJSON y el área geodésica. Un lote de un predio no "
+    "asignado o borrado responde 404.",
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_lote(lote_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep) -> Lote:

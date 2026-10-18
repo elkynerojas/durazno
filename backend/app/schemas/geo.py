@@ -8,6 +8,8 @@ from geoalchemy2.shape import from_shape, to_shape
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from shapely.geometry import mapping, shape
 
+from app.schemas import ejemplos as ej
+
 Longitud = Annotated[float, Field(ge=-180, le=180)]
 Latitud = Annotated[float, Field(ge=-90, le=90)]
 Posicion = tuple[Longitud, Latitud]
@@ -32,12 +34,7 @@ def _exigir_colombia(posiciones: Iterable[Posicion]) -> None:
 class PoligonoGeoJSON(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={
-            "example": {
-                "type": "Polygon",
-                "coordinates": [[[-72.58, 7.27], [-72.57, 7.27], [-72.57, 7.28], [-72.58, 7.27]]],
-            }
-        },
+        json_schema_extra={"examples": [ej.POLIGONO_LOTE]},
     )
 
     type: Literal["Polygon"]
@@ -57,7 +54,7 @@ class PoligonoGeoJSON(BaseModel):
 class PuntoGeoJSON(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"example": {"type": "Point", "coordinates": [-72.6395, 7.2705]}},
+        json_schema_extra={"examples": [ej.PUNTO_TRAMPA]},
     )
 
     type: Literal["Point"]

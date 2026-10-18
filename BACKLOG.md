@@ -917,7 +917,7 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 ### HU-31 · Documentar la API completa
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ambos
+- **Estado:** Hecho · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ambos
 - **Historia:** Como desarrollador de la app móvil, quiero una documentación OpenAPI completa, para integrarme sin leer el código del servidor.
 
 **Criterios de aceptación**
@@ -928,8 +928,18 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 **Tareas**
 
-- [ ] `HU-31.1` [API] Ejemplos y respuestas de error en cada endpoint
-- [ ] `HU-31.2` [DevOps] Exportar openapi.json en la integración continua
+- [x] `HU-31.1` [API] Ejemplos y respuestas de error en cada endpoint
+- [x] `HU-31.2` [DevOps] Exportar openapi.json en la integración continua
+
+> Los 64 endpoints de los grupos de la Tabla 2 (más `predios`, `usuarios`, `mapa`, `exportar` e
+> `historial`) tienen `summary`, `description`, su tag y cada error documentado. Los cuerpos de
+> error salen del esquema común `Error` (`{"detail": "..."}`, `app/api/errores.py`); el 422 es la
+> lista de Pydantic o el texto de una regla del dominio. Los cuerpos de entrada y las respuestas
+> principales traen ejemplos con coordenadas de Icota en orden `[longitud, latitud]`
+> (`app/schemas/ejemplos.py`). `backend/openapi.json` se regenera con
+> `python -m app.scripts.exportar_openapi`; `tests/test_openapi.py` falla si quedó desactualizado,
+> si un endpoint pierde su documentación o si un ejemplo de entrada no pasa la validación. La CI
+> lo exporta y lo publica como artefacto `openapi`.
 
 ### HU-32 · Preparar la sincronización
 

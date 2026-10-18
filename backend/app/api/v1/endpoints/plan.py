@@ -258,6 +258,7 @@ async def _ya_programada(
     "/catalogo",
     response_model=CatalogoPlan,
     summary="Tipos de actividad y labores culturales",
+    description="Valores y nombres en español para los selectores del formulario del plan.",
     responses=ERROR_401,
 )
 async def catalogo(_: UsuarioActualDep) -> CatalogoPlan:

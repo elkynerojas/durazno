@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas import ejemplos as ej
 from app.schemas.color import ColorHex
 from app.schemas.geo import PoligonoGeoJSON, a_geojson
 
@@ -19,7 +20,21 @@ NombreLote = Annotated[str, StringConstraints(strip_whitespace=True, min_length=
 
 
 class LoteCrear(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.LOTE_ID,
+                    "predio_id": ej.PREDIO_ID,
+                    "codigo": "L-01",
+                    "nombre": "Lote alto junto a la quebrada",
+                    "color": "#ffd60a",
+                    "geom": ej.POLIGONO_LOTE,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional: si se envía, reenviar el mismo `id` no duplica"
@@ -34,7 +49,9 @@ class LoteCrear(BaseModel):
 
 
 class LoteActualizar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid", json_schema_extra={"examples": [{"nombre": "Lote alto", "color": None}]}
+    )
 
     codigo: Codigo | None = None
     nombre: NombreLote | None = Field(default=None, description="`null` borra el nombre")
@@ -54,7 +71,24 @@ class LoteActualizar(BaseModel):
 
 
 class LoteLeer(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.LOTE_ID,
+                    "predio_id": ej.PREDIO_ID,
+                    "codigo": "L-01",
+                    "nombre": "Lote alto junto a la quebrada",
+                    "color": "#ffd60a",
+                    "area_ha": 3.67,
+                    "geom": ej.POLIGONO_LOTE,
+                    "created_at": ej.CREADO_EN,
+                    "updated_at": ej.CREADO_EN,
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID
     predio_id: uuid.UUID

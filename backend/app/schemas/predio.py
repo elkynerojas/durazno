@@ -12,6 +12,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas import ejemplos as ej
 from app.schemas.color import ColorHex
 from app.schemas.geo import PoligonoGeoJSON, a_geojson
 
@@ -21,7 +22,22 @@ RegistroIca = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 
 
 class PredioGuardar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.PREDIO_ID,
+                    "nombre": "Finca El Durazno",
+                    "vereda": "Icota",
+                    "municipio": "Cácota",
+                    "registro_ica": "54-125-0001",
+                    "limite": ej.POLIGONO_PREDIO,
+                    "color_limite": "#ff6b35",
+                }
+            ]
+        },
+    )
 
     id: uuid.UUID | None = Field(
         default=None, description="Opcional al crear: reenviar el mismo `id` no duplica el predio"

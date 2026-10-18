@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.errores import documentar_errores
 from app.api.origen import origen_permitido
 from app.api.v1.router import api_router
 from app.core.config import ENTORNOS_LOCALES, get_settings
@@ -33,6 +34,15 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+
+def _openapi() -> dict:
+    if app.openapi_schema is None:
+        app.openapi_schema = documentar_errores(FastAPI.openapi(app))
+    return app.openapi_schema
+
+
+app.openapi = _openapi
 
 
 @app.middleware("http")

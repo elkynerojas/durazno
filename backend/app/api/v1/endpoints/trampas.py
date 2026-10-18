@@ -127,6 +127,7 @@ async def listar_trampas(
     "/lotes/{lote_id}/trampas",
     response_model=list[TrampaLeer],
     summary="Listar las trampas de un lote",
+    description="Trampas vigentes del lote (cualquier estado), ordenadas por código ICA.",
     responses={**ERROR_401, 404: {"description": "Lote no encontrado"}},
 )
 async def listar_trampas_del_lote(
@@ -204,6 +205,8 @@ async def resolver_qr(codigo: str, usuario: UsuarioActualDep, session: SessionDe
     "/trampas/{trampa_id}",
     response_model=TrampaLeer,
     summary="Obtener una trampa",
+    description="Con su punto en GeoJSON `[longitud, latitud]` y su código QR. Una trampa "
+    "borrada o de un predio no asignado responde 404.",
     responses={**ERROR_401, **ERROR_404},
 )
 async def obtener_trampa(

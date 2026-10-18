@@ -112,6 +112,8 @@ async def listar_usuarios(
     "/{usuario_id}",
     response_model=UsuarioAdminLeer,
     summary="Obtener un usuario",
+    description="Datos de la cuenta y sus predios asignados (datos personales: Ley 1581). Una "
+    "cuenta borrada responde 404.",
     responses={**ERRORES_ACCESO, **ERROR_404},
 )
 async def obtener_usuario(
