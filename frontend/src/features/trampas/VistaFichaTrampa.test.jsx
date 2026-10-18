@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -131,6 +131,7 @@ describe('VistaFichaTrampa', () => {
     const seleccionar = vi.fn()
     renderizar('tecnico', '/t/ABCD2345', seleccionar)
     await screen.findByRole('heading', { level: 1, name: 'ICA-0031' })
-    expect(seleccionar).toHaveBeenCalledWith('p-9')
+    // El cambio de predio ocurre en un efecto después de pintar la ficha.
+    await waitFor(() => expect(seleccionar).toHaveBeenCalledWith('p-9'))
   })
 })
