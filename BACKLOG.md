@@ -236,7 +236,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 
 ### HU-08 · Desplegar en servidor con HTTPS
 
-- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S2 · **Responsable:** Ingry
+- **Estado:** Hecho · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S2 · **Responsable:** Ingry
 - **Historia:** Como técnico de campo, quiero abrir el aplicativo desde el teléfono, para usar el GPS y la lectura de QR, que exigen HTTPS.
 
 **Criterios de aceptación**
@@ -264,7 +264,11 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 > SameSite=Strict` (cliente nativo: `X-Cliente: movil`, cada uno por su canal), acceso solo en
 > memoria, revocación con `sesion_valida_desde`, claves triviales rechazadas, clave actual con
 > límite de intentos, límite de login por correo+IP y por cuenta, rechazo de `Origin` ajeno.
-> **Falta para cerrar:** servidor y dominio, `.env` de producción y `sh deploy/obtener-certificado.sh`.
+> **Desplegado el 18/10/2026** en Google Cloud (proyecto `persica-iser`, VM e2-small en
+> `us-east1-b`, `deploy/gcp/`): https://persica.redsoftdevelopers.com, versión v1.0.0, certificado
+> de Let's Encrypt (renovación automática), restauración de copias probada en el servidor con
+> datos y snapshots diarios del disco (7 días). Datos de demostración con
+> `app.scripts.sembrar_demostracion`.
 > Pendientes de la auditoría HU-08 (decidir): detección de reuso de tokens de renovación con `jti`
 > (M1); rol de base de datos sin superusuario para la API y de solo lectura para las copias (M5);
 > releer `sesion_valida_desde` con bloqueo al emitir tokens (B1); agrupar IPv6 por /64 en
