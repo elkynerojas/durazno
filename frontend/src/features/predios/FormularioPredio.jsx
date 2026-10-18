@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { actualizarPredio, crearPredio } from '../../api/client'
 import { formatoHa } from '../../utils/formato'
@@ -41,6 +41,8 @@ export default function FormularioPredio({
   alCancelar,
 }) {
   const nuevo = !predio
+  // Ids propios: en «Predio» pueden convivir el formulario del predio actual y el de uno nuevo.
+  const prefijo = useId()
   // El id se genera una sola vez: si el registro se reenvía, la API no duplica el predio.
   const [id] = useState(() => globalThis.crypto?.randomUUID?.())
   const [datos, setDatos] = useState(() => aFormulario(predio))
@@ -98,9 +100,9 @@ export default function FormularioPredio({
     <form className="formulario" onSubmit={enviar} aria-label="Datos del predio">
       <h2>{nuevo ? 'Nuevo predio' : 'Identificación ante el ICA'}</h2>
       <fieldset disabled={!editable || enviando}>
-        <label htmlFor="nombre_predio">Nombre</label>
+        <label htmlFor={`${prefijo}nombre_predio`}>Nombre</label>
         <input
-          id="nombre_predio"
+          id={`${prefijo}nombre_predio`}
           value={datos.nombre}
           onChange={cambiar('nombre')}
           maxLength={150}
@@ -108,9 +110,9 @@ export default function FormularioPredio({
         />
         <div className="formulario__fila">
           <div>
-            <label htmlFor="vereda">Vereda</label>
+            <label htmlFor={`${prefijo}vereda`}>Vereda</label>
             <input
-              id="vereda"
+              id={`${prefijo}vereda`}
               value={datos.vereda}
               onChange={cambiar('vereda')}
               maxLength={100}
@@ -118,9 +120,9 @@ export default function FormularioPredio({
             />
           </div>
           <div>
-            <label htmlFor="municipio">Municipio</label>
+            <label htmlFor={`${prefijo}municipio`}>Municipio</label>
             <input
-              id="municipio"
+              id={`${prefijo}municipio`}
               value={datos.municipio}
               onChange={cambiar('municipio')}
               maxLength={100}
@@ -130,21 +132,21 @@ export default function FormularioPredio({
         </div>
         <div className="formulario__fila">
           <div>
-            <label htmlFor="registro_ica">Registro ICA del predio</label>
+            <label htmlFor={`${prefijo}registro_ica`}>Registro ICA del predio</label>
             <input
-              id="registro_ica"
+              id={`${prefijo}registro_ica`}
               value={datos.registro_ica}
               onChange={cambiar('registro_ica')}
               maxLength={50}
             />
           </div>
           <div>
-            <label htmlFor="area_ha">Área (hectáreas)</label>
+            <label htmlFor={`${prefijo}area_ha`}>Área (hectáreas)</label>
             {areaDelLimite ? (
-              <input id="area_ha" value={areaDelLimite} readOnly />
+              <input id={`${prefijo}area_ha`} value={areaDelLimite} readOnly />
             ) : (
               <input
-                id="area_ha"
+                id={`${prefijo}area_ha`}
                 type="number"
                 inputMode="decimal"
                 min="0.01"
@@ -158,10 +160,10 @@ export default function FormularioPredio({
         </div>
         {limiteActual && (
           <>
-            <label htmlFor="color_limite">Color del límite en el mapa</label>
+            <label htmlFor={`${prefijo}color_limite`}>Color del límite en el mapa</label>
             <div className="selector-color">
               <input
-                id="color_limite"
+                id={`${prefijo}color_limite`}
                 type="color"
                 value={datos.color_limite ?? COLOR_LIMITE}
                 onChange={(e) => cambiarColor(e.target.value)}

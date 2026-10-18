@@ -11,15 +11,14 @@ import Logo from './Logo'
 // Secciones del aplicativo; algunas solo para ciertos roles.
 const SECCIONES = [
   { a: '/mi-semana', texto: 'Mi semana', roles: ['tecnico', 'agronomo'] },
-  { a: '/mapa', texto: 'Mapa del predio' },
+  { a: '/mapa', texto: 'Mapa' },
   { a: '/lotes', texto: 'Lotes' },
   { a: '/trampas', texto: 'Trampas y QR' },
   { a: '/rutas', texto: 'Rutas de monitoreo' },
   { a: '/plan', texto: 'Planeación' },
   { a: '/lecturas', texto: 'Lecturas de trampa', roles: ['tecnico', 'agronomo', 'administrador'] },
   { a: '/mtd', texto: 'MTD e historial' },
-  { a: '/predio', texto: 'Datos del predio' },
-  { a: '/predios', texto: 'Predios', roles: ['administrador'] },
+  { a: '/predio', texto: 'Predio' },
   { a: '/usuarios', texto: 'Usuarios', roles: ['administrador'] },
 ]
 

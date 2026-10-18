@@ -6,24 +6,38 @@ import { describe, expect, it, vi } from 'vitest'
 import { ConContextos } from '../../test/contextos'
 import { PREDIO } from '../../test/datos'
 import { respuestaJson, simularFetch } from '../../test/utilidades'
-import VistaPredios from './VistaPredios'
+import AdministrarPredios from './AdministrarPredios'
 
 vi.mock('../../components/EstadoApi', () => ({ default: () => null }))
 
 const OTRO = { ...PREDIO, id: 'p-2', nombre: 'Finca Alta' }
 const ADMIN = { nombre_completo: 'Admin', rol: 'administrador' }
 
-function renderizar(recargar = vi.fn()) {
+function renderizar(recargar = vi.fn(), seleccionar = vi.fn()) {
   render(
-    <ConContextos usuario={ADMIN} predios={[PREDIO, OTRO]} recargar={recargar}>
+    <ConContextos
+      usuario={ADMIN}
+      predios={[PREDIO, OTRO]}
+      recargar={recargar}
+      seleccionar={seleccionar}
+    >
       <MemoryRouter>
-        <VistaPredios />
+        <AdministrarPredios />
       </MemoryRouter>
     </ConContextos>,
   )
 }
 
-describe('VistaPredios', () => {
+describe('AdministrarPredios', () => {
+  it('marca el predio actual y abre otro como actual', async () => {
+    const seleccionar = vi.fn()
+    renderizar(vi.fn(), seleccionar)
+    expect(screen.getByRole('row', { current: true })).toHaveTextContent('Finca IcotaActual')
+    expect(screen.queryByRole('button', { name: 'Abrir Finca Icota' })).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Abrir Finca Alta' }))
+    expect(seleccionar).toHaveBeenCalledWith('p-2')
+  })
+
   it('lista los predios y abre el formulario de uno nuevo', async () => {
     renderizar()
     const tabla = within(screen.getByRole('table'))

@@ -14,7 +14,6 @@ import VistaHistorial from './features/mtd/VistaHistorial'
 import VistaMtd from './features/mtd/VistaMtd'
 import VistaPlan from './features/plan/VistaPlan'
 import VistaPredio from './features/predio/VistaPredio'
-import VistaPredios from './features/predios/VistaPredios'
 import VistaRutas from './features/rutas/VistaRutas'
 import VistaFichaTrampa from './features/trampas/VistaFichaTrampa'
 import VistaTrampas from './features/trampas/VistaTrampas'
@@ -95,18 +94,12 @@ export default function App() {
               />
               <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
               <Route path="/t/:codigo/lectura" element={<VistaLectura />} />
-              <Route
-                path="/predio"
-                element={
-                  <PorPredio>
-                    <VistaPredio />
-                  </PorPredio>
-                }
-              />
+              {/* El administrador sin predios crea el primero aquí: no va envuelta en PorPredio. */}
+              <Route path="/predio" element={<VistaPredio />} />
+              <Route path="/predios" element={<Navigate to="/predio" replace />} />
             </Route>
             <Route element={<RutaProtegida roles={['administrador']} />}>
               <Route path="/usuarios" element={<VistaUsuarios />} />
-              <Route path="/predios" element={<VistaPredios />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

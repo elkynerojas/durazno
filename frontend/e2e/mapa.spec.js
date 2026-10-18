@@ -135,23 +135,26 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   await expect(page.getByRole('alert')).toContainText('No hay ninguna trampa con el código QR')
 })
 
-test('el administrador crea un predio desde Predios y lo elimina', async ({ page }) => {
+test('el administrador crea un predio desde Predio, lo abre y lo elimina', async ({ page }) => {
   const nombre = `E2E Predio ${Date.now() % 1_000_000}`
+  // La dirección anterior de la administración de predios lleva a «Predio».
   await page.goto('/predios')
-  await page.getByRole('button', { name: '+ Nuevo predio' }).click()
-  const formulario = page.getByRole('form', { name: 'Datos del predio' })
+  await expect(page).toHaveURL('/predio')
+  const todos = page.getByRole('region', { name: 'Todos los predios' })
+  await todos.getByRole('button', { name: '+ Nuevo predio' }).click()
+  const formulario = todos.getByRole('form', { name: 'Datos del predio' })
   await formulario.getByLabel('Nombre').fill(nombre)
   await formulario.getByLabel('Vereda').fill('Icota')
   await formulario.getByLabel('Área (hectáreas)').fill('12')
   await formulario.getByRole('button', { name: 'Crear predio' }).click()
 
-  // Al crearlo queda abierto su personal para asignar cuentas.
+  // Al crearlo queda como predio actual, con su personal listo para asignar cuentas.
   await expect(page.getByRole('heading', { name: `Personal de ${nombre}` })).toBeVisible()
-  await expect(page.getByRole('row', { name: new RegExp(nombre) })).toBeVisible()
+  await expect(todos.getByRole('row', { name: new RegExp(nombre) })).toContainText('Actual')
 
-  await page.getByRole('button', { name: `Eliminar ${nombre}` }).click()
-  await page.getByRole('button', { name: `Confirmar: eliminar ${nombre}` }).click()
-  await expect(page.getByRole('row', { name: new RegExp(nombre) })).toHaveCount(0)
+  await todos.getByRole('button', { name: `Eliminar ${nombre}` }).click()
+  await todos.getByRole('button', { name: `Confirmar: eliminar ${nombre}` }).click()
+  await expect(todos.getByRole('row', { name: new RegExp(nombre) })).toHaveCount(0)
 })
 
 test('se dibuja el límite del predio con su color y el servidor calcula su área', async ({

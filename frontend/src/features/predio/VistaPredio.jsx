@@ -10,7 +10,10 @@ import CapaLotes from '../lotes/CapaLotes'
 import { estiloLimite } from '../mapa/colores'
 import EditorPoligono from '../lotes/EditorPoligono'
 import { useDatosPredio } from '../mapa/useDatosPredio'
+import AdministrarPredios from '../predios/AdministrarPredios'
 import FormularioPredio from '../predios/FormularioPredio'
+import PersonalPredio from '../predios/PersonalPredio'
+import SinPredio from '../predios/SinPredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_GESTION } from '../usuarios/roles'
 
@@ -22,12 +25,36 @@ const estiloEditable = (color) => ({
   interactive: true,
 })
 
-// Datos del predio actual y su límite (polígono). El agrónomo asignado o el administrador los
-// editan; con límite, el área la calcula el servidor.
+// «Predio»: datos y límite del predio actual (todos los roles; los edita el agrónomo asignado o
+// el administrador) y, para el administrador, su personal y la lista de todos los predios.
 export default function VistaPredio() {
   const { usuario } = useSesion()
+  const { predio, cargando } = usePredio()
+  const administrador = usuario.rol === 'administrador'
+  return (
+    <Plantilla>
+      <Encabezado migas={predio ? [{ texto: predio.nombre, a: '/mapa' }] : []} titulo="Predio" />
+      {predio ? (
+        // Al cambiar de predio se vuelve a montar: estado limpio y mapa encuadrado en el nuevo.
+        <div key={predio.id} className="rejilla">
+          <PredioActual editable={ROLES_GESTION.includes(usuario.rol)} />
+          {administrador && (
+            <section className="tarjeta">
+              <PersonalPredio predio={predio} />
+            </section>
+          )}
+        </div>
+      ) : (
+        (!administrador || cargando) && <SinPredio />
+      )}
+      {administrador && !cargando && <AdministrarPredios />}
+    </Plantilla>
+  )
+}
+
+// Límite (polígono) y datos del predio actual; con límite, el área la calcula el servidor.
+function PredioActual({ editable }) {
   const { predio, recargar } = usePredio()
-  const editable = ROLES_GESTION.includes(usuario.rol)
   const datos = useDatosPredio(predio.id)
   const [mapa, setMapa] = useState(null)
   // Límite pendiente de guardar (GeoJSON o null si se quitó).
@@ -79,98 +106,92 @@ export default function VistaPredio() {
   }
 
   return (
-    <Plantilla>
-      <Encabezado
-        migas={[{ texto: predio.nombre, a: '/mapa' }, { texto: 'Datos del predio' }]}
-        titulo="Datos del predio"
-      />
-      <div className="rejilla rejilla--mapa">
-        <section className="tarjeta tarjeta--sin-relleno" aria-label="Límite del predio">
-          <div className="mapa-tarjeta__barra">
-            {editable ? (
-              <div className="grupo-botones">
-                {!limite && (
+    <div className="rejilla rejilla--mapa">
+      <section className="tarjeta tarjeta--sin-relleno" aria-label="Límite del predio">
+        <div className="mapa-tarjeta__barra">
+          {editable ? (
+            <div className="grupo-botones">
+              {!limite && (
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  aria-pressed={dibujando}
+                  onClick={() => setDibujando((d) => !d)}
+                >
+                  {dibujando ? 'Dejar de dibujar' : 'Dibujar límite'}
+                </button>
+              )}
+              {limite && (
+                <>
                   <button
                     type="button"
                     className="boton-secundario"
-                    aria-pressed={dibujando}
-                    onClick={() => setDibujando((d) => !d)}
+                    aria-pressed={editando}
+                    onClick={alternarEdicion}
                   >
-                    {dibujando ? 'Dejar de dibujar' : 'Dibujar límite'}
+                    {editando ? 'Terminar edición' : 'Editar vértices'}
                   </button>
-                )}
-                {limite && (
-                  <>
-                    <button
-                      type="button"
-                      className="boton-secundario"
-                      aria-pressed={editando}
-                      onClick={alternarEdicion}
-                    >
-                      {editando ? 'Terminar edición' : 'Editar vértices'}
-                    </button>
-                    <button
-                      type="button"
-                      className="boton-secundario"
-                      onClick={() => {
-                        setEditando(false)
-                        setLimite(null)
-                      }}
-                    >
-                      Quitar límite
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : (
-              <strong>Límite del predio</strong>
-            )}
-            <p className="mapa-tarjeta__ayuda">
-              {dibujando
-                ? 'Toque para agregar vértices · toque el primero para cerrar'
-                : !mismaGeometria(limite, predio.limite)
-                  ? 'Cambios sin guardar: use «Guardar» en los datos del predio'
-                  : 'Los lotes del predio aparecen como referencia'}
-            </p>
-          </div>
-          <div className="mapa-tarjeta__lienzo">
-            <MapaPredio ref={setMapa}>
-              <CapaLotes
-                lotes={datos.lotes}
-                lotesIniciales={predio.limite ? null : datos.lotesIniciales}
-                alSeleccionar={() => {}}
-                refCapas={refCapas}
+                  <button
+                    type="button"
+                    className="boton-secundario"
+                    onClick={() => {
+                      setEditando(false)
+                      setLimite(null)
+                    }}
+                  >
+                    Quitar límite
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <strong>Límite del predio</strong>
+          )}
+          <p className="mapa-tarjeta__ayuda">
+            {dibujando
+              ? 'Toque para agregar vértices · toque el primero para cerrar'
+              : !mismaGeometria(limite, predio.limite)
+                ? 'Cambios sin guardar: use «Guardar» en los datos del predio'
+                : 'Los lotes del predio aparecen como referencia'}
+          </p>
+        </div>
+        <div className="mapa-tarjeta__lienzo">
+          <MapaPredio ref={setMapa}>
+            <CapaLotes
+              lotes={datos.lotes}
+              lotesIniciales={predio.limite ? null : datos.lotesIniciales}
+              alSeleccionar={() => {}}
+              refCapas={refCapas}
+            />
+            {limite && (
+              <Polygon
+                key={version}
+                ref={refLimite}
+                positions={geojsonALeaflet(limite)}
+                pathOptions={estiloEditable(color)}
               />
-              {limite && (
-                <Polygon
-                  key={version}
-                  ref={refLimite}
-                  positions={geojsonALeaflet(limite)}
-                  pathOptions={estiloEditable(color)}
-                />
-              )}
-              {editable && (
-                <EditorPoligono
-                  dibujando={dibujando}
-                  alDibujar={alDibujar}
-                  alTerminar={alTerminarDibujo}
-                />
-              )}
-            </MapaPredio>
-          </div>
-        </section>
+            )}
+            {editable && (
+              <EditorPoligono
+                dibujando={dibujando}
+                alDibujar={alDibujar}
+                alTerminar={alTerminarDibujo}
+              />
+            )}
+          </MapaPredio>
+        </div>
+      </section>
 
-        <section className="tarjeta">
-          <FormularioPredio
-            predio={predio}
-            limite={limite}
-            obtenerLimite={editando ? leerLimite : undefined}
-            editable={editable}
-            alCambiarColor={setColorPrevio}
-            alGuardar={alGuardar}
-          />
-        </section>
-      </div>
-    </Plantilla>
+      <section className="tarjeta">
+        <FormularioPredio
+          predio={predio}
+          limite={limite}
+          obtenerLimite={editando ? leerLimite : undefined}
+          editable={editable}
+          alCambiarColor={setColorPrevio}
+          alGuardar={alGuardar}
+        />
+      </section>
+    </div>
   )
 }

@@ -35,18 +35,17 @@ const enlacesDelMenu = () =>
   )
 
 describe('Plantilla', () => {
-  it('al administrador le muestra también Predios y Usuarios', () => {
+  it('al administrador le muestra también Usuarios', () => {
     renderizar('administrador')
     expect(enlacesDelMenu()).toEqual([
-      'Mapa del predio',
+      'Mapa',
       'Lotes',
       'Trampas y QR',
       'Rutas de monitoreo',
       'Planeación',
       'Lecturas de trampa',
       'MTD e historial',
-      'Datos del predio',
-      'Predios',
+      'Predio',
       'Usuarios',
     ])
     expect(screen.getByRole('link', { name: 'Lotes' })).toHaveClass('active')
@@ -56,7 +55,8 @@ describe('Plantilla', () => {
   it.each(['tecnico', 'productor', 'agronomo'])('al rol %s no le muestra administración', (rol) => {
     renderizar(rol)
     expect(enlacesDelMenu()).not.toContain('Usuarios')
-    expect(enlacesDelMenu()).not.toContain('Predios')
+    // Un solo ítem para el predio: datos, límite y (el administrador) todos los predios.
+    expect(enlacesDelMenu().filter((e) => e.startsWith('Predio'))).toEqual(['Predio'])
   })
 
   it('«Mi semana» aparece solo a quienes pueden tener actividades asignadas', () => {

@@ -26,7 +26,6 @@ for (const [nombre, ancho, alto] of [
       ['/lotes', '02-lotes'],
       ['/trampas', '03-trampas'],
       ['/predio', '04-predio'],
-      ['/predios', '07-predios'],
       ['/usuarios', '05-usuarios'],
     ]) {
       await page.goto(ruta)

@@ -17,7 +17,7 @@ export default function SinPredio() {
         </p>
       ) : usuario.rol === 'administrador' ? (
         <p>
-          Aún no hay predios registrados. <Link to="/predios">Cree el primero</Link>.
+          Aún no hay predios registrados. <Link to="/predio">Cree el primero</Link>.
         </p>
       ) : (
         <p>No tiene predios asignados. Pida al administrador que lo asigne a un predio.</p>
