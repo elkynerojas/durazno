@@ -188,18 +188,21 @@ button {
   height: 112px;
 }
 
+.marca--lateral {
+  justify-content: center;
+}
+
+.marca__logo--lateral {
+  width: 128px;
+  height: 128px;
+}
+
 .marca__nombre {
   display: block;
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.1;
-}
-
-.marca__lugar {
-  display: block;
-  font-size: 0.8rem;
-  color: rgb(255 255 255 / 70%);
 }
 
 .lateral__nav {
@@ -1088,6 +1091,11 @@ button {
     gap: 0.5rem;
     padding: 0.7rem 1rem;
     overflow: visible;
+  }
+
+  .marca__logo--lateral {
+    width: 56px;
+    height: 56px;
   }
 
   .lateral__menu {

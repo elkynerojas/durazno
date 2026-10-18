@@ -74,9 +74,14 @@ describe('Plantilla', () => {
     expect(enlacesDelMenu()).not.toContain('Mi semana')
   })
 
-  it('muestra la vereda del predio actual', () => {
+  it('en la parte superior muestra solo el logo, que lleva al mapa', () => {
     renderizar('tecnico')
-    expect(screen.getByText('Icota · Cácota')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'PERSICA: ir al mapa' })).toHaveAttribute(
+      'href',
+      '/mapa',
+    )
+    expect(screen.queryByText('PERSICA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Icota · Cácota')).not.toBeInTheDocument()
   })
 
   it('con varios predios permite cambiar de predio', async () => {

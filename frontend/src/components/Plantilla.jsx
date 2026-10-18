@@ -31,14 +31,8 @@ export default function Plantilla({ children }) {
   return (
     <div className="plantilla">
       <aside className={`lateral${abierto ? ' lateral--abierto' : ''}`}>
-        <Link to="/mapa" className="marca">
-          <Logo />
-          <span>
-            <span className="marca__nombre">PERSICA</span>
-            <span className="marca__lugar">
-              {predio ? `${predio.vereda} · ${predio.municipio}` : 'Sin predio asignado'}
-            </span>
-          </span>
+        <Link to="/mapa" className="marca marca--lateral" aria-label="PERSICA: ir al mapa">
+          <Logo className="marca__logo marca__logo--lateral" />
         </Link>
         <button
           type="button"
