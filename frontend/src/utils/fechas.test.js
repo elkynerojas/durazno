@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fechaCorta, rangoSemana, semanaIso } from './fechas'
+import { fechaCorta, rangoSemana, semanaDelAnio, semanaIso, semanasDelAnio } from './fechas'
 
 describe('fechas', () => {
   it.each([
@@ -26,5 +26,18 @@ describe('fechas', () => {
 
   it('formatea fechas de calendario', () => {
     expect(fechaCorta('2026-09-03')).toBe('03/09/2026')
+  })
+
+  it('sabe cuántas semanas ISO tiene cada año', () => {
+    // 2026 empieza en jueves: 53 semanas. 2027 empieza en viernes: 52.
+    expect(semanasDelAnio(2026)).toBe(53)
+    expect(semanasDelAnio(2027)).toBe(52)
+    expect(semanasDelAnio(2020)).toBe(53)
+  })
+
+  it('da el lunes y el domingo de una semana del año', () => {
+    expect(rangoSemana(semanaDelAnio(2026, 42))).toBe('12–18 oct 2026')
+    expect(rangoSemana(semanaDelAnio(2026, 1))).toBe('29 dic – 4 ene 2026')
+    expect(rangoSemana(semanaDelAnio(2026, 53))).toBe('28 dic – 3 ene 2027')
   })
 })

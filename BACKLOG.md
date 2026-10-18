@@ -637,7 +637,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 ### HU-21 · Programar actividades en las 52 semanas
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S3 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S3 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero programar visitas de monitoreo y labores por semana, para organizar el año del cultivo.
 
 **Criterios de aceptación**
@@ -649,11 +649,23 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 **Tareas**
 
-- [ ] `HU-21.1` [BD] Modelo plan_actividad y catálogo de tipos
-- [ ] `HU-21.2` [API] CRUD /plan y generación de repeticiones
-- [ ] `HU-21.3` [Web] Vista anual: semanas × lotes
-- [ ] `HU-21.4` [Web] Formulario de actividad
-- [ ] `HU-21.5` [Pruebas] Años con semana 53 y repeticiones
+- [x] `HU-21.1` [BD] Modelo plan_actividad y catálogo de tipos
+- [x] `HU-21.2` [API] CRUD /plan y generación de repeticiones
+- [x] `HU-21.3` [Web] Vista anual: semanas × lotes
+- [x] `HU-21.4` [Web] Formulario de actividad
+- [x] `HU-21.5` [Pruebas] Años con semana 53 y repeticiones
+
+> `plan_actividad` (predio, lote, tipo, semana ISO, año, responsable, estado, serie). Tipos:
+> `visita_monitoreo` (se liga a la ruta vigente del lote; 422 si no tiene), `cambio_atrayente`
+> (`tipo_trampa` jackson o mcphail) y `labor_cultural` (`labor` del catálogo: poda,
+> fertilización, raleo, cosecha, riego, control de malezas, otra; `GET /plan/catalogo`). El
+> responsable es un técnico o agrónomo activo asignado al predio. `repetir` crea la serie cada N
+> semanas hasta una semana del mismo año, con ids deterministas (reenviar no duplica). Las semanas
+> se validan contra el año (52 o 53). `PATCH` cambia responsable y notas; mover de semana queda
+> para HU-23 (con motivo). `DELETE ?serie=true` borra la actividad y las siguientes de su serie.
+> Web `/plan`: vista anual lotes × semanas con la actual resaltada (y a la vista al abrir), año
+> anterior/siguiente, filtro por lote, formulario «Programar actividad», ficha con cambio de
+> responsable y borrado, y lista de la semana actual. Los estados de cumplimiento llegan con HU-22.
 
 ### HU-22 · Seguir el cumplimiento del plan
 

@@ -8,12 +8,13 @@ import { rangoSemana, semanaIso } from '../utils/fechas'
 import EstadoApi from './EstadoApi'
 import Logo from './Logo'
 
-// Secciones disponibles hoy. Planeación, lecturas y MTD se agregan con sus historias.
+// Secciones disponibles hoy. Lecturas y MTD se agregan con sus historias.
 const SECCIONES = [
   { a: '/mapa', texto: 'Mapa del predio' },
   { a: '/lotes', texto: 'Lotes' },
   { a: '/trampas', texto: 'Trampas y QR' },
   { a: '/rutas', texto: 'Rutas de monitoreo' },
+  { a: '/plan', texto: 'Planeación' },
   { a: '/predio', texto: 'Datos del predio' },
   { a: '/predios', texto: 'Predios', roles: ['administrador'] },
   { a: '/usuarios', texto: 'Usuarios', roles: ['administrador'] },

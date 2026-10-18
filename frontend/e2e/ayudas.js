@@ -85,6 +85,12 @@ export async function limpiarDatosE2E(page) {
       for (const trampa of await leer(`/trampas?predio_id=${predio.id}`)) {
         if (trampa.codigo_ica.startsWith('ICA-E2E-')) await borrar(`/trampas/${trampa.id}`)
       }
+      const anio = new Date().getFullYear()
+      for (const a of [anio - 1, anio, anio + 1]) {
+        for (const actividad of await leer(`/plan?predio_id=${predio.id}&anio=${a}`)) {
+          if (actividad.lote_codigo.startsWith('E2E-')) await borrar(`/plan/${actividad.id}`)
+        }
+      }
       for (const lote of await leer(`/lotes?predio_id=${predio.id}`)) {
         if (lote.codigo.startsWith('E2E-')) await borrar(`/lotes/${lote.id}`)
       }
@@ -139,4 +145,42 @@ export async function crearTrampasE2E(page, codigoLote, fracciones) {
     },
     { codigoLote, fracciones, sufijo: Date.now() % 1_000_000 },
   )
+}
+
+// Técnico de pruebas asignado al predio actual (responsable de las actividades del plan). Lo
+// crea la primera vez con una clave aleatoria: nadie inicia sesión con él. Solo para la base de
+// desarrollo, como todo el E2E.
+export async function asegurarTecnicoE2E(page) {
+  return page.evaluate(async () => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const correo = 'e2e-tecnico@example.com'
+    const usuarios = await (await fetch('/api/v1/usuarios', { headers: cabeceras })).json()
+    let tecnico = usuarios.find((u) => u.correo === correo)
+    if (!tecnico) {
+      const clave = `${crypto.randomUUID()}-Aa1`
+      tecnico = await (
+        await fetch('/api/v1/usuarios', {
+          method: 'POST',
+          headers: cabeceras,
+          body: JSON.stringify({
+            correo,
+            nombre_completo: 'Técnico E2E',
+            rol: 'tecnico',
+            clave,
+            autorizacion_datos: true,
+          }),
+        })
+      ).json()
+    }
+    const predioId = localStorage.getItem('icota.predio')
+    await fetch(`/api/v1/predios/${predioId}/usuarios/${tecnico.id}`, {
+      method: 'PUT',
+      headers: cabeceras,
+    })
+    return tecnico
+  })
 }

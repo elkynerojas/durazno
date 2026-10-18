@@ -130,6 +130,17 @@ export const crearRuta = (datos) => api('/rutas', { metodo: 'POST', cuerpo: dato
 export const actualizarRuta = (id, trampas) =>
   api(`/rutas/${id}`, { metodo: 'PUT', cuerpo: { trampas } })
 
+export const obtenerPlan = (predioId, anio) => api(`/plan?predio_id=${predioId}&anio=${anio}`)
+
+// Programa una actividad (o su serie, con `repetir`); devuelve las actividades creadas.
+export const programarActividad = (datos) => api('/plan', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarActividad = (id, cambios) =>
+  api(`/plan/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+export const eliminarActividad = (id, serie = false) =>
+  api(`/plan/${id}${serie ? '?serie=true' : ''}`, { metodo: 'DELETE' })
+
 // Lotes y trampas del predio (FeatureCollection) con el estado de monitoreo de cada trampa.
 export const obtenerMapa = (predioId) => api(`/mapa?predio_id=${predioId}`)
 

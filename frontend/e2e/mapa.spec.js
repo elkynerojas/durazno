@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import {
   CLAVE,
   asegurarPredio,
+  asegurarTecnicoE2E,
   crearTrampasE2E,
   dibujarLote,
   ingresar,
@@ -373,4 +374,42 @@ test('al instalar una trampa, la ruta del lote queda por revisar en el mapa y en
   await page.goto('/mapa')
   await expect(page.locator('.mapa-tarjeta__lienzo')).toBeVisible()
   await expect(page.getByText(/requiere(n)? revisión:/)).toHaveCount(0)
+})
+
+// --- Planeación (HU-21) ---
+
+test('el agrónomo programa una labor que se repite y la ve en la vista anual', async ({ page }) => {
+  await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+
+  await page.goto('/plan')
+  const anio = new Date().getFullYear()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Plan de actividades ${anio}`)
+  await page.getByRole('button', { name: '+ Programar actividad' }).click()
+  const formulario = page.getByRole('form', { name: 'Programar actividad' })
+  await formulario.getByRole('radio', { name: 'Labor cultural' }).check()
+  await formulario.getByLabel('Labor', { exact: true }).selectOption({ label: 'Poda' })
+  await formulario.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
+  await formulario.getByLabel('Semana').fill('2')
+  await formulario.getByLabel('Responsable').selectOption({ label: 'Técnico E2E · técnico' })
+  await formulario.getByRole('checkbox', { name: 'Repetir' }).check()
+  await formulario.getByLabel('Cada (semanas)').fill('10')
+  await formulario.getByLabel('Hasta la semana').fill('40')
+  await formulario.getByRole('button', { name: 'Programar' }).click()
+  await expect(page.getByText('Se programaron 4 actividades (semanas 2 a 32).')).toBeVisible()
+
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
+  const celdas = page.getByRole('button', { name: /^Poda \(Cultivo · E2E-\d+\), semana \d+/ })
+  await expect(celdas).toHaveCount(4)
+  await page
+    .getByRole('button', { name: `Poda (Cultivo · ${lote}), semana 22: programada` })
+    .click()
+  const ficha = page.getByRole('region', { name: 'Actividad seleccionada' })
+  await expect(ficha).toContainText('Técnico E2E')
+
+  await ficha.getByRole('button', { name: 'Eliminar actividad' }).click()
+  await ficha.getByRole('button', { name: 'Eliminar esta y las siguientes' }).click()
+  await expect(page.getByText('Actividad eliminada.')).toBeVisible()
+  await expect(celdas).toHaveCount(2)
 })

@@ -1,0 +1,294 @@
+"""Pruebas del plan anual de actividades (HU-21)."""
+
+import uuid
+from datetime import date
+
+import pytest
+from sqlalchemy import func, select
+
+from app.api.v1.endpoints import plan as plan_endpoint
+from app.models.lote import Lote
+from app.models.plan_actividad import PlanActividad
+from app.models.predio import Predio
+from app.models.ruta import Ruta
+from app.schemas.geo import PoligonoGeoJSON, a_geometria
+from app.services.plan import ids_de_serie, semanas_del_anio, semanas_repetidas
+from tests.utilidades import encabezados
+
+URL = "/api/v1/plan"
+A = [[-72.640, 7.270], [-72.639, 7.270], [-72.639, 7.271], [-72.640, 7.271], [-72.640, 7.270]]
+
+
+def _correo(prefijo):
+    return f"{prefijo}.{uuid.uuid4().hex[:8]}@ejemplo.com"
+
+
+# --- Semanas ISO (a mano: el 1 de enero de 2026 es jueves, así que 2026 tiene 53 semanas) ---
+
+
+@pytest.mark.parametrize(
+    ("anio", "semanas"), [(2026, 53), (2027, 52), (2020, 53), (2015, 53), (2024, 52)]
+)
+def test_semanas_del_anio(anio, semanas):
+    assert semanas_del_anio(anio) == semanas
+
+
+def test_semanas_repetidas():
+    assert semanas_repetidas(10, 4, 30) == [10, 14, 18, 22, 26, 30]
+    assert semanas_repetidas(50, 2, 53) == [50, 52]
+    assert semanas_repetidas(7, 1, 7) == [7]
+
+
+def test_ids_de_serie_deterministas():
+    serie = uuid.uuid4()
+    ids = ids_de_serie(serie, 3)
+    assert ids[0] == serie
+    assert ids == ids_de_serie(serie, 3)
+    assert len(set(ids)) == 3
+
+
+# --- Endpoints ---
+
+
+@pytest.fixture
+async def datos(session, predio_vacio, crear_usuario):
+    lote = Lote(
+        predio_id=predio_vacio.id,
+        codigo="L-01",
+        area_ha=1.22,
+        geom=a_geometria(PoligonoGeoJSON(type="Polygon", coordinates=[A])),
+    )
+    session.add(lote)
+    await session.flush()
+    agronomo = await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[predio_vacio])
+    tecnico = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[predio_vacio])
+    return {"predio": predio_vacio, "lote": lote, "agronomo": agronomo, "tecnico": tecnico}
+
+
+def _cuerpo(datos, **cambios):
+    return {
+        "lote_id": str(datos["lote"].id),
+        "tipo": "labor_cultural",
+        "labor": "poda",
+        "anio": 2026,
+        "semana": 6,
+        "responsable_id": str(datos["tecnico"].id),
+        **cambios,
+    }
+
+
+async def _programar(cliente, datos, usuario=None, **cambios):
+    return await cliente.post(
+        URL, json=_cuerpo(datos, **cambios), headers=encabezados(usuario or datos["agronomo"])
+    )
+
+
+async def test_sin_sesion_responde_401(cliente, datos):
+    assert (await cliente.post(URL, json=_cuerpo(datos))).status_code == 401
+    assert (await cliente.get(f"{URL}/catalogo")).status_code == 401
+
+
+async def test_solo_el_agronomo_programa(cliente, datos):
+    assert (await _programar(cliente, datos, usuario=datos["tecnico"])).status_code == 403
+
+
+async def test_programar_una_labor(cliente, datos):
+    respuesta = await _programar(cliente, datos, notas="Poda de formación")
+    assert respuesta.status_code == 201
+    [actividad] = respuesta.json()
+    assert {
+        k: actividad[k]
+        for k in ("lote_codigo", "tipo", "labor", "anio", "semana", "estado", "serie_id", "notas")
+    } == {
+        "lote_codigo": "L-01",
+        "tipo": "labor_cultural",
+        "labor": "poda",
+        "anio": 2026,
+        "semana": 6,
+        "estado": "programada",
+        "serie_id": None,
+        "notas": "Poda de formación",
+    }
+    assert actividad["responsable_nombre"] == "Persona de Prueba"
+
+
+async def test_repetir_cada_n_semanas(cliente, datos):
+    respuesta = await _programar(
+        cliente,
+        datos,
+        tipo="cambio_atrayente",
+        labor=None,
+        tipo_trampa="jackson",
+        semana=1,
+        repetir={"cada_semanas": 4, "hasta_semana": 53},
+    )
+    assert respuesta.status_code == 201
+    actividades = respuesta.json()
+    # 1, 5, …, 53: catorce semanas en 2026 (año de 53 semanas).
+    assert [a["semana"] for a in actividades] == list(range(1, 54, 4))
+    assert len({a["serie_id"] for a in actividades}) == 1
+
+
+async def test_semana_53_solo_en_anios_que_la_tienen(cliente, datos):
+    assert (await _programar(cliente, datos, semana=53)).status_code == 201
+    sin_53 = await _programar(cliente, datos, anio=2027, semana=53)
+    assert sin_53.status_code == 422
+    assert sin_53.json()["detail"] == "El año 2027 tiene 52 semanas ISO"
+    repeticion = await _programar(
+        cliente, datos, anio=2027, semana=1, repetir={"cada_semanas": 4, "hasta_semana": 53}
+    )
+    assert repeticion.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "cambios",
+    [
+        {"labor": None},
+        {"tipo": "cambio_atrayente"},
+        {"tipo": "cambio_atrayente", "labor": None},
+        {"semana": 0},
+        {"semana": 10, "repetir": {"cada_semanas": 2, "hasta_semana": 8}},
+        {"repetir": {"cada_semanas": 0, "hasta_semana": 20}},
+        {"estado": "cumplida"},
+    ],
+    ids=[
+        "labor-sin-labor",
+        "cambio-con-labor",
+        "cambio-sin-tipo-trampa",
+        "semana-0",
+        "repeticion-al-reves",
+        "cada-0",
+        "estado-no-se-envia",
+    ],
+)
+async def test_datos_invalidos_responden_422(cliente, datos, cambios):
+    assert (await _programar(cliente, datos, **cambios)).status_code == 422
+
+
+async def test_visita_de_monitoreo_exige_ruta(cliente, datos, session):
+    visita = {"tipo": "visita_monitoreo", "labor": None}
+    sin_ruta = await _programar(cliente, datos, **visita)
+    assert sin_ruta.status_code == 422
+    assert "no tiene ruta" in sin_ruta.json()["detail"]
+
+    ruta = Ruta(lote_id=datos["lote"].id)
+    session.add(ruta)
+    await session.flush()
+    con_ruta = await _programar(cliente, datos, **visita)
+    assert con_ruta.status_code == 201
+    assert con_ruta.json()[0]["ruta_id"] == str(ruta.id)
+
+
+async def test_responsable_debe_estar_asignado_al_predio(cliente, datos, crear_usuario, session):
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[otro])
+    productor = await crear_usuario(
+        _correo("productor"), rol="productor", predios=[datos["predio"]]
+    )
+    inactivo = await crear_usuario(
+        _correo("tecnico"), rol="tecnico", activo=False, predios=[datos["predio"]]
+    )
+    for persona in (ajeno, productor, inactivo):
+        respuesta = await _programar(cliente, datos, responsable_id=str(persona.id))
+        assert respuesta.status_code == 422
+
+
+async def test_lote_de_otro_predio_responde_404(cliente, datos, crear_usuario, session):
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[otro])
+    assert (await _programar(cliente, datos, usuario=ajeno)).status_code == 404
+    listado = await cliente.get(
+        URL, params={"predio_id": str(datos["predio"].id)}, headers=encabezados(ajeno)
+    )
+    assert listado.status_code == 404
+
+
+async def test_programar_es_idempotente_por_id(cliente, datos, session):
+    serie = str(uuid.uuid4())
+    repetir = {"cada_semanas": 2, "hasta_semana": 10}
+    primera = await _programar(cliente, datos, id=serie, semana=2, repetir=repetir)
+    repetida = await _programar(cliente, datos, id=serie, semana=2, repetir=repetir)
+    assert (primera.status_code, repetida.status_code) == (201, 200)
+    assert [a["id"] for a in repetida.json()] == [a["id"] for a in primera.json()]
+    total = await session.scalar(
+        select(func.count()).where(PlanActividad.serie_id == uuid.UUID(serie))
+    )
+    assert total == 5
+    otra_cosa = await _programar(
+        cliente, datos, id=serie, tipo="cambio_atrayente", labor=None, tipo_trampa="mcphail"
+    )
+    otra_semana = await _programar(cliente, datos, id=serie, semana=3, repetir=repetir)
+    assert (otra_cosa.status_code, otra_semana.status_code) == (409, 409)
+
+
+async def test_listar_el_plan_del_anio(cliente, datos, monkeypatch):
+    monkeypatch.setattr(plan_endpoint, "hoy_bogota", lambda: date(2026, 10, 17))
+    await _programar(cliente, datos, semana=6)
+    await _programar(cliente, datos, anio=2027, semana=6)
+    params = {"predio_id": str(datos["predio"].id)}
+    tecnico = encabezados(datos["tecnico"])
+
+    actual = await cliente.get(URL, params=params, headers=tecnico)
+    assert actual.status_code == 200
+    assert [(a["anio"], a["semana"]) for a in actual.json()] == [(2026, 6)]
+    siguiente = await cliente.get(URL, params={**params, "anio": 2027}, headers=tecnico)
+    assert [(a["anio"], a["semana"]) for a in siguiente.json()] == [(2027, 6)]
+    otro_lote = await cliente.get(
+        URL, params={**params, "lote_id": str(uuid.uuid4())}, headers=tecnico
+    )
+    assert otro_lote.json() == []
+
+
+async def test_catalogo(cliente, datos):
+    respuesta = await cliente.get(f"{URL}/catalogo", headers=encabezados(datos["tecnico"]))
+    assert [t["valor"] for t in respuesta.json()["tipos"]] == [
+        "visita_monitoreo",
+        "cambio_atrayente",
+        "labor_cultural",
+    ]
+    assert {"valor": "raleo", "nombre": "Raleo de frutos"} in respuesta.json()["labores"]
+
+
+async def test_cambiar_responsable_y_notas(cliente, datos):
+    [actividad] = (await _programar(cliente, datos)).json()
+    url = f"{URL}/{actividad['id']}"
+    h = encabezados(datos["agronomo"])
+    cambiada = await cliente.patch(
+        url, json={"responsable_id": str(datos["agronomo"].id), "notas": "Con tijera"}, headers=h
+    )
+    assert cambiada.status_code == 200
+    assert (cambiada.json()["responsable_id"], cambiada.json()["notas"]) == (
+        str(datos["agronomo"].id),
+        "Con tijera",
+    )
+    sin_notas = await cliente.patch(url, json={"notas": None}, headers=h)
+    assert sin_notas.json()["notas"] is None
+    for invalido in (
+        {"responsable_id": None},
+        {"semana": 9},
+        {"responsable_id": str(uuid.uuid4())},
+    ):
+        assert (await cliente.patch(url, json=invalido, headers=h)).status_code == 422
+    sin_rol = await cliente.patch(url, json={"notas": "x"}, headers=encabezados(datos["tecnico"]))
+    assert sin_rol.status_code == 403
+
+
+async def test_eliminar_una_o_las_siguientes_de_la_serie(cliente, datos):
+    actividades = (
+        await _programar(cliente, datos, semana=2, repetir={"cada_semanas": 2, "hasta_semana": 10})
+    ).json()
+    h = encabezados(datos["agronomo"])
+    params = {"predio_id": str(datos["predio"].id), "anio": 2026}
+    semanas = lambda r: [a["semana"] for a in r.json()]  # noqa: E731 - ayuda local corta
+
+    assert (await cliente.delete(f"{URL}/{actividades[0]['id']}", headers=h)).status_code == 204
+    assert semanas(await cliente.get(URL, params=params, headers=h)) == [4, 6, 8, 10]
+    borradas = await cliente.delete(f"{URL}/{actividades[2]['id']}?serie=true", headers=h)
+    assert borradas.status_code == 204
+    assert semanas(await cliente.get(URL, params=params, headers=h)) == [4]
+    otra_vez = await cliente.delete(f"{URL}/{actividades[2]['id']}", headers=h)
+    assert otra_vez.status_code == 404

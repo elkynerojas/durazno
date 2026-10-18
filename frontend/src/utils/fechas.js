@@ -46,3 +46,14 @@ export function fechaCorta(iso) {
   const [a, m, d] = iso.slice(0, 10).split('-')
   return `${d}/${m}/${a}`
 }
+
+// Semanas ISO del año (52 o 53): el 28 de diciembre siempre cae en la última.
+export const semanasDelAnio = (anio) => semanaIso(new Date(Date.UTC(anio, 11, 28, 12))).numero
+
+// Lunes y domingo de la semana ISO `numero` del año (la semana 1 contiene el 4 de enero).
+export function semanaDelAnio(anio, numero) {
+  const cuatroEnero = new Date(Date.UTC(anio, 0, 4))
+  const lunes1 = new Date(cuatroEnero.getTime() - ((cuatroEnero.getUTCDay() || 7) - 1) * DIA_MS)
+  const lunes = new Date(lunes1.getTime() + (numero - 1) * 7 * DIA_MS)
+  return { numero, anio, lunes, domingo: new Date(lunes.getTime() + 6 * DIA_MS) }
+}
