@@ -47,8 +47,8 @@ export default function InicioSesion() {
     <main className="acceso">
       <section className="acceso__portada">
         <div className="marca">
-          <Logo />
-          <span className="marca__nombre">Trazabilidad Durazno</span>
+          <Logo className="marca__logo marca__logo--grande" />
+          <span className="marca__nombre">PERSICA</span>
         </div>
         <div className="acceso__lema">
           <p className="acceso__antetitulo">Plan Nacional de Moscas de la Fruta</p>

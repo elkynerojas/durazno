@@ -179,14 +179,20 @@ button {
 
 .marca__logo {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 48px;
+  height: 48px;
+}
+
+.marca__logo--grande {
+  width: 112px;
+  height: 112px;
 }
 
 .marca__nombre {
   display: block;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
   line-height: 1.1;
 }
 

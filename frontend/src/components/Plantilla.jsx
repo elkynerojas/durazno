@@ -34,7 +34,7 @@ export default function Plantilla({ children }) {
         <Link to="/mapa" className="marca">
           <Logo />
           <span>
-            <span className="marca__nombre">Trazabilidad Durazno</span>
+            <span className="marca__nombre">PERSICA</span>
             <span className="marca__lugar">
               {predio ? `${predio.vereda} · ${predio.municipio}` : 'Sin predio asignado'}
             </span>
