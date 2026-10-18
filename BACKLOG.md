@@ -777,7 +777,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-26 · Validar las lecturas
 
-- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero revisar y validar las lecturas registradas, para que solo datos confiables entren al MTD.
 
 **Criterios de aceptación**
@@ -790,7 +790,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 - [x] `HU-26.1` [API] Cambio de estado con motivo y autor
 - [x] `HU-26.2` [Web] Bandeja de lecturas pendientes
-- [ ] `HU-26.3` [Pruebas] Exclusión de rechazadas en el MTD
+- [x] `HU-26.3` [Pruebas] Exclusión de rechazadas en el MTD
 
 > `POST /visitas/lecturas/{id}/revision` (agrónomo o administrador): `validada` o `rechazada`
 > con motivo obligatorio (5–300); guarda quién (`revisada_por`) y cuándo; se puede cambiar de
@@ -802,8 +802,8 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 > rechazar con motivo y «Validar las N sin avisos». Con `estado_esperado` la API responde 409 si
 > otra persona ya revisó la lectura (no se pisan decisiones). Los avisos solo los ven agrónomo y
 > administrador. **Decisión a confirmar:** el agrónomo puede validar las lecturas que él mismo
-> registró (en un predio con un solo agrónomo no habría quién más). **Pendiente:** HU-26.3, la prueba de que el
-> MTD excluye las rechazadas, se hace con el cálculo del MTD (HU-28).
+> registró (en un predio con un solo agrónomo no habría quién más). HU-26.3: la exclusión de las rechazadas en el MTD
+> se prueba en `tests/test_mtd.py` (HU-28).
 
 ### HU-27 · Consultar el historial por trampa y por lote
 
@@ -824,7 +824,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-28 · Calcular el MTD del predio
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero obtener el índice MTD por especie y por semana, para reportar la situación fitosanitaria del predio.
 
 **Criterios de aceptación**
@@ -837,10 +837,22 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 **Tareas**
 
-- [ ] `HU-28.1` [API] Servicio calcular_mtd como función pura
-- [ ] `HU-28.2` [API] GET /mtd?desde=&hasta=&especie=
-- [ ] `HU-28.3` [Pruebas] Casos calculados a mano (skill /revisar-mtd)
-- [ ] `HU-28.4` [Web] Tabla y tendencia semanal del MTD
+- [x] `HU-28.1` [API] Servicio calcular_mtd como función pura
+- [x] `HU-28.2` [API] GET /mtd?desde=&hasta=&especie=
+- [x] `HU-28.3` [Pruebas] Casos calculados a mano (skill /revisar-mtd)
+- [x] `HU-28.4` [Web] Tabla y tendencia semanal del MTD
+
+> `services/mtd.py` (funciones puras): *C. capitata* con las trampas Jackson y *Anastrepha* con
+> las McPhail, nunca mezcladas. M = moscas de la especie; T = trampas distintas revisadas; D =
+> días de exposición sumados ÷ T (si una trampa se lee dos veces en el periodo, T × D son los
+> trampa-días reales; con una lectura por trampa es el promedio). Lecturas vigentes y no
+> rechazadas (las registradas cuentan y se informa cuántas faltan por validar). `GET /mtd?
+> predio_id=&desde=&hasta=&especie=` (por defecto las últimas 12 semanas, máximo tres años):
+> filas por especie y semana ISO (también sin lecturas: `null`, «sin dato») y el consolidado
+> del periodo, con M, T y D. Sin redondear en la API; 4 decimales al presentar. Pruebas con 13
+> casos calculados a mano (skill /revisar-mtd). Web `/mtd`: MTD del periodo con su fórmula,
+> tendencia semanal (SVG) y tabla por semana. **Pendiente:** confirmar con Icota la regla de D
+> cuando una trampa se lee más de una vez en el periodo.
 
 ### HU-29 · Exportar el reporte MTD para el ICA
 

@@ -646,3 +646,47 @@ test('el agrónomo rechaza con motivo una lectura tomada lejos de la trampa', as
     'Rechazada por Usuario E2E',
   )
 })
+
+// --- MTD (HU-28) ---
+
+test('el MTD del predio muestra M, T y D de la semana con la lectura', async ({ page }) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  await page.evaluate(async (codigo) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const predioId = localStorage.getItem('icota.predio')
+    const trampas = await (
+      await fetch(`/api/v1/trampas?predio_id=${predioId}`, { headers: cabeceras })
+    ).json()
+    const trampa = trampas.find((t) => t.codigo_ica === codigo)
+    await fetch('/api/v1/visitas/lecturas', {
+      method: 'POST',
+      headers: cabeceras,
+      body: JSON.stringify({
+        trampa_id: trampa.id,
+        observado_en: new Date().toISOString(),
+        capitata_machos: 2,
+        capitata_hembras: 1,
+        anastrepha: 0,
+        dias_exposicion: 7,
+        justificacion_dias: 'Prueba E2E del MTD',
+        estado_trampa: 'buena',
+        cambio_atrayente: false,
+      }),
+    })
+  }, codigo)
+
+  await page.goto('/mtd')
+  const capitata = page.getByRole('region', { name: 'MTD de Ceratitis capitata' })
+  // Solo esta trampa del Predio E2E tiene lectura: 3 ÷ (1 × 7) = 0,4286.
+  await expect(capitata).toContainText('3 ÷ (1 × 7) = 0,4286')
+  await expect(capitata.getByRole('row').nth(1)).toContainText('0,4286')
+  await expect(page.getByRole('region', { name: 'MTD de Anastrepha spp.' })).toContainText(
+    'sin dato (T × D = 0)',
+  )
+})

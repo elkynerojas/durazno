@@ -139,6 +139,12 @@ export const lecturasDelPredio = (predioId, estado) =>
 export const revisarLectura = (id, datos) =>
   api(`/visitas/lecturas/${id}/revision`, { metodo: 'POST', cuerpo: datos })
 
+// MTD del predio por especie y semana ISO entre dos fechas (AAAA-MM-DD; opcionales).
+export const obtenerMtd = (predioId, desde, hasta) =>
+  api(
+    `/mtd?predio_id=${predioId}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`,
+  )
+
 export const listarRutasPredio = (predioId) => api(`/rutas?predio_id=${predioId}`)
 
 // Orden propuesto por vecino más cercano (no se guarda).

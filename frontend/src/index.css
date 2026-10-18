@@ -1765,3 +1765,81 @@ button {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
+
+/* ---------- MTD (HU-28) ---------- */
+.formulario.filtro-mtd {
+  flex-flow: row wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.filtro-mtd > div {
+  flex: 0 1 200px;
+}
+
+.tabla-mtd__fechas {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--texto-suave);
+}
+
+.formulario.filtro-mtd input {
+  margin-bottom: 0;
+}
+
+.tarjeta-mtd {
+  margin-bottom: 1.25rem;
+}
+
+.tarjeta-mtd__encabezado {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.6fr) minmax(0, 1.4fr);
+  gap: 1.25rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.tarjeta-mtd__encabezado p {
+  margin: 0.15rem 0;
+}
+
+.tarjeta-mtd__valor {
+  font-family: var(--mono);
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: var(--verde-900);
+}
+
+.grafico-mtd {
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  fill: var(--texto-suave);
+}
+
+.grafico-mtd__guia {
+  stroke: var(--borde);
+}
+
+.grafico-mtd__linea {
+  fill: none;
+  stroke: var(--durazno-oscuro);
+  stroke-width: 2.5;
+}
+
+.grafico-mtd__punto {
+  fill: var(--durazno-oscuro);
+}
+
+@media (max-width: 720px) {
+  .tarjeta-mtd__encabezado {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tarjeta-mtd .tabla th,
+  .tarjeta-mtd .tabla td {
+    padding: 0.5rem 0.4rem;
+  }
+}
