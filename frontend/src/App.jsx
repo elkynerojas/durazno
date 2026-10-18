@@ -6,6 +6,7 @@ import RutaProtegida from './features/auth/RutaProtegida'
 import PorPredio from './features/predios/PorPredio'
 import { ProveedorPredio } from './features/predios/ProveedorPredio'
 import VistaLectura from './features/lecturas/VistaLectura'
+import VistaLecturas from './features/lecturas/VistaLecturas'
 import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
 import VistaMiSemana from './features/plan/VistaMiSemana'
@@ -66,6 +67,14 @@ export default function App() {
                 }
               />
               <Route path="/mi-semana" element={<VistaMiSemana />} />
+              <Route
+                path="/lecturas"
+                element={
+                  <PorPredio>
+                    <VistaLecturas />
+                  </PorPredio>
+                }
+              />
               <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
               <Route path="/t/:codigo/lectura" element={<VistaLectura />} />
               <Route

@@ -38,6 +38,9 @@ class LecturaTrampa(EntidadSincronizable, Base):
         CheckConstraint(f"estado_trampa IN {ESTADOS_TRAMPA_LECTURA}", name="estado_trampa_valido"),
         CheckConstraint(f"estado IN {ESTADOS_LECTURA}", name="estado_valido"),
         CheckConstraint("precision_m IS NULL OR precision_m >= 0", name="precision_no_negativa"),
+        CheckConstraint(
+            "estado <> 'rechazada' OR motivo_rechazo IS NOT NULL", name="rechazo_con_motivo"
+        ),
         # Una lectura por trampa y día, sea quien sea el técnico: así no se duplican capturas en
         # el MTD. Una rechazada (HU-26) deja registrar otra.
         Index(
@@ -72,3 +75,9 @@ class LecturaTrampa(EntidadSincronizable, Base):
     precision_m: Mapped[Decimal | None] = mapped_column(Numeric(7, 2), nullable=True)
     distancia_m: Mapped[Decimal | None] = mapped_column(Numeric(9, 1), nullable=True)
     estado: Mapped[str] = mapped_column(String(10), nullable=False, server_default="registrada")
+    # Validación del agrónomo (HU-26): quién y cuándo la validó o rechazó, y por qué la rechazó.
+    revisada_por_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("usuario.id"), nullable=True
+    )
+    revisada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    motivo_rechazo: Mapped[str | None] = mapped_column(String(300), nullable=True)

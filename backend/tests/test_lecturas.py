@@ -258,7 +258,7 @@ async def test_las_rechazadas_no_cuentan_como_revision(cliente, datos, session):
     await session.execute(
         update(LecturaTrampa)
         .where(LecturaTrampa.id == uuid.UUID(lectura["id"]))
-        .values(estado="rechazada")
+        .values(estado="rechazada", motivo_rechazo="Conteo dudoso")
     )
     preparada = await cliente.get(
         f"{URL}/preparar",
@@ -312,7 +312,7 @@ async def test_una_lectura_por_trampa_y_dia_aunque_sea_otro_tecnico(
     await session.execute(
         update(LecturaTrampa)
         .where(LecturaTrampa.id == uuid.UUID(primera["id"]))
-        .values(estado="rechazada")
+        .values(estado="rechazada", motivo_rechazo="Conteo dudoso")
     )
     otra_vez = await _registrar(
         cliente, datos, usuario=otro, observado_en="2026-10-08T16:00:00-05:00"
@@ -374,3 +374,143 @@ async def test_datos_personales_segun_el_rol(cliente, datos, crear_usuario):
     )
     # La distancia sí la ven todos: basta para el control de calidad.
     assert productor["distancia_m"] == pytest.approx(DISTANCIA_M, abs=0.2)
+
+
+# --- Validación de lecturas (HU-26) ---
+
+
+@pytest.fixture
+async def agronomo(crear_usuario, datos):
+    return await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[datos["predio"]])
+
+
+async def _revisar(cliente, usuario, lectura_id, **cuerpo):
+    return await cliente.post(
+        f"{URL}/{lectura_id}/revision", json=cuerpo, headers=encabezados(usuario)
+    )
+
+
+async def test_validar_y_rechazar_con_motivo_y_autor(cliente, datos, agronomo):
+    lectura = (await _registrar(cliente, datos)).json()
+    assert (lectura["estado"], lectura["revisada_por"]) == ("registrada", None)
+
+    validada = await _revisar(cliente, agronomo, lectura["id"], estado="validada")
+    assert validada.status_code == 200
+    assert (validada.json()["estado"], validada.json()["revisada_por"]) == (
+        "validada",
+        "Persona de Prueba",
+    )
+    assert validada.json()["revisada_en"] is not None
+
+    sin_motivo = await _revisar(cliente, agronomo, lectura["id"], estado="rechazada")
+    assert sin_motivo.status_code == 422
+    corto = await _revisar(cliente, agronomo, lectura["id"], estado="rechazada", motivo="x")
+    assert corto.status_code == 422
+    rechazada = await _revisar(
+        cliente, agronomo, lectura["id"], estado="rechazada", motivo="Capturas fuera de rango"
+    )
+    assert (rechazada.json()["estado"], rechazada.json()["motivo_rechazo"]) == (
+        "rechazada",
+        "Capturas fuera de rango",
+    )
+    # Volver a validar borra el motivo.
+    otra_vez = await _revisar(cliente, agronomo, lectura["id"], estado="validada")
+    assert (otra_vez.json()["estado"], otra_vez.json()["motivo_rechazo"]) == ("validada", None)
+
+
+async def test_solo_el_agronomo_revisa(cliente, datos, crear_usuario, session):
+    lectura = (await _registrar(cliente, datos)).json()
+    tecnico = await _revisar(cliente, datos["tecnico"], lectura["id"], estado="validada")
+    assert tecnico.status_code == 403
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[otro])
+    assert (await _revisar(cliente, ajeno, lectura["id"], estado="validada")).status_code == 404
+    inexistente = await _revisar(cliente, ajeno, uuid.uuid4(), estado="validada")
+    assert inexistente.status_code == 404
+
+
+async def test_no_valida_si_ya_hay_otra_lectura_ese_dia(cliente, datos, agronomo, crear_usuario):
+    primera = (await _registrar(cliente, datos)).json()
+    await _revisar(
+        cliente, agronomo, primera["id"], estado="rechazada", motivo="Trampa caída al suelo"
+    )
+    otro = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[datos["predio"]])
+    segunda = await _registrar(
+        cliente, datos, usuario=otro, observado_en="2026-10-08T15:00:00-05:00"
+    )
+    assert segunda.status_code == 201
+    conflicto = await _revisar(cliente, agronomo, primera["id"], estado="validada")
+    assert conflicto.status_code == 409
+
+
+async def test_bandeja_de_pendientes_con_avisos(cliente, datos, agronomo, session):
+    lejos = (
+        await _registrar(
+            cliente,
+            datos,
+            # 0,001° al norte ≈ 110,6 m (a mano), más que el umbral de 50 m.
+            posicion={"type": "Point", "coordinates": [-72.6395, 7.2715]},
+            precision_m=8,
+        )
+    ).json()
+    cambiada = (
+        await _registrar(
+            cliente,
+            datos,
+            observado_en="2026-10-15T07:00:00-05:00",
+            dias_exposicion=5,
+            justificacion_dias="Revisada el día 10 sin registro",
+            posicion={"type": "Point", "coordinates": [-72.6395, 7.2705]},
+            precision_m=3,
+        )
+    ).json()
+    sin_avisos = (
+        await _registrar(
+            cliente,
+            datos,
+            trampa_id=str(datos["trampa"].id),
+            observado_en="2026-10-16T07:00:00-05:00",
+            posicion={"type": "Point", "coordinates": [-72.6395, 7.2705]},
+            precision_m=3,
+        )
+    ).json()
+    await _revisar(cliente, agronomo, sin_avisos["id"], estado="validada")
+
+    pendientes = await cliente.get(
+        URL,
+        params={
+            "predio_id": str(datos["predio"].id),
+            "estado": "registrada",
+            "antiguas_primero": True,
+        },
+        headers=encabezados(agronomo),
+    )
+    assert [(p["id"], p["avisos"]) for p in pendientes.json()] == [
+        (lejos["id"], ["Tomada a 111 m de la trampa (±8 m)"]),
+        (
+            cambiada["id"],
+            ["Días de exposición cambiados: 5 en vez de 7 (Revisada el día 10 sin registro)"],
+        ),
+    ]
+
+
+async def test_estado_esperado_evita_pisar_otra_revision(cliente, datos, agronomo):
+    lectura = (await _registrar(cliente, datos)).json()
+    await _revisar(cliente, agronomo, lectura["id"], estado="rechazada", motivo="Trampa caída")
+    tarde = await _revisar(
+        cliente, agronomo, lectura["id"], estado="validada", estado_esperado="registrada"
+    )
+    assert tarde.status_code == 409
+    al_dia = await _revisar(
+        cliente, agronomo, lectura["id"], estado="validada", estado_esperado="rechazada"
+    )
+    assert al_dia.json()["estado"] == "validada"
+
+
+async def test_los_avisos_son_solo_para_quien_valida(cliente, datos, agronomo):
+    lectura = (await _registrar(cliente, datos)).json()
+    assert lectura["avisos"] == []  # el técnico no los ve
+    vista = await cliente.get(f"{URL}/{lectura['id']}", headers=encabezados(agronomo))
+    assert vista.json()["avisos"] == ["Sin ubicación del teléfono"]

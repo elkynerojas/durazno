@@ -5,8 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import Numeric, cast, func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
-from app.api.acceso import ROLES_CAMPO, ROLES_GESTION, exigir_lote, exigir_trampa
+from app.api.acceso import ROLES_CAMPO, ROLES_GESTION, exigir_lote, exigir_predio, exigir_trampa
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lectura_trampa import LecturaTrampa
 from app.models.lote import Lote
@@ -14,12 +15,21 @@ from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.models.visita import Visita
 from app.schemas.geo import a_geometria
-from app.schemas.lectura import LecturaCrear, LecturaLeer, LecturaResumen, PreparacionLectura
-from app.services.lecturas import dias_exposicion, fecha_bogota, revision_anterior
+from app.schemas.lectura import (
+    LecturaCrear,
+    LecturaLeer,
+    LecturaResumen,
+    PreparacionLectura,
+    Revision,
+)
+from app.schemas.trampa import EstadoLectura
+from app.services.lecturas import avisos_lectura, dias_exposicion, fecha_bogota, revision_anterior
 
 router = APIRouter(prefix="/visitas", tags=["visitas"])
 
 CampoDep = Annotated[Usuario, Depends(requiere_rol(*ROLES_CAMPO))]
+GestionDep = Annotated[Usuario, Depends(requiere_rol(*ROLES_GESTION))]
+Revisor = aliased(Usuario)
 ERROR_401 = {401: {"description": "Sin sesión o sesión inválida"}}
 ERROR_403 = {403: {"description": "El productor no registra lecturas"}}
 ERROR_404 = {404: {"description": "Trampa, lote o lectura no encontrada (o no asignada)"}}
@@ -46,15 +56,25 @@ def _no_valida(detalle: str) -> HTTPException:
 
 def _consulta():
     return (
-        select(LecturaTrampa, Trampa.codigo_ica, Lote.id, Lote.codigo, Usuario.nombre_completo)
+        select(
+            LecturaTrampa,
+            Trampa.codigo_ica,
+            Lote.id,
+            Lote.codigo,
+            Usuario.nombre_completo,
+            Revisor.nombre_completo,
+        )
         .join(Trampa, Trampa.id == LecturaTrampa.trampa_id)
         .join(Lote, Lote.id == Trampa.lote_id)
         .join(Usuario, Usuario.id == LecturaTrampa.responsable_id)
+        .outerjoin(Revisor, Revisor.id == LecturaTrampa.revisada_por_id)
         .where(LecturaTrampa.deleted_at.is_(None))
     )
 
 
-def _leer(usuario: Usuario, lectura, codigo_ica, lote_id, lote_codigo, responsable) -> LecturaLeer:
+def _leer(
+    usuario: Usuario, lectura, codigo_ica, lote_id, lote_codigo, responsable, revisor
+) -> LecturaLeer:
     """Lectura para el usuario. Datos personales (Ley 1581): la posición GPS del técnico solo la
     ven el agrónomo, el administrador y quien la registró; el productor no ve el responsable."""
     datos = {c: getattr(lectura, c) for c in LecturaLeer.model_fields if hasattr(lectura, c)}
@@ -63,11 +83,22 @@ def _leer(usuario: Usuario, lectura, codigo_ica, lote_id, lote_codigo, responsab
         lote_id=lote_id,
         lote_codigo=lote_codigo,
         responsable_nombre=responsable,
+        revisada_por=revisor,
+        # Los avisos son para quien valida (agrónomo o administrador).
+        avisos=avisos_lectura(
+            None if lectura.distancia_m is None else float(lectura.distancia_m),
+            None if lectura.precision_m is None else float(lectura.precision_m),
+            lectura.dias_exposicion,
+            lectura.dias_calculados,
+            lectura.justificacion_dias,
+        )
+        if usuario.rol in ROLES_GESTION
+        else [],
     )
     if usuario.rol not in ROLES_GESTION and lectura.responsable_id != usuario.id:
         datos.update(posicion=None, precision_m=None)
     if usuario.rol == "productor":
-        datos.update(responsable_id=None, responsable_nombre=None)
+        datos.update(responsable_id=None, responsable_nombre=None, revisada_por=None)
     return LecturaLeer.model_validate(datos)
 
 
@@ -227,16 +258,24 @@ async def registrar_lectura(
 @router.get(
     "/lecturas",
     response_model=list[LecturaLeer],
-    summary="Lecturas de una trampa o de un lote",
-    description="Lecturas vigentes, de la más reciente a la más antigua (máximo `limite`). "
-    "Cualquier rol con el predio asignado. El historial con filtros llega con HU-27.",
-    responses={**ERROR_401, **ERROR_404, 422: {"description": "Falta `trampa_id` o `lote_id`"}},
+    summary="Lecturas de una trampa, un lote o un predio",
+    description="Lecturas vigentes de la trampa, el lote o el predio, filtradas por `estado` "
+    "(p. ej. `registrada` para la bandeja de validación). De la más reciente a la más antigua, "
+    "o al revés con `antiguas_primero`. Cualquier rol con el predio asignado.",
+    responses={
+        **ERROR_401,
+        **ERROR_404,
+        422: {"description": "Falta `trampa_id`, `lote_id` o `predio_id`"},
+    },
 )
 async def listar_lecturas(
     usuario: UsuarioActualDep,
     session: SessionDep,
     trampa_id: uuid.UUID | None = None,
     lote_id: uuid.UUID | None = None,
+    predio_id: uuid.UUID | None = None,
+    estado: EstadoLectura | None = None,
+    antiguas_primero: bool = False,
     limite: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[LecturaLeer]:
     if trampa_id is not None:
@@ -245,11 +284,18 @@ async def listar_lecturas(
     elif lote_id is not None:
         await exigir_lote(session, usuario, lote_id)
         condicion = Trampa.lote_id == lote_id
+    elif predio_id is not None:
+        await exigir_predio(session, usuario, predio_id)
+        condicion = Lote.predio_id == predio_id
     else:
-        raise _no_valida("Indique la trampa (trampa_id) o el lote (lote_id)")
-    filas = await session.execute(
-        _consulta().where(condicion).order_by(LecturaTrampa.observado_en.desc()).limit(limite)
+        raise _no_valida("Indique la trampa (trampa_id), el lote (lote_id) o el predio (predio_id)")
+    consulta = _consulta().where(condicion, Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None))
+    if estado is not None:
+        consulta = consulta.where(LecturaTrampa.estado == estado)
+    orden = (
+        LecturaTrampa.observado_en.asc() if antiguas_primero else LecturaTrampa.observado_en.desc()
     )
+    filas = await session.execute(consulta.order_by(orden).limit(limite))
     return [_leer(usuario, *fila) for fila in filas]
 
 
@@ -271,3 +317,66 @@ async def obtener_lectura(
     except HTTPException as error:
         raise no_existe from error
     return lectura
+
+
+@router.post(
+    "/lecturas/{lectura_id}/revision",
+    response_model=LecturaLeer,
+    summary="Validar o rechazar una lectura",
+    description="El agrónomo (o el administrador) valida la lectura o la rechaza con un motivo; "
+    "queda quién y cuándo. Puede revisar también las que registró él mismo (en un predio con un "
+    "solo agrónomo no habría quién más). Las rechazadas no cuentan para el MTD ni como "
+    "revisión anterior, y "
+    "dejan registrar otra lectura de la trampa ese día. Se puede cambiar de decisión.",
+    responses={
+        **ERROR_401,
+        403: {"description": "Solo el agrónomo o el administrador validan lecturas"},
+        **ERROR_404,
+        409: {
+            "description": "Otra persona ya la revisó (`estado_esperado`), o ya hay otra lectura "
+            "de la trampa ese día"
+        },
+        422: {"description": "Rechazo sin motivo"},
+    },
+)
+async def revisar_lectura(
+    lectura_id: uuid.UUID, entrada: Revision, usuario: GestionDep, session: SessionDep
+) -> LecturaLeer:
+    lectura = await session.scalar(
+        select(LecturaTrampa).where(
+            LecturaTrampa.id == lectura_id, LecturaTrampa.deleted_at.is_(None)
+        )
+    )
+    no_existe = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lectura no encontrada")
+    if lectura is None:
+        raise no_existe
+    try:
+        await exigir_trampa(session, usuario, lectura.trampa_id, escribir=True)
+    except HTTPException as error:
+        if error.status_code == status.HTTP_404_NOT_FOUND:
+            raise no_existe from error
+        raise
+    if entrada.estado_esperado is not None and entrada.estado_esperado != lectura.estado:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Otra persona ya revisó esta lectura: actualice la lista",
+        )
+    motivo = entrada.motivo if entrada.estado == "rechazada" else None
+    if (lectura.estado, lectura.motivo_rechazo) != (entrada.estado, motivo):
+        lectura.estado = entrada.estado
+        lectura.motivo_rechazo = motivo
+        lectura.revisada_por_id = usuario.id
+        lectura.revisada_en = func.now()
+        try:
+            await session.flush()
+        except IntegrityError as error:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya hay otra lectura de esta trampa ese día: rechácela antes de validar "
+                "esta",
+            ) from error
+    await session.refresh(lectura)
+    leida = await _leer_id(session, usuario, lectura.id)
+    await session.commit()
+    return leida

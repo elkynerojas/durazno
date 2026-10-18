@@ -596,3 +596,53 @@ test('se registra la lectura de una trampa desde su QR, con la ubicación del te
   await page.getByRole('button', { name: 'Registrar lectura' }).click()
   await expect(page.getByRole('alert')).toContainText(`Ya hay una lectura de ${codigo} del`)
 })
+
+// --- Validación de lecturas (HU-26) ---
+
+test('el agrónomo rechaza con motivo una lectura tomada lejos de la trampa', async ({ page }) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  // Lectura registrada a ≈ 111 m de la trampa (0,001° al norte).
+  await page.evaluate(async (codigo) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const predioId = localStorage.getItem('icota.predio')
+    const trampas = await (
+      await fetch(`/api/v1/trampas?predio_id=${predioId}`, { headers: cabeceras })
+    ).json()
+    const trampa = trampas.find((t) => t.codigo_ica === codigo)
+    const [lng, lat] = trampa.geom.coordinates
+    await fetch('/api/v1/visitas/lecturas', {
+      method: 'POST',
+      headers: cabeceras,
+      body: JSON.stringify({
+        trampa_id: trampa.id,
+        observado_en: new Date().toISOString(),
+        capitata_machos: 2,
+        capitata_hembras: 0,
+        anastrepha: 0,
+        estado_trampa: 'buena',
+        cambio_atrayente: false,
+        posicion: { type: 'Point', coordinates: [lng, lat + 0.001] },
+        precision_m: 6,
+      }),
+    })
+  }, codigo)
+
+  await page.goto('/lecturas')
+  const tarjeta = page.getByRole('listitem', { name: `Lectura de ${codigo}` })
+  await expect(tarjeta).toContainText(/Tomada a 1\d\d m de la trampa/)
+  await tarjeta.getByRole('button', { name: 'Rechazar…' }).click()
+  await tarjeta.getByLabel('Motivo del rechazo').fill('Tomada lejos de la trampa')
+  await tarjeta.getByRole('button', { name: 'Rechazar' }).click()
+  await expect(page.getByText(`Lectura de ${codigo} rechazada.`)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Rechazadas' }).click()
+  await expect(page.getByRole('listitem', { name: `Lectura de ${codigo}` })).toContainText(
+    'Rechazada por Usuario E2E',
+  )
+})

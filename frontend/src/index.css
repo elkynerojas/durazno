@@ -1743,3 +1743,25 @@ button {
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+
+/* ---------- Validación de lecturas (HU-26) ---------- */
+.pestanas {
+  margin-bottom: 1rem;
+}
+
+.tarjeta-revision {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tarjeta-revision .formulario__aviso,
+.tarjeta-revision .formulario__nota {
+  margin: 0;
+}
+
+.ficha__titulo a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}

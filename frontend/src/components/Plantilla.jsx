@@ -8,7 +8,7 @@ import { rangoSemana, semanaIso } from '../utils/fechas'
 import EstadoApi from './EstadoApi'
 import Logo from './Logo'
 
-// Secciones disponibles hoy. Lecturas y MTD se agregan con sus historias.
+// Secciones disponibles hoy. MTD e historial se agregan con sus historias.
 const SECCIONES = [
   { a: '/mi-semana', texto: 'Mi semana', roles: ['tecnico', 'agronomo'] },
   { a: '/mapa', texto: 'Mapa del predio' },
@@ -16,6 +16,7 @@ const SECCIONES = [
   { a: '/trampas', texto: 'Trampas y QR' },
   { a: '/rutas', texto: 'Rutas de monitoreo' },
   { a: '/plan', texto: 'Planeación' },
+  { a: '/lecturas', texto: 'Lecturas de trampa', roles: ['agronomo', 'administrador'] },
   { a: '/predio', texto: 'Datos del predio' },
   { a: '/predios', texto: 'Predios', roles: ['administrador'] },
   { a: '/usuarios', texto: 'Usuarios', roles: ['administrador'] },

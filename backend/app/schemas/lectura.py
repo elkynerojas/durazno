@@ -14,7 +14,7 @@ from pydantic import (
 )
 
 from app.schemas.geo import PuntoGeoJSON, a_geojson
-from app.schemas.trampa import LecturaResumen, PrecisionM
+from app.schemas.trampa import EstadoLectura, LecturaResumen, PrecisionM
 
 EstadoTrampaLectura = Literal["buena", "danada", "faltante", "reubicada"]
 Capturas = Annotated[int, Field(ge=0, le=10_000)]
@@ -76,6 +76,13 @@ class LecturaLeer(LecturaResumen):
     )
     precision_m: float | None
     distancia_m: float | None = Field(description="Distancia geodésica a la trampa, en metros")
+    revisada_por: str | None = Field(description="Quién la validó o rechazó (HU-26)")
+    revisada_en: datetime | None
+    motivo_rechazo: str | None
+    avisos: list[str] = Field(
+        description="Para revisar antes de validar: lejos de la trampa, sin ubicación o días "
+        "de exposición cambiados"
+    )
     created_at: datetime
 
     @field_validator("posicion", mode="before")
@@ -96,3 +103,24 @@ class PreparacionLectura(BaseModel):
     )
     dias_exposicion: int = Field(description="Días calculados hasta `observado_en` (o hoy)")
     ultima_lectura: LecturaResumen | None
+
+
+Motivo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=300)]
+
+
+class Revision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    estado: Literal["validada", "rechazada"]
+    motivo: Motivo | None = Field(default=None, description="Obligatorio para rechazar")
+    estado_esperado: EstadoLectura | None = Field(
+        default=None,
+        description="Estado que el cliente vio: si la lectura ya cambió (otra persona la revisó), "
+        "responde 409 en lugar de pisar esa decisión",
+    )
+
+    @model_validator(mode="after")
+    def _motivo_al_rechazar(self) -> "Revision":
+        if self.estado == "rechazada" and self.motivo is None:
+            raise ValueError("Para rechazar la lectura escriba el motivo")
+        return self

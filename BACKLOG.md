@@ -777,7 +777,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-26 · Validar las lecturas
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ingry
+- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero revisar y validar las lecturas registradas, para que solo datos confiables entren al MTD.
 
 **Criterios de aceptación**
@@ -788,9 +788,22 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 **Tareas**
 
-- [ ] `HU-26.1` [API] Cambio de estado con motivo y autor
-- [ ] `HU-26.2` [Web] Bandeja de lecturas pendientes
+- [x] `HU-26.1` [API] Cambio de estado con motivo y autor
+- [x] `HU-26.2` [Web] Bandeja de lecturas pendientes
 - [ ] `HU-26.3` [Pruebas] Exclusión de rechazadas en el MTD
+
+> `POST /visitas/lecturas/{id}/revision` (agrónomo o administrador): `validada` o `rechazada`
+> con motivo obligatorio (5–300); guarda quién (`revisada_por`) y cuándo; se puede cambiar de
+> decisión (409 si al validar ya hay otra lectura de la trampa ese día). `GET /visitas/lecturas`
+> filtra por `predio_id` y `estado`, y cada lectura trae `avisos`: tomada a más de 50 m de la
+> trampa (umbral **provisional**, acordar con Icota), sin ubicación o con días de exposición
+> cambiados. Las rechazadas ya no cuentan como revisión anterior ni en el monitoreo del mapa.
+> Web `/lecturas`: pendientes (las más antiguas primero), validadas y rechazadas; validar,
+> rechazar con motivo y «Validar las N sin avisos». Con `estado_esperado` la API responde 409 si
+> otra persona ya revisó la lectura (no se pisan decisiones). Los avisos solo los ven agrónomo y
+> administrador. **Decisión a confirmar:** el agrónomo puede validar las lecturas que él mismo
+> registró (en un predio con un solo agrónomo no habría quién más). **Pendiente:** HU-26.3, la prueba de que el
+> MTD excluye las rechazadas, se hace con el cálculo del MTD (HU-28).
 
 ### HU-27 · Consultar el historial por trampa y por lote
 

@@ -43,6 +43,7 @@ describe('Plantilla', () => {
       'Trampas y QR',
       'Rutas de monitoreo',
       'Planeación',
+      'Lecturas de trampa',
       'Datos del predio',
       'Predios',
       'Usuarios',

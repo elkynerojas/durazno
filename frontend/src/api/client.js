@@ -129,6 +129,16 @@ export const prepararLectura = (trampaId, observadoEn) =>
 export const registrarLectura = (datos) =>
   api('/visitas/lecturas', { metodo: 'POST', cuerpo: datos })
 
+// Lecturas del predio en un estado (p. ej. `registrada`: bandeja de validación, HU-26).
+export const lecturasDelPredio = (predioId, estado) =>
+  api(
+    `/visitas/lecturas?predio_id=${predioId}&estado=${estado}&antiguas_primero=${estado === 'registrada'}&limite=200`,
+  )
+
+// Valida o rechaza una lectura (`{ estado, motivo }`).
+export const revisarLectura = (id, datos) =>
+  api(`/visitas/lecturas/${id}/revision`, { metodo: 'POST', cuerpo: datos })
+
 export const listarRutasPredio = (predioId) => api(`/rutas?predio_id=${predioId}`)
 
 // Orden propuesto por vecino más cercano (no se guarda).
