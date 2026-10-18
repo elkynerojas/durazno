@@ -1,0 +1,23 @@
+@startuml
+!include estilo.iuml
+title Despliegue en desarrollo (Docker Compose)
+
+node "Equipo del desarrollador" {
+  node "Docker Compose" {
+    node "frontend\nNode 22 · Vite :5173" as fe
+    node "api\nuvicorn --reload :8000" as api
+    node "nginx :80" as nginx
+    node "db\nPostGIS :5432" as db
+    node "pgadmin :5050" as pga
+    node "e2e\nPlaywright (perfil e2e)" as e2e
+  }
+  artifact "Navegador" as nav
+}
+nav --> fe : http://localhost:5173
+fe --> api : proxy /api
+nav --> nginx : http://localhost/docs
+nginx --> api
+api --> db
+pga --> db
+e2e --> fe : Pixel 7 emulado
+@enduml

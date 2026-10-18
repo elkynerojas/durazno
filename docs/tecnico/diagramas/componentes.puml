@@ -1,0 +1,34 @@
+@startuml
+!include estilo.iuml
+title Componentes de PERSICA
+
+actor "Usuario\n(navegador)" as usuario
+actor "App móvil\n(fase 2)" as movil
+
+node "nginx" as nginx {
+  component "Frontend\n(React 19 + Vite\ncompilado)" as spa
+  component "Proxy /api\n(TLS, cabeceras,\nlímite de intentos)" as proxy
+}
+
+node "API (FastAPI · Python 3.13)" as api {
+  component "Routers /api/v1\nauth · usuarios · predios · lotes\ntrampas (QR) · rutas · plan\nvisitas · mtd · sync · exportar" as routers
+  component "Acceso por rol\ny por predio" as acceso
+  component "Servicios\n(MTD, rutas, lecturas,\nQR, PDF, sincronización)" as servicios
+  component "Modelos ORM\n(SQLAlchemy 2 async +\nGeoAlchemy2)" as modelos
+}
+
+database "PostgreSQL 18\n+ PostGIS 3.6" as db
+component "certbot\n(Let's Encrypt)" as certbot
+component "respaldo\n(pg_dump diario)" as respaldo
+
+usuario --> nginx : HTTPS
+movil --> proxy : HTTPS · JSON
+spa ..> proxy : fetch /api/v1
+proxy --> routers : HTTP (red interna)
+routers --> acceso
+routers --> servicios
+servicios --> modelos
+modelos --> db : psycopg 3
+certbot ..> nginx : certificados
+respaldo --> db : pg_dump
+@enduml

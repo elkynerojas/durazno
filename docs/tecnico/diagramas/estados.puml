@@ -1,0 +1,36 @@
+@startuml
+!include estilo.iuml
+title Estados de la lectura, la actividad del plan y la trampa
+
+state "Lectura de trampa" as L {
+  [*] --> registrada : registrar (técnico)
+  registrada --> validada : validar (agrónomo)
+  registrada --> rechazada : rechazar con motivo
+  validada --> rechazada : cambiar de decisión
+  rechazada --> validada : cambiar de decisión
+}
+
+state "Actividad del plan" as A {
+  [*] --> programada : programar
+  programada --> reprogramada : mover de semana\ncon motivo
+  programada --> cumplida : lecturas de su ruta /\nlabor marcada
+  reprogramada --> cumplida
+  programada --> vencida : terminó la semana\nsin cumplirse
+  reprogramada --> vencida
+  vencida --> cumplida : lecturas atrasadas
+  cumplida --> programada : desmarcar labor
+  note right of vencida : «cumplida» y «vencida» se calculan\nal leer (estado_actividad)
+}
+
+state "Trampa" as T {
+  [*] --> activa : instalar
+  activa --> inactiva
+  inactiva --> activa
+  activa --> retirada
+  inactiva --> retirada
+  retirada --> activa : reinstalar
+  note right of retirada : los cambios marcan la ruta\n«requiere revisión»
+}
+L -[hidden]down-> A
+A -[hidden]down-> T
+@enduml

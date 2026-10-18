@@ -1,0 +1,64 @@
+' Estilo común de los diagramas de PERSICA (colores del aplicativo).
+skinparam dpi 160
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam roundCorner 8
+skinparam ArrowColor #1F5A32
+skinparam ArrowFontSize 11
+skinparam BorderColor #1F5A32
+skinparam NoteBackgroundColor #FFF7E6
+skinparam NoteBorderColor #C4572E
+skinparam class {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+  HeaderBackgroundColor #E8F1EA
+  AttributeFontSize 11
+}
+skinparam entity {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+}
+skinparam component {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+}
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #1F5A32
+}
+skinparam database {
+  BackgroundColor #E8F1EA
+  BorderColor #1F5A32
+}
+skinparam actor {
+  BackgroundColor #E8F1EA
+  BorderColor #1F5A32
+}
+skinparam usecase {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+}
+skinparam activity {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+  DiamondBackgroundColor #FFF7E6
+  DiamondBorderColor #C4572E
+}
+skinparam state {
+  BackgroundColor #F7FBF5
+  BorderColor #1F5A32
+}
+skinparam sequence {
+  ParticipantBackgroundColor #F7FBF5
+  ParticipantBorderColor #1F5A32
+  LifeLineBorderColor #8AA894
+  ActorBackgroundColor #E8F1EA
+  ActorBorderColor #1F5A32
+  GroupBackgroundColor #E8F1EA
+}
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #8AA894
+}

@@ -1,0 +1,40 @@
+@startuml
+!include estilo.iuml
+title Leer el QR de una trampa y registrar la lectura
+autonumber
+
+actor "Técnico" as tec
+participant "Cámara del\nteléfono" as cam
+participant "VistaFichaTrampa /\nVistaLectura (React)" as ui
+participant "trampas · visitas\n(FastAPI)" as api
+participant "acceso\n(exigir_trampa)" as acc
+participant "services.lecturas" as sl
+database "PostGIS" as db
+
+tec -> cam : apunta a la etiqueta
+cam -> ui : abre https://…/t/B3YDNNVP
+ui -> api : GET /trampas/qr/B3YDNNVP
+api -> db : trampa por codigo_qr (o reemplazo → 410)
+api -> acc : ¿predio asignado al usuario?
+api --> ui : trampa, lote, posición en la ruta, última lectura
+tec -> ui : Registrar lectura
+ui -> api : GET /visitas/lecturas/preparar?trampa_id
+api -> sl : revision_anterior() · dias_exposicion()
+api --> ui : días calculados
+ui -> ui : GPS (alta precisión)
+tec -> ui : capturas, estado, observaciones
+ui -> api : POST /visitas/lecturas {id del dispositivo, …, posicion, precision_m}
+api -> acc : exigir_trampa(escribir, rol de campo)
+alt el id ya existe (reenvío)
+  api --> ui : 200 la lectura guardada
+else nueva
+  api -> api : trampa activa · fecha ≤ 30 días · ≥ instalación
+  api -> sl : días calculados (justificación si cambian)
+  api -> db : visita del técnico al lote ese día (o la crea)
+  api -> db : ¿ya hay lectura de la trampa ese día? → 409
+  api -> db : ST_Distance(posición, trampa) geodésica
+  api -> db : INSERT lectura_trampa (estado registrada)
+  api --> ui : 201 lectura + avisos (> 50 m, sin GPS…)
+end
+ui --> tec : «Lectura registrada» · siguiente parada de la ruta
+@enduml

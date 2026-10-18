@@ -1,0 +1,30 @@
+@startuml
+!include estilo.iuml
+title Cálculo del MTD y reporte para el ICA
+autonumber
+actor "Agrónomo" as agr
+participant "VistaMtd" as ui
+participant "mtd (FastAPI)" as api
+participant "services.mtd\n(funciones puras)" as smtd
+participant "services.reporte_mtd" as rep
+database "PostgreSQL" as db
+
+agr -> ui : periodo (desde, hasta)
+ui -> api : GET /mtd?predio_id&desde&hasta
+api -> db : lecturas vigentes, no rechazadas,\nde trampas y lotes vigentes del predio
+api -> smtd : mtd_por_semana(lecturas, especies)
+loop por especie y semana ISO
+  smtd -> smtd : M = moscas de la especie (Jackson→C. capitata, McPhail→Anastrepha)
+  smtd -> smtd : T = trampas distintas revisadas
+  smtd -> smtd : D = días de exposición sumados ÷ T
+  smtd -> smtd : MTD = M / (T × D) · null si T × D = 0
+end
+smtd --> api : filas semanales + consolidado del periodo
+api --> ui : M, T, D, MTD y lecturas sin validar
+ui --> agr : valor, fórmula, tendencia y tabla
+agr -> ui : Reporte ICA (PDF)
+ui -> api : GET /mtd/reporte.pdf
+api -> rep : a_pdf(datos del predio, semanas, periodo)
+rep --> api : PDF (reportlab, en un hilo aparte)
+api --> ui : archivo mtd-<predio>-<fechas>.pdf
+@enduml

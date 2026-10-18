@@ -73,7 +73,7 @@ _Objetivos 1 y 2._ Requerimientos validados con Icota y diseño de datos, QR y A
 
 ### HU-02 · Documento de diseño del sistema
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S0 · **Responsable:** Ambos
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S0 · **Responsable:** Ambos
 - **Historia:** Como equipo del proyecto, quiero cerrar el diseño de datos, del QR y de la API, para desarrollar sin rehacer el modelo a mitad de camino.
 
 **Criterios de aceptación**
@@ -85,11 +85,13 @@ _Objetivos 1 y 2._ Requerimientos validados con Icota y diseño de datos, QR y A
 
 **Tareas**
 
-- [ ] `HU-02.1` [Doc] Diagramas de casos de uso y de actividad
-- [ ] `HU-02.2` [Doc] Diagramas de clases y de secuencia (lectura por QR, cálculo MTD)
-- [ ] `HU-02.3` [BD] Modelo entidad-relación geoespacial
-- [ ] `HU-02.4` [Doc] Estructura del QR y formato de la etiqueta
-- [ ] `HU-02.5` [API] Borrador del contrato de endpoints y códigos de error
+- [x] `HU-02.1` [Doc] Diagramas de casos de uso y de actividad
+- [x] `HU-02.2` [Doc] Diagramas de clases y de secuencia (lectura por QR, cálculo MTD)
+- [x] `HU-02.3` [BD] Modelo entidad-relación geoespacial
+- [x] `HU-02.4` [Doc] Estructura del QR y formato de la etiqueta
+- [x] `HU-02.5` [API] Borrador del contrato de endpoints y códigos de error
+
+_Entregado en `docs/tecnico/Documento_tecnico_PERSICA.docx` (generado con `docs/tecnico/generar.sh`: diagramas PlantUML, ER y diccionario desde los modelos, servicios desde `backend/openapi.json`). No hay SRS: los diagramas se trazan al backlog. Pendiente la revisión del director._
 
 ## E1 · Fundación técnica y acceso
 

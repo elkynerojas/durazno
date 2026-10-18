@@ -1,0 +1,33 @@
+@startuml
+!include estilo.iuml
+title Validar o rechazar una lectura
+autonumber
+actor "Agrónomo" as agr
+participant "VistaLecturas\n(bandeja)" as ui
+participant "visitas (FastAPI)" as api
+database "PostgreSQL" as db
+
+agr -> ui : Lecturas de trampa › Pendientes
+ui -> api : GET /visitas/lecturas?predio_id&estado=registrada
+api -> db : lecturas + avisos_lectura()
+api --> ui : pendientes con avisos
+alt Validar
+  agr -> ui : Validar
+  ui -> api : POST /lecturas/{id}/revision {estado: validada, estado_esperado: registrada}
+else Rechazar
+  agr -> ui : Rechazar… + motivo
+  ui -> api : POST /lecturas/{id}/revision {estado: rechazada, motivo}
+end
+api -> db : ¿estado actual = estado_esperado?
+alt otra persona ya la revisó
+  api --> ui : 409 «actualice la lista»
+else
+  api -> db : estado, revisada_por, revisada_en, motivo
+  api --> ui : 200
+end
+note right of db
+  Las rechazadas no cuentan en el MTD ni
+  como revisión anterior, y liberan el día
+  para registrar otra lectura de la trampa.
+end note
+@enduml

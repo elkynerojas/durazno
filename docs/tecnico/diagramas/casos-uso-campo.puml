@@ -1,0 +1,36 @@
+@startuml
+!include estilo.iuml
+title Casos de uso: campo y consulta
+left to right direction
+
+actor "Técnico de campo" as tec
+actor "Productor" as pro
+actor "Agrónomo" as agr
+actor "App móvil\n(fase 2)" as app
+
+rectangle "PERSICA" {
+  usecase "Iniciar sesión" as UC0
+  usecase "Consultar mi semana" as UC1
+  usecase "Leer el QR de una trampa" as UC2
+  usecase "Registrar lectura de trampa" as UC3
+  usecase "Reponer etiqueta QR" as UC4
+  usecase "Ver el mapa y el estado\nde monitoreo" as UC11
+  usecase "Consultar MTD e historial" as UC12
+  usecase "Sincronizar cambios\ny lecturas en bloque" as UC17
+}
+
+tec --> UC1
+tec --> UC2
+tec --> UC3
+tec --> UC4
+tec --> UC11
+agr --> UC3
+agr --> UC11
+agr --> UC12
+pro --> UC11
+pro --> UC12
+app --> UC17
+UC2 .> UC3 : <<extend>>
+UC3 .> UC0 : <<include>>
+UC17 .> UC0 : <<include>>
+@enduml

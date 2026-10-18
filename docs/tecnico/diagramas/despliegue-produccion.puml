@@ -1,0 +1,29 @@
+@startuml
+!include estilo.iuml
+title Despliegue en producción (Google Cloud)
+
+actor "Técnico / agrónomo\n(teléfono o PC)" as u
+node "DNS\npersica.redsoftdevelopers.com\nA → 34.138.170.192" as dns
+
+cloud "Google Cloud · proyecto persica-iser · us-east1" {
+  node "VM persica\ne2-small · Debian 12 · 20 GB\nfirewall 80/443" as vm {
+    node "Docker Compose (red interna 10.231.0.0/24)" {
+      node "nginx :80 :443\nfrontend + proxy /api" as nginx
+      node "api\nuvicorn (sin recarga, sin root)" as api
+      node "db\nPostGIS (volumen pgdata)" as db
+      node "certbot\nrenueva cada 12 h" as cb
+      node "respaldo\n02:00 · 14 días" as rs
+    }
+  }
+  storage "Snapshots diarios\ndel disco (7 días)" as snap
+}
+node "Let's Encrypt" as le
+
+u --> dns
+u --> nginx : HTTPS
+nginx --> api
+api --> db
+rs --> db
+cb --> le : ACME (webroot)
+vm ..> snap
+@enduml

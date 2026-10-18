@@ -1,0 +1,101 @@
+@startuml
+!include estilo.iuml
+title Backend por capas (principales clases y módulos)
+hide empty members
+left to right direction
+
+package "api/v1/endpoints (routers)" {
+  class "auth" as r_auth <<router>> {
+    POST /token
+    POST /renovar
+    GET /yo
+  }
+  class "trampas" as r_tr <<router>> {
+    CRUD /trampas
+    GET /trampas/qr/{codigo}
+    GET qr.svg · qr.png · etiquetas.pdf
+  }
+  class "visitas" as r_vis <<router>> {
+    POST /lecturas
+    GET /lecturas/preparar
+    POST /lecturas/{id}/revision
+    crear_lectura()
+  }
+  class "mtd" as r_mtd <<router>> {
+    GET /mtd
+    GET /mtd/reporte.csv|pdf
+    GET /historial(.csv)
+  }
+  class "sync" as r_sync <<router>> {
+    GET /cambios
+    POST /lecturas
+  }
+  class "plan · rutas · lotes\npredios · usuarios\nmapa · exportar" as r_otros <<router>>
+}
+
+package "api (dependencias)" {
+  class deps {
+    SessionDep
+    UsuarioActualDep
+    requiere_rol(*roles)
+  }
+  class acceso {
+    exigir_predio()
+    exigir_lote()
+    exigir_trampa()
+    consulta_predios_visibles()
+  }
+}
+
+package "services (lógica sin HTTP)" {
+  class "mtd" as s_mtd {
+    calcular_mtd(M, T, D)
+    resumir()
+    mtd_por_semana()
+  }
+  class "lecturas" as s_lec {
+    dias_exposicion()
+    revision_anterior()
+    avisos_lectura()
+  }
+  class "rutas" as s_rut {
+    vecino_mas_cercano()
+    errores_de_orden()
+  }
+  class "qr · etiquetas" as s_qr {
+    generar_codigo()
+    crear_qr()
+    generar_pdf()
+  }
+  class "sync" as s_sync {
+    clasificar()
+    siguiente_desde()
+  }
+  class "auth · claves · intentos" as s_auth {
+    hashear_clave() (Argon2)
+    crear_token()
+    LimiteIntentos
+  }
+  class "cumplimiento · reporte_mtd\nhistorial · exportar · monitoreo" as s_otros
+}
+
+package "models (SQLAlchemy + GeoAlchemy2)" {
+  class "Predio · Lote · Trampa · Ruta\nVisita · LecturaTrampa\nPlanActividad · Usuario …" as modelos
+}
+
+r_auth --> s_auth
+r_auth --> deps
+r_tr --> acceso
+r_tr --> s_qr
+r_vis --> acceso
+r_vis --> s_lec
+r_mtd --> s_mtd
+r_sync --> r_vis : crear_lectura
+r_sync --> s_sync
+r_otros --> acceso
+r_otros --> s_rut
+r_otros --> s_otros
+acceso --> modelos
+deps --> modelos
+s_lec --> modelos
+@enduml

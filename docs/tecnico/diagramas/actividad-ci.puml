@@ -1,0 +1,27 @@
+@startuml
+!include estilo.iuml
+title Integración continua (GitHub Actions) y entrega
+
+start
+:push o pull request;
+fork
+  :Backend: ruff, ruff format,\nalembic upgrade, pytest con PostGIS,\nexportar y comparar openapi.json;
+fork again
+  :Frontend: oxlint, Vitest,\nnpm run build;
+fork again
+  :Seguridad: pip-audit,\nnpm audit, gitleaks;
+end fork
+if (¿Todo en verde?) then (sí)
+  :E2E: Playwright (Pixel 7)\nsobre el stack de Docker;
+  if (¿E2E en verde?) then (sí)
+    :merge --ff-only a main;
+    :tag vX.Y.Z y release;
+    :instalar-servidor.sh con VERSION=vX.Y.Z;
+    stop
+  else (no)
+  endif
+else (no)
+endif
+:corregir en la rama;
+stop
+@enduml

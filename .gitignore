@@ -40,3 +40,6 @@ CLAUDE.local.md
 # Imágenes y dependencias para generar el manual de usuario (docs/manual/generar.js)
 docs/manual/img/
 docs/manual/node_modules/
+
+# Archivos intermedios del documento técnico (docs/tecnico/generar.sh)
+docs/tecnico/build/

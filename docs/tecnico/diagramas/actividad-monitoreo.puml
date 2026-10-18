@@ -1,0 +1,39 @@
+@startuml
+!include estilo.iuml
+title Ciclo semanal de monitoreo
+
+|Agrónomo|
+start
+:Programar visitas de monitoreo y\ncambios de atrayente (52 semanas);
+|Técnico|
+:Abrir «Mi semana»;
+:Seguir la ruta del lote;
+repeat
+  :Leer el QR de la trampa;
+  if (¿Trampa activa?) then (sí)
+    :Contar capturas por especie,\nestado y atrayente;
+    :Registrar lectura con GPS;
+  else (no)
+    :Avisar al agrónomo;
+  endif
+repeat while (¿Quedan paradas en la ruta?) is (sí)
+-> no;
+|Sistema|
+:Marcar la visita cumplida\ncuando todas las trampas tienen lectura;
+|Agrónomo|
+:Revisar la bandeja de pendientes;
+if (¿Lectura correcta?) then (sí)
+  :Validar;
+else (no)
+  :Rechazar con motivo;
+endif
+|Sistema|
+:Calcular MTD por especie y semana;
+|Agrónomo|
+if (¿Capturas o MTD altos?) then (sí)
+  :Programar visita adicional /\nreprogramar con motivo;
+else (no)
+endif
+:Descargar reporte para el ICA;
+stop
+@enduml

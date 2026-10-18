@@ -2,262 +2,19 @@
 //
 // 1. Capturas: MANUAL=1 docker compose --profile e2e run --rm e2e npx playwright test manual
 //    (quedan en frontend/test-results/manual/, junto con etiquetas.pdf y reporte-mtd.pdf).
-// 2. Pasar las capturas a JPEG en docs/manual/img/ (1800 px de ancho las de escritorio, 900 las
-//    del teléfono; las del teléfono más altas que 2,25 veces su ancho, en tramos -p1, -p2…), la
-//    primera página de los PDF como 23-etiquetas-pdf(-recorte).jpg y 24-reporte-mtd-pdf.jpg, y el
-//    logo (frontend/public/persica-logo.svg) como logo.png.
-// 3. npm install docx@9 && node generar.js
+// 2. Imágenes en docs/manual/img/: python docs/manual/preparar-imagenes.py (ver su encabezado).
+// 3. npm install docx@9 && node generar.js (usa las ayudas de docs/docx-comun.js)
 // 4. PDF (frontend/public/manual-usuario.pdf): ver generar-pdf.sh, que convierte con LibreOffice y
 //    escribe el índice con las páginas reales.
-const fs = require('fs')
 const path = require('path')
-const {
-  AlignmentType,
-  BorderStyle,
-  Document,
-  Footer,
-  Header,
-  HeadingLevel,
-  ImageRun,
-  LevelFormat,
-  PageBreak,
-  PageNumber,
-  Packer,
-  Paragraph,
-  ShadingType,
-  Table,
-  TableCell,
-  TableOfContents,
-  TabStopType,
-  TableRow,
-  TextRun,
-  WidthType,
-  VerticalAlign,
-} = require('docx')
+const { AlignmentType, Paragraph, TextRun } = require('docx')
 
-const IMG = process.env.MANUAL_IMG || path.join(__dirname, 'img')
-const VERDE = '1F5A32'
-const VERDE_CLARO = 'E8F1EA'
-const DURAZNO = 'C4572E'
-const ANCHO_PAGINA = 9360 // DXA: 6,5" de contenido en carta con márgenes de 1"
+const { crear, VERDE } = require('../docx-comun')
 
-// --- Tamaño de las imágenes (JPEG y PNG) para conservar la proporción ---
-function tamano(archivo) {
-  const b = fs.readFileSync(archivo)
-  if (b[0] === 0x89) return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }
-  let i = 2
-  while (i < b.length) {
-    const marcador = b[i + 1]
-    const largo = b.readUInt16BE(i + 2)
-    if (marcador >= 0xc0 && marcador <= 0xc3) return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) }
-    i += 2 + largo
-  }
-  throw new Error(`Sin tamaño: ${archivo}`)
-}
-
-// --- Texto con **negrita** y _cursiva_ ---
-function runs(texto, base = {}) {
-  const partes = texto.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).filter(Boolean)
-  return partes.map((t) =>
-    t.startsWith('**')
-      ? new TextRun({ ...base, text: t.slice(2, -2), bold: true })
-      : t.startsWith('_') && t.endsWith('_') && t.length > 2
-        ? new TextRun({ ...base, text: t.slice(1, -1), italics: true })
-        : new TextRun({ ...base, text: t }),
-  )
-}
-
-const p = (texto, opciones = {}) =>
-  new Paragraph({ children: runs(texto), spacing: { after: 120 }, ...opciones })
-const titulos = []
-const h1 = (texto) => {
-  titulos.push({ texto, nivel: 1 })
-  return new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(texto)] })
-}
-const h2 = (texto) => {
-  titulos.push({ texto, nivel: 2 })
-  return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(texto)] })
-}
-const h3 = (texto) => new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(texto)] })
-const vinetas = (items) =>
-  items.map((t) => new Paragraph({ numbering: { reference: 'vinetas', level: 0 }, children: runs(t), spacing: { after: 60 } }))
-let lista = 0
-const pasos = (items) => {
-  lista += 1
-  return items.map(
-    (t) =>
-      new Paragraph({
-        numbering: { reference: 'pasos', level: 0, instance: lista },
-        children: runs(t),
-        spacing: { after: 80 },
-      }),
-  )
-}
-
-// Recuadro de nota o advertencia (párrafo con borde izquierdo y fondo).
-const nota = (texto, tipo = 'Nota') =>
-  new Paragraph({
-    children: [new TextRun({ text: `${tipo}: `, bold: true, color: tipo === 'Importante' ? DURAZNO : VERDE }), ...runs(texto)],
-    shading: { type: ShadingType.CLEAR, fill: tipo === 'Importante' ? 'FCEDE6' : VERDE_CLARO, color: 'auto' },
-    border: { left: { style: BorderStyle.SINGLE, size: 18, color: tipo === 'Importante' ? DURAZNO : VERDE, space: 8 } },
-    spacing: { before: 120, after: 160 },
-    indent: { left: 160, right: 160 },
-  })
-
-let figuras = 0
-const leyenda = (texto) => {
-  figuras += 1
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 240 },
-    children: [
-      new TextRun({ text: `Figura ${figuras}. `, bold: true, size: 18, color: '555555' }),
-      new TextRun({ text: texto, italics: true, size: 18, color: '555555' }),
-    ],
-  })
-}
-
-function imagen(archivo, anchoPulgadas) {
-  const ruta = path.join(IMG, archivo)
-  const { w, h } = tamano(ruta)
-  const ancho = anchoPulgadas * 96
-  return new ImageRun({
-    type: archivo.endsWith('.png') ? 'png' : 'jpg',
-    data: fs.readFileSync(ruta),
-    transformation: { width: Math.round(ancho), height: Math.round((ancho * h) / w) },
-    altText: { title: archivo, description: archivo, name: archivo },
-  })
-}
-
-// Captura de escritorio a todo el ancho, con borde fino.
-const figura = (archivo, texto, ancho = 6.5) => [
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    keepNext: true,
-    spacing: { before: 120, after: 60 },
-    children: [imagen(archivo, ancho)],
-  }),
-  leyenda(texto),
-]
-
-// Capturas de teléfono una al lado de la otra (una captura larga va en dos tramos).
-function telefono(archivos, texto, ancho = 2.05) {
-  const sinBorde = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
-  const bordes = { top: sinBorde, bottom: sinBorde, left: sinBorde, right: sinBorde, insideHorizontal: sinBorde, insideVertical: sinBorde }
-  const col = Math.floor(ANCHO_PAGINA / archivos.length)
-  return [
-    new Table({
-      width: { size: col * archivos.length, type: WidthType.DXA },
-      columnWidths: archivos.map(() => col),
-      borders: bordes,
-      alignment: AlignmentType.CENTER,
-      rows: [
-        new TableRow({
-          cantSplit: true,
-          children: archivos.map(
-            (a) =>
-              new TableCell({
-                width: { size: col, type: WidthType.DXA },
-                borders: bordes,
-                verticalAlign: VerticalAlign.TOP,
-                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [imagen(a, ancho)] })],
-              }),
-          ),
-        }),
-      ],
-    }),
-    leyenda(texto),
-  ]
-}
-
-function tabla(encabezados, filas, anchos) {
-  const total = anchos.reduce((a, b) => a + b, 0)
-  const borde = { style: BorderStyle.SINGLE, size: 4, color: 'BFCFC4' }
-  const bordes = { top: borde, bottom: borde, left: borde, right: borde }
-  const celda = (texto, i, cabecera) =>
-    new TableCell({
-      width: { size: anchos[i], type: WidthType.DXA },
-      borders: bordes,
-      shading: cabecera ? { type: ShadingType.CLEAR, fill: VERDE, color: 'auto' } : undefined,
-      margins: { top: 60, bottom: 60, left: 100, right: 100 },
-      children: [
-        new Paragraph({
-          children: cabecera ? [new TextRun({ text: texto, bold: true, color: 'FFFFFF', size: 19 })] : runs(texto, { size: 19 }),
-        }),
-      ],
-    })
-  return new Table({
-    width: { size: total, type: WidthType.DXA },
-    columnWidths: anchos,
-    rows: [
-      new TableRow({ tableHeader: true, children: encabezados.map((t, i) => celda(t, i, true)) }),
-      ...filas.map((f) => new TableRow({ cantSplit: true, children: f.map((t, i) => celda(t, i, false)) })),
-    ],
-  })
-}
-const espacio = () => new Paragraph({ spacing: { after: 120 }, children: [] })
+const { p, h1, h2, vinetas, pasos, nota, figura, telefono, tabla, espacio, portada, indice, documento, guardar } =
+  crear({ imagenes: process.env.MANUAL_IMG || path.join(__dirname, 'img') })
 
 // ============================ CONTENIDO ============================
-
-const portada = [
-  new Paragraph({ spacing: { before: 1200 }, alignment: AlignmentType.CENTER, children: [imagen('logo.png', 2.6)] }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 360, after: 120 },
-    children: [new TextRun({ text: 'Manual de usuario', bold: true, size: 56, color: VERDE })],
-  }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { after: 600 },
-    children: [
-      new TextRun({
-        text: 'Trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo de durazno',
-        size: 26,
-        color: '444444',
-      }),
-    ],
-  }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: 'Para el personal de campo, el agrónomo y el administrador', size: 22 })],
-  }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 1600 },
-    children: [new TextRun({ text: 'Vereda Icota · Cácota, Norte de Santander', size: 20, color: '555555' })],
-  }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [
-      new TextRun({
-        text: 'Instituto Superior de Educación Rural (ISER) · Semillero ORION',
-        size: 20,
-        color: '555555',
-      }),
-    ],
-  }),
-  new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: 'Versión 1.0 · octubre de 2026', size: 20, color: '555555' })],
-  }),
-]
-
-const indice = [
-  new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: 'Contenido', bold: true, size: 32, color: VERDE })], spacing: { after: 240 } }),
-  // Para el PDF (convertido con LibreOffice) el índice va escrito con las páginas ya conocidas:
-  // MANUAL_TOC apunta a un JSON [{ texto, nivel, pagina }]. En el Word queda el campo de Word.
-  ...(process.env.MANUAL_TOC
-    ? JSON.parse(fs.readFileSync(process.env.MANUAL_TOC, 'utf8')).map(
-        ({ texto, nivel, pagina }) =>
-          new Paragraph({
-            tabStops: [{ type: TabStopType.RIGHT, position: ANCHO_PAGINA, leader: 'dot' }],
-            indent: { left: nivel === 2 ? 280 : 0 },
-            spacing: { after: 20 },
-            children: [new TextRun({ text: `${texto}\t${pagina}`, size: 19, bold: nivel === 1 })],
-          }),
-      )
-    : [new TableOfContents('Contenido', { headingStyleRange: '1-2' })]),
-]
 
 const introduccion = [
   h1('1. Introducción'),
@@ -730,105 +487,38 @@ const preguntas = [
 
 // ============================ DOCUMENTO ============================
 
-const doc = new Document({
-  creator: 'PERSICA',
-  title: 'PERSICA · Manual de usuario',
-  description: 'Manual de usuario del aplicativo PERSICA (HU-38)',
-  styles: {
-    default: { document: { run: { font: 'Arial', size: 21 } } },
-    paragraphStyles: [
-      {
-        id: 'Heading1',
-        name: 'Heading 1',
-        basedOn: 'Normal',
-        next: 'Normal',
-        quickFormat: true,
-        run: { size: 34, bold: true, font: 'Arial', color: VERDE },
-        paragraph: { spacing: { before: 0, after: 240 }, outlineLevel: 0 },
-      },
-      {
-        id: 'Heading2',
-        name: 'Heading 2',
-        basedOn: 'Normal',
-        next: 'Normal',
-        quickFormat: true,
-        run: { size: 26, bold: true, font: 'Arial', color: VERDE },
-        paragraph: { spacing: { before: 280, after: 120 }, outlineLevel: 1, keepNext: true },
-      },
-      {
-        id: 'Heading3',
-        name: 'Heading 3',
-        basedOn: 'Normal',
-        next: 'Normal',
-        quickFormat: true,
-        run: { size: 22, bold: true, font: 'Arial', color: '333333' },
-        paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 2, keepNext: true },
-      },
-    ],
-  },
-  numbering: {
-    config: [
-      {
-        reference: 'vinetas',
-        levels: [{ level: 0, format: LevelFormat.BULLET, text: '•', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 270 } } } }],
-      },
-      {
-        reference: 'pasos',
-        levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 540, hanging: 360 } } } }],
-      },
-    ],
-  },
-  features: { updateFields: true },
-  sections: [
-    {
-      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } }, titlePage: true },
-      headers: {
-        default: new Header({
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'BFCFC4', space: 4 } },
-              children: [new TextRun({ text: 'PERSICA · Manual de usuario', size: 16, color: '777777' })],
-            }),
-          ],
-        }),
-        first: new Header({ children: [new Paragraph('')] }),
-      },
-      footers: {
-        default: new Footer({
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [new TextRun({ children: ['Página ', PageNumber.CURRENT, ' de ', PageNumber.TOTAL_PAGES], size: 16, color: '777777' })],
-            }),
-          ],
-        }),
-        first: new Footer({ children: [new Paragraph('')] }),
-      },
-      children: [
-        ...portada,
-        ...indice,
-        ...introduccion,
-        ...antes,
-        ...ingreso,
-        ...mapa,
-        ...lotes,
-        ...trampas,
-        ...rutas,
-        ...plan,
-        ...campo,
-        ...validar,
-        ...mtd,
-        ...admin,
-        ...preguntas,
+const doc = documento({
+  titulo: 'PERSICA · Manual de usuario',
+  descripcion: 'Manual de usuario del aplicativo PERSICA (HU-38)',
+  encabezado: 'PERSICA · Manual de usuario',
+  contenido: [
+    ...portada({
+      logo: 'logo.png',
+      titulo: 'Manual de usuario',
+      subtitulo: 'Trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo de durazno',
+      lineas: ['Para el personal de campo, el agrónomo y el administrador'],
+      pie: [
+        'Vereda Icota · Cácota, Norte de Santander',
+        'Instituto Superior de Educación Rural (ISER) · Semillero ORION',
+        'Versión 1.0 · octubre de 2026',
       ],
-    },
+    }),
+    // MANUAL_TOC (para el PDF): índice con las páginas ya conocidas; si no, campo de Word.
+    ...indice(process.env.MANUAL_TOC),
+    ...introduccion,
+    ...antes,
+    ...ingreso,
+    ...mapa,
+    ...lotes,
+    ...trampas,
+    ...rutas,
+    ...plan,
+    ...campo,
+    ...validar,
+    ...mtd,
+    ...admin,
+    ...preguntas,
   ],
 })
 
-const salida = process.argv[2] || path.join(__dirname, 'Manual_de_usuario_PERSICA.docx')
-if (process.env.MANUAL_TITULOS) fs.writeFileSync(process.env.MANUAL_TITULOS, JSON.stringify(titulos))
-Packer.toBuffer(doc).then((buffer) => {
-  fs.writeFileSync(salida, buffer)
-  console.log(`${salida} · ${figuras} figuras · ${(buffer.length / 1e6).toFixed(1)} MB`)
-})
+guardar(doc, process.argv[2] || path.join(__dirname, 'Manual_de_usuario_PERSICA.docx'), process.env.MANUAL_TITULOS)

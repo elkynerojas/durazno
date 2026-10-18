@@ -1,0 +1,34 @@
+@startuml
+!include estilo.iuml
+title Sincronización de la app móvil (fase 2)
+autonumber
+participant "App móvil" as app
+database "Base local\ndel teléfono" as local
+participant "sync (FastAPI)" as sync
+participant "visitas.crear_lectura" as cl
+database "PostgreSQL" as db
+
+== Al abrir con conexión ==
+app -> sync : GET /sync/cambios?desde=<siguiente_desde anterior>
+sync -> db : predios visibles (recién asignados: completos)
+sync -> db : creados · modificados · borrados por entidad
+sync --> app : cambios + siguiente_desde (traslape de 5 min)
+app -> local : upsert por id; borrar en cascada
+
+== En campo sin conexión ==
+app -> local : guarda lecturas con id UUID del dispositivo
+
+== Al recuperar la conexión ==
+app -> sync : POST /sync/lecturas {lecturas[≤200]}
+loop por observado_en
+  sync -> cl : savepoint + crear_lectura()
+  alt creada / existente
+    cl --> sync : 201 / 200 + lectura del servidor
+  else error de una lectura
+    cl --> sync : 404 / 409 / 422 (solo se deshace esa)
+  end
+end
+sync -> db : COMMIT
+sync --> app : resultados en el orden del envío
+app -> local : reemplaza las copias; conserva las que fallaron
+@enduml

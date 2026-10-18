@@ -1,0 +1,37 @@
+@startuml
+!include estilo.iuml
+title Casos de uso: gestión del predio y administración
+left to right direction
+
+actor "Agrónomo" as agr
+actor "Administrador" as adm
+adm -|> agr
+
+rectangle "PERSICA" {
+  usecase "Dibujar y editar lotes" as UC5
+  usecase "Registrar y ubicar trampas" as UC6
+  usecase "Imprimir etiquetas QR" as UC7
+  usecase "Definir rutas de monitoreo" as UC8
+  usecase "Programar y reprogramar\nactividades (52 semanas)" as UC9
+  usecase "Validar o rechazar lecturas" as UC10
+  usecase "Programar visita adicional" as UC10b
+  usecase "Descargar reporte ICA" as UC13
+  usecase "Exportar GeoJSON / KML" as UC14
+  usecase "Editar datos y límite del predio" as UC15b
+  usecase "Crear predios y\nasignar personal" as UC15
+  usecase "Administrar cuentas" as UC16
+}
+
+agr --> UC5
+agr --> UC6
+agr --> UC7
+agr --> UC8
+agr --> UC9
+agr --> UC10
+agr --> UC13
+agr --> UC14
+agr --> UC15b
+adm --> UC15
+adm --> UC16
+UC10b .> UC10 : <<extend>>
+@enduml

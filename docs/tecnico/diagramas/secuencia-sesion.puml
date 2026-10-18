@@ -1,0 +1,44 @@
+@startuml
+!include estilo.iuml
+title Inicio de sesión y renovación del token
+autonumber
+
+actor Usuario
+participant "InicioSesion\n(React)" as ui
+participant "api/client.js\n(token en memoria)" as cli
+participant "nginx" as ng
+participant "auth (FastAPI)" as auth
+database "PostgreSQL" as db
+
+Usuario -> ui : correo y contraseña
+ui -> cli : iniciarSesion()
+cli -> ng : POST /api/v1/auth/token (formulario)
+ng -> auth : límite por IP (limit_req)
+auth -> auth : límite por correo+IP y por cuenta
+auth -> db : buscar usuario activo
+auth -> auth : verificar Argon2
+alt credenciales válidas
+  auth --> cli : 200 {access_token (15 min)}\n+ cookie HttpOnly icota_renovacion (7 días)
+  cli -> cli : guarda el acceso en memoria
+  ui --> Usuario : /mapa
+else inválidas
+  auth --> cli : 401 «Correo o contraseña incorrectos»\n(o 429 con Retry-After)
+end
+
+== Más tarde: el token de acceso venció ==
+cli -> auth : GET /api/v1/… (Bearer vencido)
+auth --> cli : 401
+cli -> auth : POST /auth/renovar (cookie viaja sola)
+auth -> db : usuario activo y token emitido\ndespués de sesion_valida_desde
+alt renovación válida
+  auth --> cli : 200 nuevo acceso + cookie rotada
+  cli -> auth : repite la petición original
+else sesión revocada o vencida (30 días)
+  auth --> cli : 401
+  cli -> ui : evento icota:sesion-cerrada → inicio de sesión
+end
+note over cli, auth
+  App móvil: envía X-Cliente: movil y recibe
+  el refresh_token en el cuerpo (sin cookies).
+end note
+@enduml

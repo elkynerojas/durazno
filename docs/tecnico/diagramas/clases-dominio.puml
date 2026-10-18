@@ -1,0 +1,111 @@
+@startuml
+!include estilo.iuml
+title Modelo de dominio (clases)
+hide empty methods
+
+abstract class EntidadSincronizable {
+  id : UUIDv7
+  created_at : timestamptz
+  updated_at : timestamptz
+  deleted_at : timestamptz [0..1]
+}
+
+class Usuario {
+  correo : str
+  nombre_completo : str
+  rol : tecnico | agronomo | productor | administrador
+  activo : bool
+  sesion_valida_desde : timestamptz
+}
+class Predio {
+  nombre, vereda, municipio : str
+  registro_ica : str [0..1]
+  area_ha : decimal
+  limite : POLYGON 4326 [0..1]
+}
+class PredioUsuario
+class Lote {
+  codigo : str [único en el predio]
+  nombre : str [0..1]
+  area_ha : decimal [geodésica]
+  geom : POLYGON 4326
+  color : #rrggbb [0..1]
+}
+class Trampa {
+  codigo_ica : str [único]
+  codigo_qr : str [8, único]
+  tipo : jackson | mcphail
+  atrayente : str
+  fecha_instalacion : date
+  estado : activa | inactiva | retirada
+  geom : POINT 4326
+  precision_m : decimal [0..1]
+}
+class Ruta {
+  requiere_revision : bool
+  motivo_revision : str [0..1]
+}
+class RutaTrampa {
+  orden : int
+}
+class ReemplazoQr {
+  codigo_anterior, codigo_nuevo : str
+  motivo : str [0..1]
+}
+class Visita {
+  fecha : date
+}
+class LecturaTrampa {
+  observado_en : timestamptz
+  capitata_machos, capitata_hembras : int
+  anastrepha : int
+  dias_exposicion : int
+  estado_trampa : buena | danada | faltante | reubicada
+  cambio_atrayente : bool
+  posicion : POINT 4326 [0..1]
+  precision_m, distancia_m [0..1]
+  estado : registrada | validada | rechazada
+  motivo_rechazo [0..1]
+}
+class PlanActividad {
+  tipo : visita_monitoreo | cambio_atrayente | labor_cultural
+  labor [0..1]
+  tipo_trampa [0..1]
+  anio, semana : int [semana ISO]
+  estado : programada | cumplida | reprogramada | cancelada
+}
+class PlanCambio {
+  accion : reprogramada | responsable | eliminada
+  semana_anterior, semana_nueva
+  motivo [0..1]
+}
+
+EntidadSincronizable <|-- Predio
+EntidadSincronizable <|-- Lote
+EntidadSincronizable <|-- Trampa
+EntidadSincronizable <|-- LecturaTrampa
+EntidadSincronizable <|-- PlanActividad
+
+Predio "1" *-- "0..*" Lote
+Predio "1" -- "0..*" PredioUsuario
+Usuario "1" -- "0..*" PredioUsuario
+Lote "1" *-- "0..*" Trampa
+Lote "1" -- "0..1" Ruta
+Ruta "1" *-- "1..*" RutaTrampa
+RutaTrampa "0..*" -- "1" Trampa
+Trampa "1" -- "0..*" ReemplazoQr
+Lote "1" -- "0..*" Visita
+Visita "1" *-- "1..*" LecturaTrampa
+LecturaTrampa "0..*" -- "1" Trampa
+LecturaTrampa "0..*" -- "1" Usuario : responsable
+Lote "1" -- "0..*" PlanActividad
+PlanActividad "0..*" -- "1" Usuario : responsable
+PlanActividad "0..*" -- "0..1" Ruta
+PlanActividad "0..1" -- "0..1" LecturaTrampa : origen\n(visita adicional)
+PlanActividad "1" -- "0..*" PlanCambio
+note right of EntidadSincronizable
+  Todas las tablas del dominio la heredan:
+  id generado en el dispositivo (sin conexión),
+  borrado lógico y marcas para sincronizar.
+end note
+@enduml
