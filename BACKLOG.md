@@ -666,6 +666,10 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 > Web `/plan`: vista anual lotes × semanas con la actual resaltada (y a la vista al abrir), año
 > anterior/siguiente, filtro por lote, formulario «Programar actividad», ficha con cambio de
 > responsable y borrado, y lista de la semana actual. Los estados de cumplimiento llegan con HU-22.
+> Como el mockup 05: el calendario se ve aunque el plan esté vacío (una ruta por lote con ruta y
+> los dos recambios); los recambios y las labores se agrupan a nivel de predio (la celda combina
+> los estados de sus lotes); tocar una celda vacía programa esa semana; la semana actual es una
+> lista de chequeo («N de M cumplidas») con las vencidas de las dos semanas anteriores.
 
 ### HU-22 · Seguir el cumplimiento del plan
 

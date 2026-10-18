@@ -403,11 +403,9 @@ test('el agrónomo programa una labor que se repite y la ve en la vista anual', 
   await expect(page.getByText('Se programaron 4 actividades (semanas 2 a 32).')).toBeVisible()
 
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
-  const celdas = page.getByRole('button', { name: /^Poda \(Cultivo · E2E-\d+\), semana \d+/ })
+  const celdas = page.getByRole('button', { name: /^Poda \(Cultivo\), semana \d+/ })
   await expect(celdas).toHaveCount(4)
-  await page
-    .getByRole('button', { name: new RegExp(`^Poda \\(Cultivo · ${lote}\\), semana 22:`) })
-    .click()
+  await page.getByRole('button', { name: /^Poda \(Cultivo\), semana 22:/ }).click()
   const ficha = page.getByRole('region', { name: 'Actividad seleccionada' })
   await expect(ficha).toContainText('Técnico E2E')
 
@@ -457,7 +455,7 @@ test('el agrónomo reprograma una actividad con motivo y queda en el historial',
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
   await page
     .getByRole('button', {
-      name: `Recambio trimedlure (Trampas Jackson · ${lote}), semana 10: programada`,
+      name: 'Recambio trimedlure (Trampas Jackson), semana 10: programada',
     })
     .click()
   const ficha = page.getByRole('region', { name: 'Actividad seleccionada' })
@@ -470,13 +468,60 @@ test('el agrónomo reprograma una actividad con motivo y queda en el historial',
   await expect(page.getByText(`Recambio trimedlure (${lote}) quedó en la semana 12.`)).toBeVisible()
   await expect(
     page.getByRole('button', {
-      name: `Recambio trimedlure (Trampas Jackson · ${lote}), semana 12: reprogramada`,
+      name: 'Recambio trimedlure (Trampas Jackson), semana 12: reprogramada',
     }),
   ).toBeVisible()
   await expect(ficha).toContainText('Reprogramada de S10 a S12')
   await expect(ficha).toContainText('«Aumento de capturas en el lote»')
   const cambios = page.getByRole('region', { name: 'Cambios del plan' })
   await expect(cambios).toContainText(`Recambio trimedlure · ${lote}: Reprogramada de S10 a S12`)
+})
+
+test('el calendario del plan se ve aunque esté vacío y se programa tocando una semana', async ({
+  page,
+}) => {
+  await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  await page.evaluate(async (lote) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const api = async (ruta, cuerpo) =>
+      (
+        await fetch(`/api/v1${ruta}`, {
+          method: cuerpo ? 'POST' : 'GET',
+          headers: cabeceras,
+          body: cuerpo && JSON.stringify(cuerpo),
+        })
+      ).json()
+    const predioId = localStorage.getItem('icota.predio')
+    const loteId = (await api(`/lotes?predio_id=${predioId}`)).find((l) => l.codigo === lote).id
+    const propuesta = await api(`/rutas/propuesta?lote_id=${loteId}`)
+    await api('/rutas', { lote_id: loteId, trampas: propuesta.paradas.map((p) => p.trampa_id) })
+  }, lote)
+
+  await page.goto('/plan')
+  // El año siguiente: sus semanas aún no vencen, sea cual sea la fecha de la prueba.
+  await page.getByRole('button', { name: 'Año siguiente' }).click()
+  const rejilla = page.getByRole('region', { name: 'Semanas del año' })
+  await expect(rejilla.getByRole('rowheader', { name: new RegExp(`Ruta ${lote}`) })).toBeVisible()
+  await rejilla.getByRole('button', { name: `Programar Ruta ${lote}, semana 10` }).click()
+
+  const formulario = page.getByRole('form', { name: 'Programar actividad' })
+  await expect(formulario.getByLabel('Semana')).toHaveValue('10')
+  await expect(formulario.getByRole('radio', { name: 'Visita de monitoreo' })).toBeChecked()
+  await formulario.getByLabel('Responsable').selectOption({ label: 'Técnico E2E · técnico' })
+  await formulario.getByRole('button', { name: 'Programar' }).click()
+  await expect(page.getByText('Actividad programada en la semana 10.')).toBeVisible()
+  await expect(
+    rejilla.getByRole('button', {
+      name: `Ruta ${lote} (Monitoreo · trampeo), semana 10: programada`,
+    }),
+  ).toBeVisible()
 })
 
 // --- Mi semana (HU-24) ---

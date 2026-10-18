@@ -61,7 +61,10 @@ export default function FichaActividad({
         </span>
       </div>
       <p className="ficha__titulo">{fila.titulo}</p>
-      <p className="ficha__subtitulo">{fila.detalle}</p>
+      <p className="ficha__subtitulo">
+        {fila.detalle}
+        {actividad.tipo !== 'visita_monitoreo' && ` · Lote ${actividad.lote_codigo}`}
+      </p>
       <dl className="ficha__datos">
         <dt>Fechas</dt>
         <dd>{rangoSemana(semanaDelAnio(actividad.anio, actividad.semana))}</dd>

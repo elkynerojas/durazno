@@ -12,7 +12,8 @@ function mensajeDeError(error) {
 }
 
 // «Programar actividad» (HU-21). `lotesConRuta`: ids de los lotes con ruta (las visitas de
-// monitoreo la necesitan). `personal`: responsables posibles (técnicos y agrónomos).
+// monitoreo la necesitan). `personal`: responsables posibles (técnicos y agrónomos). `inicial`:
+// tipo, labor, tipo de trampa o lote ya elegidos (desde una celda vacía del calendario).
 export default function FormularioActividad({
   anio,
   semanaInicial,
@@ -20,6 +21,7 @@ export default function FormularioActividad({
   lotesConRuta,
   personal,
   loteInicial,
+  inicial = {},
   alGuardar,
   alCancelar,
 }) {
@@ -27,10 +29,10 @@ export default function FormularioActividad({
   const [id] = useState(() => globalThis.crypto?.randomUUID?.())
   const totalSemanas = semanasDelAnio(anio)
   const [datos, setDatos] = useState({
-    tipo: 'visita_monitoreo',
-    labor: 'poda',
-    tipo_trampa: 'jackson',
-    lote_id: loteInicial ?? lotes[0]?.id ?? '',
+    tipo: inicial.tipo ?? 'visita_monitoreo',
+    labor: inicial.labor ?? 'poda',
+    tipo_trampa: inicial.tipo_trampa ?? 'jackson',
+    lote_id: inicial.lote_id ?? loteInicial ?? lotes[0]?.id ?? '',
     semana: String(semanaInicial),
     responsable_id: personal[0]?.id ?? '',
     notas: '',

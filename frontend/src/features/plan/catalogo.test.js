@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { describirCambio, filaDe, filasDelPlan } from './catalogo'
+import { describirCambio, detalleSemana, estadoCombinado, filaDe, filasDelPlan } from './catalogo'
 
 const actividad = (id, extra) => ({
   id,
@@ -12,36 +12,83 @@ const actividad = (id, extra) => ({
   ...extra,
 })
 
-describe('plan: filas de la vista anual', () => {
-  it('nombra la fila según el tipo de actividad', () => {
+describe('plan: filas del calendario', () => {
+  it('nombra la fila como el mockup: rutas por lote, recambios y labores del predio', () => {
     expect(filaDe(actividad('a', { tipo: 'visita_monitoreo' }))).toMatchObject({
       titulo: 'Ruta L-01',
       detalle: 'Monitoreo · trampeo',
     })
     expect(
       filaDe(actividad('b', { tipo: 'cambio_atrayente', tipo_trampa: 'mcphail' })),
-    ).toMatchObject({ titulo: 'Recambio proteína', detalle: 'Trampas McPhail · L-01' })
+    ).toMatchObject({ titulo: 'Recambio proteína', detalle: 'Trampas McPhail' })
     expect(filaDe(actividad('c', { tipo: 'labor_cultural', labor: 'raleo' }))).toMatchObject({
       titulo: 'Raleo de frutos',
-      detalle: 'Cultivo · L-01',
+      detalle: 'Cultivo',
     })
   })
 
-  it('agrupa por lote y actividad, con las semanas de cada fila', () => {
-    const filas = filasDelPlan([
-      actividad('1', { tipo: 'labor_cultural', labor: 'poda', semana: 6 }),
-      actividad('2', { tipo: 'visita_monitoreo', semana: 1 }),
-      actividad('3', { tipo: 'visita_monitoreo', semana: 2 }),
-      actividad('4', {
-        tipo: 'visita_monitoreo',
-        semana: 1,
-        lote_id: 'l-10',
-        lote_codigo: 'L-10',
-      }),
-      actividad('5', { tipo: 'visita_monitoreo', semana: 1, lote_id: 'l-2', lote_codigo: 'L-2' }),
+  it('sin actividades muestra las rutas y los recambios', () => {
+    const filas = filasDelPlan(
+      [],
+      [
+        { id: 'l-10', codigo: 'L-10' },
+        { id: 'l-2', codigo: 'L-02' },
+      ],
+    )
+    expect(filas.map((f) => f.titulo)).toEqual([
+      'Ruta L-02',
+      'Ruta L-10',
+      'Recambio trimedlure',
+      'Recambio proteína',
     ])
-    expect(filas.map((f) => f.titulo)).toEqual(['Ruta L-01', 'Poda', 'Ruta L-2', 'Ruta L-10'])
-    expect([...filas[0].semanas.keys()]).toEqual([1, 2])
+    expect(filas[0].nuevo).toEqual({ tipo: 'visita_monitoreo', lote_id: 'l-2' })
+  })
+
+  it('agrupa las labores de varios lotes en una fila por labor', () => {
+    const filas = filasDelPlan([
+      actividad('1', { tipo: 'labor_cultural', labor: 'cosecha', semana: 20 }),
+      actividad('2', { tipo: 'labor_cultural', labor: 'poda', semana: 6 }),
+      actividad('3', {
+        tipo: 'labor_cultural',
+        labor: 'poda',
+        semana: 6,
+        lote_id: 'l-2',
+        lote_codigo: 'L-02',
+      }),
+    ])
+    expect(filas.map((f) => f.titulo)).toEqual([
+      'Recambio trimedlure',
+      'Recambio proteína',
+      'Poda',
+      'Cosecha',
+    ])
+    expect(filas[2].semanas.get(6).map((a) => a.id)).toEqual(['2', '3'])
+  })
+
+  it('combina los estados de una celda', () => {
+    const con = (...estados) => estados.map((estado, i) => actividad(String(i), { estado }))
+    expect(estadoCombinado(con('cumplida', 'vencida'))).toBe('vencida')
+    expect(estadoCombinado(con('cumplida', 'reprogramada', 'programada'))).toBe('reprogramada')
+    expect(estadoCombinado(con('cumplida', 'programada'))).toBe('programada')
+    expect(estadoCombinado(con('cumplida', 'cumplida'))).toBe('cumplida')
+  })
+
+  it('describe la actividad en la lista de la semana', () => {
+    expect(
+      detalleSemana(actividad('a', { tipo: 'visita_monitoreo', avance: { hechas: 1, total: 6 } })),
+    ).toBe('lectura de 6 trampas')
+    expect(
+      detalleSemana(
+        actividad('b', {
+          tipo: 'cambio_atrayente',
+          tipo_trampa: 'jackson',
+          avance: { hechas: 0, total: 9 },
+        }),
+      ),
+    ).toBe('9 trampas Jackson · L-01')
+    expect(detalleSemana(actividad('c', { tipo: 'labor_cultural', labor: 'poda' }))).toBe(
+      'Lote L-01',
+    )
   })
 })
 

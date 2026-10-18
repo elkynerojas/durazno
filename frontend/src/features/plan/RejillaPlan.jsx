@@ -1,17 +1,21 @@
 import { useEffect, useRef } from 'react'
 
-import { ESTADOS_ACTIVIDAD } from './catalogo'
+import { ESTADOS_ACTIVIDAD, estadoCombinado } from './catalogo'
 
-// Vista anual (HU-21): una fila por lote y actividad, una columna por semana ISO.
+// Calendario anual (HU-21, mockup 05): una fila por ruta, recambio o labor y una columna por
+// semana ISO. Tocar una celda con actividades las abre; tocar una vacía (con `alProgramar`)
+// programa una nueva en esa semana.
 export default function RejillaPlan({
   filas,
   totalSemanas,
   semanaActual,
-  seleccionadaId,
+  seleccionadas = [],
   alElegir,
+  alProgramar,
 }) {
   const semanas = Array.from({ length: totalSemanas }, (_, i) => i + 1)
   const ref = useRef(null)
+  const elegidas = new Set(seleccionadas.map((a) => a.id))
 
   // Al abrir, desplaza la rejilla para que la semana actual quede a la vista (en el teléfono
   // solo caben unas pocas semanas).
@@ -54,23 +58,33 @@ export default function RejillaPlan({
                 <span>{fila.detalle}</span>
               </th>
               {semanas.map((s) => {
-                const actividad = fila.semanas.get(s)
+                const actividades = fila.semanas.get(s) ?? []
+                const estado = actividades.length ? estadoCombinado(actividades) : null
                 const clases = [
                   'celda-plan',
-                  actividad && `celda-plan--${actividad.estado}`,
+                  estado && `celda-plan--${estado}`,
                   s === semanaActual && 'celda-plan--actual',
                 ]
                 return (
                   <td key={s} className={clases.filter(Boolean).join(' ')}>
-                    {actividad && (
+                    {estado ? (
                       <button
                         type="button"
-                        aria-pressed={actividad.id === seleccionadaId}
+                        aria-pressed={actividades.some((a) => elegidas.has(a.id))}
                         aria-label={`${fila.titulo} (${fila.detalle}), semana ${s}: ${ESTADOS_ACTIVIDAD[
-                          actividad.estado
-                        ].toLowerCase()}`}
-                        onClick={() => alElegir(actividad)}
+                          estado
+                        ].toLowerCase()}${actividades.length > 1 ? ` · ${actividades.length} actividades` : ''}`}
+                        onClick={() => alElegir(actividades)}
                       />
+                    ) : (
+                      alProgramar && (
+                        <button
+                          type="button"
+                          className="celda-plan__vacia"
+                          aria-label={`Programar ${fila.titulo}, semana ${s}`}
+                          onClick={() => alProgramar({ ...fila.nuevo, semana: s })}
+                        />
+                      )
                     )}
                   </td>
                 )

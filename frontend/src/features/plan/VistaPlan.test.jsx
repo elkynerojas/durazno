@@ -85,7 +85,9 @@ describe('VistaPlan', () => {
     expect(fetchSimulado.mock.calls.map(([url]) => url)).toContain(
       '/api/v1/plan?predio_id=p-1&anio=2026',
     )
-    expect(screen.getByRole('heading', { name: /Semana 42 · 12–18 oct 2026/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Semana 42 · 12–18 oct' })).toBeInTheDocument()
+    const semana = screen.getByRole('list', { name: 'Actividades de la semana' })
+    expect(within(semana).getByRole('checkbox', { name: 'Ruta L-01 cumplida' })).toBeDisabled()
     const cumplimiento = await screen.findByRole('region', { name: 'Cumplimiento S1–S42' })
     expect(cumplimiento).toHaveTextContent('40 %')
     expect(cumplimiento).toHaveTextContent('2 de 5 cumplidas')
@@ -100,6 +102,25 @@ describe('VistaPlan', () => {
     // El productor solo consulta.
     expect(screen.queryByRole('button', { name: '+ Programar actividad' })).not.toBeInTheDocument()
     expect(within(ficha).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('sin actividades muestra el calendario y una celda vacía programa en esa semana', async () => {
+    simularApi([])
+    const usuarioEvento = userEvent.setup()
+    renderizar('agronomo')
+    await screen.findByText(/No hay actividades programadas en 2026/)
+    const rejilla = screen.getByRole('region', { name: 'Semanas del año' })
+    expect(
+      within(rejilla).getByRole('rowheader', { name: /Recambio trimedlure/ }),
+    ).toBeInTheDocument()
+
+    await usuarioEvento.click(
+      within(rejilla).getByRole('button', { name: 'Programar Recambio proteína, semana 44' }),
+    )
+    const formulario = screen.getByRole('form', { name: 'Programar actividad' })
+    expect(within(formulario).getByLabelText('Semana')).toHaveValue(44)
+    expect(within(formulario).getByRole('radio', { name: 'Cambio de atrayente' })).toBeChecked()
+    expect(within(formulario).getByLabelText('Trampas')).toHaveValue('mcphail')
   })
 
   it('cambia de año y muestra cuando no hay actividades', async () => {

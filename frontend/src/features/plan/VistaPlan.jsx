@@ -9,7 +9,7 @@ import {
 } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
-import { rangoSemana, semanaDelAnio, semanaIso, semanasDelAnio } from '../../utils/fechas'
+import { semanaIso, semanasDelAnio } from '../../utils/fechas'
 import { useSesion } from '../auth/useSesion'
 import { useDatosPredio } from '../mapa/useDatosPredio'
 import { usePredio } from '../predios/usePredio'
@@ -19,11 +19,12 @@ import FichaActividad from './FichaActividad'
 import FormularioActividad from './FormularioActividad'
 import HistorialPlan from './HistorialPlan'
 import RejillaPlan from './RejillaPlan'
+import SemanaActual from './SemanaActual'
 import TarjetaCumplimiento from './TarjetaCumplimiento'
 
 const ROLES_RESPONSABLE = ['tecnico', 'agronomo']
 
-// Plan de actividades del año por semana ISO (HU-21).
+// Plan de actividades del año por semana ISO (HU-21), como calendario (mockup 05).
 export default function VistaPlan() {
   const { usuario } = useSesion()
   const editable = ROLES_GESTION.includes(usuario.rol)
@@ -36,8 +37,11 @@ export default function VistaPlan() {
   // Sube para volver a pedir el plan (tras eliminar una serie).
   const [version, setVersion] = useState(0)
   const [loteFiltro, setLoteFiltro] = useState('')
+  // Actividades de la celda elegida (varias si la fila agrupa lotes) y la abierta en la ficha.
+  const [enCelda, setEnCelda] = useState([])
   const [seleccionada, setSeleccionada] = useState(null)
-  const [programando, setProgramando] = useState(false)
+  // null o los valores iniciales de «Programar actividad» ({} desde el botón).
+  const [programando, setProgramando] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [personal, setPersonal] = useState([])
   const [lotesConRuta, setLotesConRuta] = useState(new Set())
@@ -63,15 +67,19 @@ export default function VistaPlan() {
   }, [predio.id, anio, version])
 
   useEffect(() => {
-    if (!editable) return
     let vigente = true
-    Promise.all([listarPersonal(predio.id), listarRutasPredio(predio.id)])
-      .then(([gente, rutas]) => {
-        if (!vigente) return
-        setPersonal(gente.filter((p) => p.activo && ROLES_RESPONSABLE.includes(p.rol)))
-        setLotesConRuta(new Set(rutas.map((r) => r.lote_id)))
-      })
-      .catch(() => vigente && setError('No se pudo cargar el personal del predio.'))
+    listarRutasPredio(predio.id)
+      .then((rutas) => vigente && setLotesConRuta(new Set(rutas.map((r) => r.lote_id))))
+      .catch(() => vigente && setLotesConRuta(new Set()))
+    if (editable) {
+      listarPersonal(predio.id)
+        .then(
+          (gente) =>
+            vigente &&
+            setPersonal(gente.filter((p) => p.activo && ROLES_RESPONSABLE.includes(p.rol))),
+        )
+        .catch(() => vigente && setError('No se pudo cargar el personal del predio.'))
+    }
     return () => {
       vigente = false
     }
@@ -80,18 +88,33 @@ export default function VistaPlan() {
   const totalSemanas = semanasDelAnio(anio)
   const semanaActual = anio === hoy.anio ? hoy.numero : null
   const visibles = (actividades ?? []).filter((a) => !loteFiltro || a.lote_id === loteFiltro)
-  const deEstaSemana = visibles.filter((a) => a.semana === semanaActual)
+  const lotesRuta = datos.lotes.filter(
+    (l) => lotesConRuta.has(l.id) && (!loteFiltro || l.id === loteFiltro),
+  )
+
+  function elegir(lista) {
+    setEnCelda(lista)
+    setSeleccionada(lista.length === 1 ? lista[0] : null)
+    setProgramando(null)
+  }
+
+  function actualizar(actualizada) {
+    setActividades((lista) => lista.map((a) => (a.id === actualizada.id ? actualizada : a)))
+    setEnCelda((lista) => lista.map((a) => (a.id === actualizada.id ? actualizada : a)))
+  }
 
   function cambiarAnio(delta) {
     setAnio((a) => a + delta)
     setActividades(null)
     setSeleccionada(null)
+    setEnCelda([])
     setAviso(null)
   }
 
   function alProgramar(creadas) {
     setActividades((lista) => [...lista, ...creadas])
-    setProgramando(false)
+    setProgramando(null)
+    setEnCelda([creadas[0]])
     setSeleccionada(creadas[0])
     setAviso(
       creadas.length === 1
@@ -146,8 +169,9 @@ export default function VistaPlan() {
             type="button"
             className="boton-primario"
             onClick={() => {
-              setProgramando(true)
+              setProgramando({})
               setSeleccionada(null)
+              setEnCelda([])
               setAviso(null)
             }}
           >
@@ -183,22 +207,35 @@ export default function VistaPlan() {
         </div>
         {actividades === null ? (
           <p className="cargando">Cargando el plan…</p>
-        ) : visibles.length === 0 ? (
-          <p className="formulario__nota">
-            No hay actividades programadas en {anio}
-            {editable ? ': use «Programar actividad».' : '.'}
-          </p>
         ) : (
-          <RejillaPlan
-            filas={filasDelPlan(visibles)}
-            totalSemanas={totalSemanas}
-            semanaActual={semanaActual}
-            seleccionadaId={seleccionada?.id}
-            alElegir={(actividad) => {
-              setSeleccionada(actividad)
-              setProgramando(false)
-            }}
-          />
+          <>
+            {visibles.length === 0 && (
+              <p className="formulario__nota">
+                No hay actividades programadas en {anio}
+                {editable ? ': toque una semana o use «Programar actividad».' : '.'}
+              </p>
+            )}
+            <RejillaPlan
+              filas={filasDelPlan(
+                visibles,
+                lotesRuta.map((l) => ({ id: l.id, codigo: l.codigo })),
+              )}
+              totalSemanas={totalSemanas}
+              semanaActual={semanaActual}
+              seleccionadas={enCelda}
+              alElegir={elegir}
+              alProgramar={
+                editable && datos.lotes.length > 0
+                  ? (inicial) => {
+                      setProgramando(inicial)
+                      setSeleccionada(null)
+                      setEnCelda([])
+                      setAviso(null)
+                    }
+                  : undefined
+              }
+            />
+          </>
         )}
       </section>
 
@@ -210,40 +247,46 @@ export default function VistaPlan() {
 
       <div className="rejilla rejilla--dos">
         {semanaActual && actividades && (
-          <section className="tarjeta" aria-labelledby="titulo-semana">
-            <h2 id="titulo-semana" className="tarjeta__titulo">
-              Semana {semanaActual} · {rangoSemana(semanaDelAnio(anio, semanaActual))}
-            </h2>
-            {deEstaSemana.length === 0 ? (
-              <p className="formulario__nota">Sin actividades esta semana.</p>
-            ) : (
-              <ul className="lista-simple">
-                {deEstaSemana.map((a) => (
-                  <li key={a.id}>
-                    <button type="button" className="enlace" onClick={() => setSeleccionada(a)}>
-                      {filaDe(a).titulo}
-                    </button>
-                    <span>
-                      {a.lote_codigo} · {a.responsable_nombre}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <SemanaActual
+            anio={anio}
+            semana={semanaActual}
+            actividades={visibles}
+            puedeMarcar={(a) => editable || a.responsable_id === usuario.id}
+            alElegir={elegir}
+            alCambiar={actualizar}
+          />
         )}
         {programando && (
           <section className="tarjeta">
             <FormularioActividad
+              key={JSON.stringify(programando)}
               anio={anio}
-              semanaInicial={semanaActual ?? 1}
+              semanaInicial={programando.semana ?? semanaActual ?? 1}
+              inicial={programando}
               lotes={datos.lotes}
               lotesConRuta={lotesConRuta}
               personal={personal}
               loteInicial={loteFiltro || undefined}
               alGuardar={alProgramar}
-              alCancelar={() => setProgramando(false)}
+              alCancelar={() => setProgramando(null)}
             />
+          </section>
+        )}
+        {enCelda.length > 1 && !seleccionada && !programando && (
+          <section className="tarjeta" aria-label="Actividades de la semana elegida">
+            <p className="ficha__antetitulo">
+              Semana {enCelda[0].semana} · {filaDe(enCelda[0]).titulo}
+            </p>
+            <ul className="lista-simple">
+              {enCelda.map((a) => (
+                <li key={a.id}>
+                  <button type="button" className="enlace" onClick={() => setSeleccionada(a)}>
+                    Lote {a.lote_codigo}
+                  </button>
+                  <span>{ESTADOS_ACTIVIDAD[a.estado]}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
         {seleccionada && !programando && (
@@ -253,9 +296,7 @@ export default function VistaPlan() {
             editable={editable}
             personal={personal}
             alCambiar={(actualizada) => {
-              setActividades((lista) =>
-                lista.map((a) => (a.id === actualizada.id ? actualizada : a)),
-              )
+              actualizar(actualizada)
               setSeleccionada(actualizada)
               setAviso('Actividad actualizada.')
               setVersion((v) => v + 1)

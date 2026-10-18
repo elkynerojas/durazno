@@ -1945,3 +1945,49 @@ button {
   font-weight: 400;
   color: var(--texto-suave);
 }
+
+/* ---------- Calendario del plan (mockup 05) ---------- */
+.celda-plan__vacia {
+  opacity: 0;
+}
+
+.celda-plan__vacia:hover,
+.celda-plan__vacia:focus-visible {
+  background: var(--verde-100) !important;
+  opacity: 1;
+}
+
+.semana-plan {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.semana-plan__item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.semana-plan__item input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  accent-color: var(--verde-700);
+}
+
+.semana-plan__item p {
+  margin: 0;
+}
+
+.semana-plan__detalle {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.semana-plan__vencida {
+  font-weight: 600;
+  color: var(--error);
+}
