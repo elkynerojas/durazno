@@ -243,6 +243,28 @@ test('el mapa muestra el estado de monitoreo de las trampas y filtra por lote', 
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigo })
   await expect(page.getByRole('region', { name: 'Lote seleccionado' })).toContainText(codigo)
   await expect(page.locator('.marcador-trampa')).toHaveCount(1)
+
+  // Desde la ventana de la trampa se abre el formulario de lectura (HU-25)…
+  await page.locator('.marcador-trampa').click()
+  await page
+    .getByLabel(`Trampa ${codigoIca}`)
+    .getByRole('link', { name: 'Registrar lectura' })
+    .click()
+  await expect(page).toHaveURL(/\/t\/[A-Z0-9]{8}\/lectura$/)
+  await page
+    .getByRole('form', { name: 'Lectura de trampa' })
+    .getByRole('button', { name: 'Registrar lectura' })
+    .click()
+  await expect(page.getByRole('status').filter({ hasText: 'registrada' })).toContainText(
+    `Lectura de ${codigoIca} registrada.`,
+  )
+  // …y al volver al mapa la ventana muestra esa última lectura y la trampa al día (HU-18).
+  await page.goto('/mapa')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigo })
+  await page.locator('.marcador-trampa').click()
+  const actualizada = page.getByLabel(`Trampa ${codigoIca}`)
+  await expect(actualizada).toContainText('Al día')
+  await expect(actualizada).not.toContainText('sin lecturas aún')
 })
 
 // --- Rutas de monitoreo (HU-19) ---
@@ -817,7 +839,11 @@ test('el MTD del predio muestra M, T y D de la semana con la lectura', async ({ 
     page.getByRole('button', { name: 'Reporte ICA (PDF)' }).click(),
   ])
   expect(pdf.suggestedFilename()).toMatch(/^mtd-.+\.pdf$/)
-  expect(readFileSync(await pdf.path()).subarray(0, 4).toString()).toBe('%PDF')
+  expect(
+    readFileSync(await pdf.path())
+      .subarray(0, 4)
+      .toString(),
+  ).toBe('%PDF')
 })
 
 // --- Historial de capturas (HU-27) ---

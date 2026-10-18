@@ -526,3 +526,39 @@ async def test_cada_tecnico_puede_ver_solo_sus_lecturas(cliente, datos, crear_us
         headers=encabezados(datos["tecnico"]),
     )
     assert [x["id"] for x in respuesta.json()] == [propia["id"]]
+
+
+async def test_mover_la_trampa_conserva_sus_lecturas(cliente, datos, crear_usuario):
+    # HU-11: mover una trampa no cambia su id ni su historial de lecturas.
+    lectura = (await _registrar(cliente, datos)).json()
+    admin = await crear_usuario(_correo("admin"), rol="administrador")
+    movida = await cliente.patch(
+        f"/api/v1/trampas/{datos['trampa'].id}",
+        json={"geom": {"type": "Point", "coordinates": [-72.6392, 7.2708]}},
+        headers=encabezados(admin),
+    )
+    assert movida.status_code == 200
+    historial = await cliente.get(
+        URL, params={"trampa_id": str(datos["trampa"].id)}, headers=encabezados(admin)
+    )
+    assert [x["id"] for x in historial.json()] == [lectura["id"]]
+
+
+async def test_desactivar_la_cuenta_conserva_la_autoria_de_sus_lecturas(
+    cliente, datos, crear_usuario
+):
+    # HU-06: la cuenta desactivada sigue siendo la responsable de lo que registró.
+    lectura = (await _registrar(cliente, datos)).json()
+    admin = await crear_usuario(_correo("admin"), rol="administrador")
+    desactivada = await cliente.patch(
+        f"/api/v1/usuarios/{datos['tecnico'].id}",
+        json={"activo": False},
+        headers=encabezados(admin),
+    )
+    assert desactivada.status_code == 200
+    leida = await cliente.get(f"{URL}/{lectura['id']}", headers=encabezados(admin))
+    assert leida.status_code == 200
+    assert (leida.json()["responsable_id"], leida.json()["responsable_nombre"]) == (
+        str(datos["tecnico"].id),
+        "Persona de Prueba",
+    )

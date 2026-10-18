@@ -65,6 +65,33 @@ describe('VistaFichaTrampa', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('muestra la última lectura con su enlace al historial', async () => {
+    simularFetch(
+      respuestaJson(200, {
+        ...RESUELTA,
+        ultima_lectura: {
+          id: 'lec-1',
+          observado_en: '2026-10-14T08:30:00-05:00',
+          capitata_machos: 3,
+          capitata_hembras: 1,
+          anastrepha: 0,
+          dias_exposicion: 7,
+          estado: 'validada',
+        },
+      }),
+    )
+    renderizar()
+
+    const seccion = await screen.findByRole('region', { name: 'Última lectura' })
+    expect(seccion).toHaveTextContent('4 (3 ♂ · 1 ♀)')
+    expect(seccion).toHaveTextContent('7 días')
+    expect(screen.getByRole('link', { name: 'Ver historial de capturas' })).toHaveAttribute(
+      'href',
+      '/historial?trampa=t-1',
+    )
+    expect(screen.getByRole('link', { name: 'Registrar lectura' })).toBeInTheDocument()
+  })
+
   it('indica la posición de la trampa en la ruta del lote', async () => {
     simularFetch(
       respuestaJson(200, {

@@ -94,3 +94,10 @@ def test_ejemplos_de_entrada_validos(modelo):
     assert ejemplos, f"{modelo.__name__} no tiene ejemplo"
     for ejemplo in ejemplos:
         modelo.model_validate(ejemplo)
+
+
+def test_grupos_de_la_tabla_2_publicados_bajo_v1():
+    # HU-31: los grupos de servicios de la propuesta (Tabla 2), cada uno con su tag.
+    tags = {op["tags"][0] for _, op in OPERACIONES}
+    assert {"auth", "lotes", "trampas", "rutas", "visitas", "mtd", "plan"} <= tags
+    assert all(ruta.startswith("/api/v1/") for ruta in ESQUEMA["paths"])

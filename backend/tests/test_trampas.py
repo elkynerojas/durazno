@@ -169,6 +169,24 @@ async def test_codigo_ica_duplicado_responde_409(cliente, predio, agronomo, tram
     assert respuesta.json()["detail"] == "Ya existe una trampa con ese código ICA"
 
 
+async def test_codigo_ica_unico_tambien_entre_predios(
+    cliente, session, agronomo, trampa, crear_usuario
+):
+    # HU-39: el código ICA es único en todo el sistema, no solo dentro del predio.
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    lote = await _lote(session, otro, "L-A", LOTE_A)
+    vecino = await crear_usuario(
+        f"agronomo.{uuid.uuid4().hex[:8]}@ejemplo.com", rol="agronomo", predios=[otro]
+    )
+    respuesta = await cliente.post(
+        URL, json=_datos(lote.id, codigo_ica="ICA-001"), headers=encabezados(vecino)
+    )
+    assert respuesta.status_code == 409
+    assert respuesta.json()["detail"] == "Ya existe una trampa con ese código ICA"
+
+
 async def test_registrar_es_idempotente_por_id(cliente, predio, agronomo, lote_a):
     datos = _datos(lote_a.id, id=str(uuid.uuid4()))
     primera = await cliente.post(URL, json=datos, headers=encabezados(agronomo))

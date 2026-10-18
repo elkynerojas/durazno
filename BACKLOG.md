@@ -1035,7 +1035,7 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 
 ### HU-35 · Pruebas funcionales
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Ingry
 - **Historia:** Como equipo del proyecto, quiero un protocolo de pruebas por módulo ejecutado y documentado, para demostrar el cumplimiento de los requerimientos.
 
 **Criterios de aceptación**
@@ -1045,9 +1045,18 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 
 **Tareas**
 
-- [ ] `HU-35.1` [Doc] Diseñar el protocolo de pruebas funcionales
+- [x] `HU-35.1` [Doc] Diseñar el protocolo de pruebas funcionales
 - [ ] `HU-35.2` [Pruebas] Ejecutar los casos y registrar evidencia
-- [ ] `HU-35.3` [Doc] Informe de pruebas
+- [x] `HU-35.3` [Doc] Informe de pruebas
+
+> `docs/pruebas/`: protocolo, matriz de trazabilidad (110 casos `CP-<HU>-<n>`, uno por criterio de
+> aceptación, trazados al backlog mientras no haya SRS aprobado) e informe. Ejecución del
+> 18/10/2026: 531 pytest, 187 Vitest y 22 E2E en verde; las 268 pruebas citadas en la matriz
+> existen y pasaron; 84 casos con cobertura automatizada completa. Ocho casos parciales se
+> cerraron con pruebas nuevas. **Pendiente (HU-35.2):** 20 casos con paso manual que necesitan el
+> servidor (HU-08), teléfonos en campo (HU-36), impresora, Google Earth o el visto bueno de Icota
+> y del director, más 5 revisiones visuales en el navegador. Al aprobarse el SRS, agregar la
+> columna del requerimiento a la matriz.
 
 ### HU-36 · Validación en campo con la muestra de lotes
 

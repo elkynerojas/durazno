@@ -99,4 +99,23 @@ describe('VistaHistorial', () => {
     await usuarioEvento.click(screen.getByRole('button', { name: 'Consultar' }))
     expect(llamada()).toContain('especie=anastrepha')
   })
+
+  it('consulta el periodo elegido', async () => {
+    const fetchSimulado = simularApi()
+    const usuarioEvento = userEvent.setup()
+    renderizar()
+    await screen.findByRole('table', { name: 'Lecturas' })
+    const desde = screen.getByLabelText('Desde')
+    await usuarioEvento.clear(desde)
+    await usuarioEvento.type(desde, '2026-10-01')
+    const hasta = screen.getByLabelText('Hasta')
+    await usuarioEvento.clear(hasta)
+    await usuarioEvento.type(hasta, '2026-10-10')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Consultar' }))
+    const llamada = fetchSimulado.mock.calls
+      .filter(([u]) => u.startsWith('/api/v1/historial?'))
+      .at(-1)[0]
+    expect(llamada).toContain('desde=2026-10-01')
+    expect(llamada).toContain('hasta=2026-10-10')
+  })
 })
