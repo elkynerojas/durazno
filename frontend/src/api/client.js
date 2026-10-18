@@ -132,6 +132,9 @@ export const actualizarRuta = (id, trampas) =>
 
 export const obtenerPlan = (predioId, anio) => api(`/plan?predio_id=${predioId}&anio=${anio}`)
 
+// Actividades de la semana ISO de las que el usuario es responsable, en todos sus predios.
+export const misActividades = (anio, semana) => api(`/plan/mias?anio=${anio}&semana=${semana}`)
+
 // Programa una actividad (o su serie, con `repetir`); devuelve las actividades creadas.
 export const programarActividad = (datos) => api('/plan', { metodo: 'POST', cuerpo: datos })
 

@@ -704,7 +704,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 ### HU-24 · Ver mis actividades de la semana
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S3 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 2 · **Sprint:** S3 · **Responsable:** Ingry
 - **Historia:** Como técnico de campo, quiero ver lo que me toca esta semana, para organizar mis recorridos.
 
 **Criterios de aceptación**
@@ -714,8 +714,15 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 **Tareas**
 
-- [ ] `HU-24.1` [API] GET /plan/mias?semana=
-- [ ] `HU-24.2` [Web] Vista «Mi semana» para el teléfono
+- [x] `HU-24.1` [API] GET /plan/mias?semana=
+- [x] `HU-24.2` [Web] Vista «Mi semana» para el teléfono
+
+> `GET /plan/mias?anio=&semana=` (por defecto la semana actual en America/Bogota): actividades
+> de las que el usuario es responsable en todos sus predios asignados, con el nombre del predio y
+> las paradas de la ruta en las visitas; primero las visitas, luego recambios y labores. Web
+> `/mi-semana` (técnicos y agrónomos, primera opción del menú): tarjetas por actividad, semana
+> anterior/siguiente (cruza de año) y «Ver la ruta en el mapa» / «Ver el lote en el mapa», que
+> cambia al predio de la actividad. `sembrar_e2e` crea también el técnico de pruebas.
 
 ## E6 · Lecturas de trampa y MTD
 

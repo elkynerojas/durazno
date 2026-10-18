@@ -1604,3 +1604,28 @@ button {
   color: var(--verde-700);
   background: var(--verde-100);
 }
+
+/* ---------- Mi semana (HU-24) ---------- */
+.mi-semana__rango {
+  margin: -0.5rem 0 1rem;
+  color: var(--texto-suave);
+}
+
+.mi-semana {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mi-semana__actividad {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mi-semana__actividad .boton-bloque {
+  margin-top: auto;
+}

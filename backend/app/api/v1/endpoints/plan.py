@@ -1,16 +1,18 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.api.acceso import ROLES_GESTION, exigir_lote, exigir_predio
+from app.api.acceso import ROLES_GESTION, consulta_predios_visibles, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
+from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
-from app.models.ruta import Ruta
+from app.models.ruta import Ruta, RutaTrampa
 from app.models.usuario import Usuario
 from app.schemas.plan import (
     ActividadActualizar,
@@ -18,7 +20,10 @@ from app.schemas.plan import (
     ActividadLeer,
     Anio,
     CatalogoPlan,
+    MiActividad,
+    MiSemana,
     OpcionCatalogo,
+    Semana,
 )
 from app.services.monitoreo import hoy_bogota
 from app.services.plan import ids_de_serie, semanas_del_anio, semanas_repetidas
@@ -193,6 +198,74 @@ async def listar_plan(
         consulta.order_by(Lote.codigo, PlanActividad.tipo, PlanActividad.semana)
     )
     return [_leer(*fila) for fila in filas]
+
+
+@router.get(
+    "/mias",
+    response_model=MiSemana,
+    summary="Mis actividades de la semana",
+    description="Actividades de la semana ISO (por defecto, la actual en America/Bogota) de las "
+    "que el usuario es responsable, en todos sus predios, ordenadas por predio, lote y tipo. Las "
+    "visitas de monitoreo traen el número de paradas de la ruta. Para la vista «Mi semana» y la "
+    "app móvil.",
+    responses={**ERROR_401, 422: {"description": "La semana no existe en el año"}},
+)
+async def mis_actividades(
+    usuario: UsuarioActualDep,
+    session: SessionDep,
+    anio: Anio | None = None,
+    semana: Semana | None = None,
+) -> MiSemana:
+    hoy = hoy_bogota().isocalendar()
+    anio = anio or hoy.year
+    semana = semana or (hoy.week if anio == hoy.year else 1)
+    _exigir_semana(anio, semana)
+    paradas = (
+        select(func.count())
+        .select_from(RutaTrampa)
+        .join(Ruta, Ruta.id == RutaTrampa.ruta_id)
+        .where(
+            RutaTrampa.ruta_id == PlanActividad.ruta_id,
+            RutaTrampa.deleted_at.is_(None),
+            Ruta.deleted_at.is_(None),
+        )
+        .scalar_subquery()
+    )
+    visibles = consulta_predios_visibles(usuario).with_only_columns(Predio.id)
+    filas = await session.execute(
+        _consulta()
+        .add_columns(Predio.nombre, paradas)
+        .join(Predio, Predio.id == PlanActividad.predio_id)
+        .where(
+            PlanActividad.responsable_id == usuario.id,
+            PlanActividad.anio == anio,
+            PlanActividad.semana == semana,
+            Lote.deleted_at.is_(None),
+            PlanActividad.predio_id.in_(visibles),
+        )
+        # Primero las visitas de monitoreo (el recorrido), luego recambios y labores.
+        .order_by(
+            Predio.nombre,
+            Lote.codigo,
+            case({t: i for i, t in enumerate(TIPOS)}, value=PlanActividad.tipo),
+        )
+    )
+    actividades = [
+        MiActividad(
+            **_leer(actividad, lote, responsable).model_dump(),
+            predio_nombre=predio,
+            ruta_paradas=(total or None) if actividad.ruta_id else None,
+        )
+        for actividad, lote, responsable, predio, total in filas
+    ]
+    lunes = date.fromisocalendar(anio, semana, 1)
+    return MiSemana(
+        anio=anio,
+        semana=semana,
+        desde=lunes,
+        hasta=date.fromisocalendar(anio, semana, 7),
+        actividades=actividades,
+    )
 
 
 @router.post(

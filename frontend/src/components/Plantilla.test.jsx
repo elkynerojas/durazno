@@ -57,6 +57,16 @@ describe('Plantilla', () => {
     expect(enlacesDelMenu()).not.toContain('Predios')
   })
 
+  it('«Mi semana» aparece solo a quienes pueden tener actividades asignadas', () => {
+    renderizar('tecnico')
+    expect(enlacesDelMenu()[0]).toBe('Mi semana')
+  })
+
+  it.each(['productor', 'administrador'])('al rol %s no le muestra «Mi semana»', (rol) => {
+    renderizar(rol)
+    expect(enlacesDelMenu()).not.toContain('Mi semana')
+  })
+
   it('muestra la vereda del predio actual', () => {
     renderizar('tecnico')
     expect(screen.getByText('Icota · Cácota')).toBeInTheDocument()

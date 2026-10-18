@@ -10,6 +10,7 @@ import Logo from './Logo'
 
 // Secciones disponibles hoy. Lecturas y MTD se agregan con sus historias.
 const SECCIONES = [
+  { a: '/mi-semana', texto: 'Mi semana', roles: ['tecnico', 'agronomo'] },
   { a: '/mapa', texto: 'Mapa del predio' },
   { a: '/lotes', texto: 'Lotes' },
   { a: '/trampas', texto: 'Trampas y QR' },

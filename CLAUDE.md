@@ -50,7 +50,7 @@ docker compose exec db psql -U icota -d durazno_icota
 Pruebas E2E (Playwright, servicio `e2e` con perfil propio; no arranca con `up`):
 
 ```bash
-docker compose exec api python -m app.scripts.sembrar_e2e   # usuario E2E_CORREO / E2E_CLAVE
+docker compose exec api python -m app.scripts.sembrar_e2e   # administrador E2E_CORREO y técnico E2E_TECNICO_CORREO, clave E2E_CLAVE
 docker compose --profile e2e run --rm e2e
 ```
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { fechaCorta, rangoSemana, semanaDelAnio, semanaIso, semanasDelAnio } from './fechas'
+import {
+  fechaCorta,
+  otraSemana,
+  rangoSemana,
+  semanaDelAnio,
+  semanaIso,
+  semanasDelAnio,
+} from './fechas'
 
 describe('fechas', () => {
   it.each([
@@ -39,5 +46,14 @@ describe('fechas', () => {
     expect(rangoSemana(semanaDelAnio(2026, 42))).toBe('12–18 oct 2026')
     expect(rangoSemana(semanaDelAnio(2026, 1))).toBe('29 dic – 4 ene 2026')
     expect(rangoSemana(semanaDelAnio(2026, 53))).toBe('28 dic – 3 ene 2027')
+  })
+
+  it('pasa a la semana anterior o siguiente, también entre años', () => {
+    const numero = (s) => [s.anio, s.numero]
+    expect(numero(otraSemana({ anio: 2026, numero: 42 }, 1))).toEqual([2026, 43])
+    expect(numero(otraSemana({ anio: 2026, numero: 53 }, 1))).toEqual([2027, 1])
+    expect(numero(otraSemana({ anio: 2027, numero: 1 }, -1))).toEqual([2026, 53])
+    expect(numero(otraSemana({ anio: 2028, numero: 1 }, -1))).toEqual([2027, 52])
+    expect(rangoSemana(otraSemana({ anio: 2026, numero: 42 }, 0))).toBe('12–18 oct 2026')
   })
 })

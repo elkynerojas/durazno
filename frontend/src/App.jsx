@@ -7,6 +7,7 @@ import PorPredio from './features/predios/PorPredio'
 import { ProveedorPredio } from './features/predios/ProveedorPredio'
 import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
+import VistaMiSemana from './features/plan/VistaMiSemana'
 import VistaPlan from './features/plan/VistaPlan'
 import VistaPredio from './features/predio/VistaPredio'
 import VistaPredios from './features/predios/VistaPredios'
@@ -63,6 +64,7 @@ export default function App() {
                   </PorPredio>
                 }
               />
+              <Route path="/mi-semana" element={<VistaMiSemana />} />
               <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
               <Route
                 path="/predio"

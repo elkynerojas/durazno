@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
@@ -98,3 +98,19 @@ class OpcionCatalogo(BaseModel):
 class CatalogoPlan(BaseModel):
     tipos: list[OpcionCatalogo]
     labores: list[OpcionCatalogo]
+
+
+class MiActividad(ActividadLeer):
+    predio_nombre: str
+    ruta_paradas: int | None = Field(
+        description="Paradas de la ruta (visitas de monitoreo); `null` en las demás o si la ruta "
+        "ya no está vigente"
+    )
+
+
+class MiSemana(BaseModel):
+    anio: int
+    semana: int
+    desde: date = Field(description="Lunes de la semana ISO")
+    hasta: date = Field(description="Domingo de la semana ISO")
+    actividades: list[MiActividad]

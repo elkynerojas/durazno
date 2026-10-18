@@ -2,6 +2,8 @@ import { expect } from '@playwright/test'
 
 export const CORREO = process.env.E2E_CORREO ?? 'e2e-agronomo@example.com'
 export const CLAVE = process.env.E2E_CLAVE
+// Técnico de pruebas (lo crea `sembrar_e2e` con la misma clave).
+export const CORREO_TECNICO = process.env.E2E_TECNICO_CORREO ?? 'e2e-tecnico@example.com'
 
 export async function ingresar(page, correo = CORREO, clave = CLAVE) {
   await page.goto('/')
@@ -147,17 +149,16 @@ export async function crearTrampasE2E(page, codigoLote, fracciones) {
   )
 }
 
-// Técnico de pruebas asignado al predio actual (responsable de las actividades del plan). Lo
-// crea la primera vez con una clave aleatoria: nadie inicia sesión con él. Solo para la base de
-// desarrollo, como todo el E2E.
+// Asigna el técnico de pruebas al predio actual (responsable de las actividades del plan). Si
+// aún no existe lo crea con una clave aleatoria; `sembrar_e2e` lo deja con la clave de E2E.
+// Solo para la base de desarrollo, como todo el E2E.
 export async function asegurarTecnicoE2E(page) {
-  return page.evaluate(async () => {
+  return page.evaluate(async (correo) => {
     const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
     const cabeceras = {
       Authorization: `Bearer ${(await renovar.json()).access_token}`,
       'Content-Type': 'application/json',
     }
-    const correo = 'e2e-tecnico@example.com'
     const usuarios = await (await fetch('/api/v1/usuarios', { headers: cabeceras })).json()
     let tecnico = usuarios.find((u) => u.correo === correo)
     if (!tecnico) {
@@ -182,7 +183,7 @@ export async function asegurarTecnicoE2E(page) {
       headers: cabeceras,
     })
     return tecnico
-  })
+  }, CORREO_TECNICO)
 }
 
 // ¿Hay algún píxel de ese color (#rrggbb) en el canvas donde Leaflet dibuja los polígonos?

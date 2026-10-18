@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import {
   CLAVE,
+  CORREO_TECNICO,
   asegurarPredio,
   asegurarTecnicoE2E,
   colorEnElMapa,
@@ -414,4 +415,74 @@ test('el agrónomo programa una labor que se repite y la ve en la vista anual', 
   await ficha.getByRole('button', { name: 'Eliminar esta y las siguientes' }).click()
   await expect(page.getByText('Actividad eliminada.')).toBeVisible()
   await expect(celdas).toHaveCount(2)
+})
+
+// --- Mi semana (HU-24) ---
+
+test('el técnico ve su semana y abre la ruta en el mapa', async ({ page }) => {
+  const tecnico = await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await crearTrampasE2E(page, lote, [
+    [0.3, 0.3],
+    [0.7, 0.7],
+  ])
+  // El administrador define la ruta y programa una visita y una poda para esta semana.
+  await page.evaluate(
+    async ({ lote, tecnicoId }) => {
+      const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+      const cabeceras = {
+        Authorization: `Bearer ${(await renovar.json()).access_token}`,
+        'Content-Type': 'application/json',
+      }
+      const api = async (ruta, cuerpo) =>
+        (
+          await fetch(`/api/v1${ruta}`, {
+            method: cuerpo ? 'POST' : 'GET',
+            headers: cabeceras,
+            body: cuerpo && JSON.stringify(cuerpo),
+          })
+        ).json()
+      const predioId = localStorage.getItem('icota.predio')
+      const { id: loteId } = (await api(`/lotes?predio_id=${predioId}`)).find(
+        (l) => l.codigo === lote,
+      )
+      const propuesta = await api(`/rutas/propuesta?lote_id=${loteId}`)
+      await api('/rutas', { lote_id: loteId, trampas: propuesta.paradas.map((p) => p.trampa_id) })
+      const { anio, semana } = await api('/plan/mias')
+      const comun = { lote_id: loteId, anio, semana, responsable_id: tecnicoId }
+      await api('/plan', { ...comun, tipo: 'visita_monitoreo' })
+      await api('/plan', { ...comun, tipo: 'labor_cultural', labor: 'poda', notas: 'Con tijera' })
+    },
+    { lote, tecnicoId: tecnico.id },
+  )
+
+  // Entra el técnico desde su teléfono.
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('button', { name: 'Salir' }).click()
+  await ingresar(page, CORREO_TECNICO)
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Mi semana' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mi semana')
+  const lista = page.getByRole('list', { name: 'Actividades de la semana' })
+  const visita = lista.getByRole('listitem').filter({ hasText: `Ruta ${lote}` })
+  await expect(visita).toContainText(`Lote ${lote}`)
+  await expect(visita).toContainText('ruta de 2 trampas')
+  await expect(lista.getByRole('listitem').filter({ hasText: 'Poda' })).toContainText('Con tijera')
+
+  await visita.getByRole('button', { name: 'Ver la ruta en el mapa' }).click()
+  await expect(page).toHaveURL(/\/rutas\?lote=/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    `Ruta de monitoreo · Lote ${lote}`,
+  )
+  await expect(page.getByText('La ruta incluye las 2 trampas activas del lote')).toBeVisible()
+
+  // Vuelve el administrador para que la limpieza pueda borrar los datos de prueba.
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('button', { name: 'Salir' }).click()
+  await ingresar(page)
+  // Vuelve a la página donde estaba (RutaProtegida recuerda la ruta pedida).
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    `Ruta de monitoreo · Lote ${lote}`,
+  )
 })

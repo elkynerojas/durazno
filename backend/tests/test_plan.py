@@ -4,15 +4,18 @@ import uuid
 from datetime import date
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.api.v1.endpoints import plan as plan_endpoint
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
 from app.models.predio import Predio
-from app.models.ruta import Ruta
-from app.schemas.geo import PoligonoGeoJSON, a_geometria
+from app.models.predio_usuario import PredioUsuario
+from app.models.ruta import Ruta, RutaTrampa
+from app.models.trampa import Trampa
+from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.services.plan import ids_de_serie, semanas_del_anio, semanas_repetidas
+from app.services.qr import generar_codigo
 from tests.utilidades import encabezados
 
 URL = "/api/v1/plan"
@@ -292,3 +295,81 @@ async def test_eliminar_una_o_las_siguientes_de_la_serie(cliente, datos):
     assert semanas(await cliente.get(URL, params=params, headers=h)) == [4]
     otra_vez = await cliente.delete(f"{URL}/{actividades[2]['id']}", headers=h)
     assert otra_vez.status_code == 404
+
+
+# --- Mis actividades de la semana (HU-24) ---
+
+
+@pytest.fixture
+async def ruta_de_dos(session, datos):
+    trampas = [
+        Trampa(
+            lote_id=datos["lote"].id,
+            codigo_ica=f"ICA-P{i}",
+            codigo_qr=generar_codigo(),
+            tipo="jackson",
+            atrayente="Trimedlure",
+            fecha_instalacion=date(2026, 10, 1),
+            geom=a_geometria(
+                PuntoGeoJSON(type="Point", coordinates=(-72.6395, 7.2702 + i / 10000))
+            ),
+        )
+        for i in (1, 2)
+    ]
+    ruta = Ruta(lote_id=datos["lote"].id)
+    session.add_all([*trampas, ruta])
+    await session.flush()
+    session.add_all(
+        RutaTrampa(ruta_id=ruta.id, trampa_id=t.id, orden=i) for i, t in enumerate(trampas, 1)
+    )
+    await session.flush()
+    return ruta
+
+
+async def test_mis_actividades_de_la_semana(cliente, datos, ruta_de_dos, monkeypatch):
+    monkeypatch.setattr(plan_endpoint, "hoy_bogota", lambda: date(2026, 10, 14))  # semana 42
+    await _programar(cliente, datos, tipo="visita_monitoreo", labor=None, semana=42)
+    await _programar(cliente, datos, semana=42, notas="Poda de limpieza")
+    await _programar(cliente, datos, semana=43)
+    await _programar(cliente, datos, semana=42, responsable_id=str(datos["agronomo"].id))
+
+    respuesta = await cliente.get(f"{URL}/mias", headers=encabezados(datos["tecnico"]))
+    assert respuesta.status_code == 200
+    semana = respuesta.json()
+    assert (semana["anio"], semana["semana"], semana["desde"], semana["hasta"]) == (
+        2026,
+        42,
+        "2026-10-12",
+        "2026-10-18",
+    )
+    resumen = [
+        (a["tipo"], a["lote_codigo"], a["predio_nombre"], a["ruta_paradas"], a["notas"])
+        for a in semana["actividades"]
+    ]
+    assert resumen == [
+        ("visita_monitoreo", "L-01", "Finca Icota", 2, None),
+        ("labor_cultural", "L-01", "Finca Icota", None, "Poda de limpieza"),
+    ]
+
+    otra = await cliente.get(
+        f"{URL}/mias", params={"anio": 2026, "semana": 43}, headers=encabezados(datos["tecnico"])
+    )
+    assert [a["semana"] for a in otra.json()["actividades"]] == [43]
+    del_agronomo = await cliente.get(f"{URL}/mias", headers=encabezados(datos["agronomo"]))
+    assert len(del_agronomo.json()["actividades"]) == 1
+
+
+async def test_mis_actividades_sin_acceso_o_semana_invalida(cliente, datos, session):
+    await _programar(cliente, datos, semana=42)
+    # Si le quitan el predio, sus actividades de ese predio ya no aparecen.
+    await session.execute(
+        update(PredioUsuario)
+        .where(PredioUsuario.usuario_id == datos["tecnico"].id)
+        .values(deleted_at=func.now())
+    )
+    h = encabezados(datos["tecnico"])
+    sin_predio = await cliente.get(f"{URL}/mias", params={"anio": 2026, "semana": 42}, headers=h)
+    assert sin_predio.json()["actividades"] == []
+    invalida = await cliente.get(f"{URL}/mias", params={"anio": 2027, "semana": 53}, headers=h)
+    assert invalida.status_code == 422
+    assert (await cliente.get(f"{URL}/mias")).status_code == 401
