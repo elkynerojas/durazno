@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     plan,
     predios,
     rutas,
+    sync,
     trampas,
     usuarios,
     visitas,
@@ -29,7 +30,8 @@ api_router.include_router(plan.router)
 api_router.include_router(visitas.router)
 api_router.include_router(mtd.router)
 api_router.include_router(mtd.router_historial)
+api_router.include_router(sync.router)
 
 # Grupos de servicios previstos (Tabla 2 de la propuesta). Regístralos aquí
 # a medida que se implementen, cada uno en app/api/v1/endpoints/<grupo>.py:
-#   auth, usuarios, predios, lotes, trampas (incluye QR), rutas, visitas, mtd, plan
+#   auth, usuarios, predios, lotes, trampas (incluye QR), rutas, visitas, mtd, plan, sync

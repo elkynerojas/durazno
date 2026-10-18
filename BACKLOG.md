@@ -954,7 +954,7 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 ### HU-32 · Preparar la sincronización
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Luis
+- **Estado:** Hecho · **Prioridad:** Debería · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Luis
 - **Historia:** Como desarrollador de la app móvil, quiero consultar los cambios desde una fecha y enviar lecturas en bloque, para sincronizar lo capturado sin conexión.
 
 **Criterios de aceptación**
@@ -965,9 +965,23 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 **Tareas**
 
-- [ ] `HU-32.1` [API] Endpoint de cambios por updated_at y deleted_at
-- [ ] `HU-32.2` [API] Envío de lecturas en bloque
-- [ ] `HU-32.3` [Pruebas] Reenvío y conflictos de actualización
+- [x] `HU-32.1` [API] Endpoint de cambios por updated_at y deleted_at
+- [x] `HU-32.2` [API] Envío de lecturas en bloque
+- [x] `HU-32.3` [Pruebas] Reenvío y conflictos de actualización
+
+> Router `sync`. `GET /sync/cambios?desde=` (cualquier rol): predios, lotes, trampas, rutas,
+> actividades (año en curso en adelante) y lecturas (últimos 60 días), cada una con `creados`,
+> `modificados` y los ids `borrados`, con los mismos esquemas y reglas de datos personales de sus
+> endpoints. Sin `desde`, carga completa. Un predio recién asignado llega completo; uno borrado o
+> desasignado va en `predios.borrados` y el cliente descarta su contenido (igual un lote). Las
+> actividades de la semana en curso viajan siempre (estado y avance calculados). Devuelve
+> `siguiente_desde` con 5 minutos de traslape, porque `updated_at` toma la hora de inicio de su
+> transacción: el cliente aplica los cambios como upsert por `id`. `POST /sync/lecturas`
+> (técnico, agrónomo, administrador): hasta 200 lecturas con `id` obligatorio, procesadas por
+> `observado_en` con las reglas de `POST /visitas/lecturas` (`crear_lectura`) y un punto de
+> guardado por lectura; responde un resultado por lectura (`creada`, `existente` o `error` con su
+> código y detalle). Reenviar no duplica; con otros datos y el mismo `id` vale la primera versión
+> y se devuelve la del servidor con su estado de validación. Pruebas en `tests/test_sync.py`.
 
 ### HU-33 · Probar el flujo de consumo móvil
 

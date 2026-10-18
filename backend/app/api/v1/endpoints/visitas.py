@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import Numeric, cast, func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.api.acceso import ROLES_CAMPO, ROLES_GESTION, exigir_lote, exigir_predio, exigir_trampa
@@ -54,7 +55,7 @@ def _no_valida(detalle: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detalle)
 
 
-def _consulta():
+def consulta_lecturas():
     return (
         select(
             LecturaTrampa,
@@ -72,7 +73,7 @@ def _consulta():
     )
 
 
-def _leer(
+def leer_lectura(
     usuario: Usuario, lectura, codigo_ica, lote_id, lote_codigo, responsable, revisor
 ) -> LecturaLeer:
     """Lectura para el usuario. Datos personales (Ley 1581): la posición GPS del técnico solo la
@@ -102,11 +103,13 @@ def _leer(
     return LecturaLeer.model_validate(datos)
 
 
-async def _leer_id(
+async def leer_lectura_id(
     session: SessionDep, usuario: Usuario, lectura_id: uuid.UUID
 ) -> LecturaLeer | None:
-    fila = (await session.execute(_consulta().where(LecturaTrampa.id == lectura_id))).first()
-    return _leer(usuario, *fila) if fila else None
+    fila = (
+        await session.execute(consulta_lecturas().where(LecturaTrampa.id == lectura_id))
+    ).first()
+    return leer_lectura(usuario, *fila) if fila else None
 
 
 @router.get(
@@ -158,6 +161,27 @@ async def preparar_lectura(
 async def registrar_lectura(
     entrada: LecturaCrear, usuario: CampoDep, session: SessionDep, response: Response
 ) -> LecturaLeer:
+    try:
+        lectura_id, creada = await crear_lectura(session, usuario, entrada)
+    except IntegrityError as error:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="La lectura ya estaba registrada"
+        ) from error
+    if not creada:
+        response.status_code = status.HTTP_200_OK
+    leida = await leer_lectura_id(session, usuario, lectura_id)
+    await session.commit()
+    return leida
+
+
+async def crear_lectura(
+    session: AsyncSession, usuario: Usuario, entrada: LecturaCrear
+) -> tuple[uuid.UUID, bool]:
+    """Valida y guarda la lectura (sin confirmar la transacción). Devuelve su id y si se creó;
+    con un `id` ya registrado por el mismo técnico en la misma trampa, devuelve esa lectura sin
+    cambiarla (idempotencia; la primera versión que llegó es la que vale). Lanza HTTPException
+    (404, 409, 422) o IntegrityError si otra petición la registró al mismo tiempo."""
     trampa = await exigir_trampa(
         session, usuario, entrada.trampa_id, escribir=True, roles_escritura=ROLES_CAMPO
     )
@@ -170,8 +194,7 @@ async def registrar_lectura(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
             )
-        response.status_code = status.HTTP_200_OK
-        return await _leer_id(session, usuario, existente.id)
+        return existente.id, False
 
     if trampa.estado != "activa":
         raise _no_valida(f"La trampa {trampa.codigo_ica} está {trampa.estado}: no admite lecturas")
@@ -243,16 +266,8 @@ async def registrar_lectura(
             select(func.round(cast(distancia, Numeric), 1)).where(Trampa.id == trampa.id)
         )
     session.add(lectura)
-    try:
-        await session.flush()
-    except IntegrityError as error:
-        await session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="La lectura ya estaba registrada"
-        ) from error
-    leida = await _leer_id(session, usuario, lectura.id)
-    await session.commit()
-    return leida
+    await session.flush()
+    return lectura.id, True
 
 
 @router.get(
@@ -291,7 +306,9 @@ async def listar_lecturas(
         condicion = Lote.predio_id == predio_id
     else:
         raise _no_valida("Indique la trampa (trampa_id), el lote (lote_id) o el predio (predio_id)")
-    consulta = _consulta().where(condicion, Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None))
+    consulta = consulta_lecturas().where(
+        condicion, Trampa.deleted_at.is_(None), Lote.deleted_at.is_(None)
+    )
     if estado is not None:
         consulta = consulta.where(LecturaTrampa.estado == estado)
     if mias:
@@ -300,7 +317,7 @@ async def listar_lecturas(
         LecturaTrampa.observado_en.asc() if antiguas_primero else LecturaTrampa.observado_en.desc()
     )
     filas = await session.execute(consulta.order_by(orden).limit(limite))
-    return [_leer(usuario, *fila) for fila in filas]
+    return [leer_lectura(usuario, *fila) for fila in filas]
 
 
 @router.get(
@@ -314,7 +331,7 @@ async def listar_lecturas(
 async def obtener_lectura(
     lectura_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> LecturaLeer:
-    lectura = await _leer_id(session, usuario, lectura_id)
+    lectura = await leer_lectura_id(session, usuario, lectura_id)
     no_existe = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lectura no encontrada")
     if lectura is None:
         raise no_existe
@@ -383,6 +400,6 @@ async def revisar_lectura(
                 "esta",
             ) from error
     await session.refresh(lectura)
-    leida = await _leer_id(session, usuario, lectura.id)
+    leida = await leer_lectura_id(session, usuario, lectura.id)
     await session.commit()
     return leida

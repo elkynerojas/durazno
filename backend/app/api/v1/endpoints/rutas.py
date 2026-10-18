@@ -62,7 +62,7 @@ async def _paradas(session: SessionDep, trampas: list[Trampa]) -> tuple[list[Par
     return paradas, round(total, 1)
 
 
-async def _leer(session: SessionDep, ruta: Ruta) -> RutaLeer:
+async def leer_ruta(session: SessionDep, ruta: Ruta) -> RutaLeer:
     lote = await session.get(Lote, ruta.lote_id)
     # Las paradas guardadas, aunque la trampa ya no esté activa (HU-20 avisa esos casos).
     trampas = list(
@@ -132,7 +132,7 @@ async def _guardar(session: SessionDep, ruta: Ruta) -> RutaLeer:
             status_code=status.HTTP_409_CONFLICT, detail="El lote ya tiene una ruta"
         ) from error
     await session.refresh(ruta)
-    leida = await _leer(session, ruta)
+    leida = await leer_ruta(session, ruta)
     await session.commit()
     return leida
 
@@ -167,7 +167,7 @@ async def listar_rutas(
     )
     if lote_id is not None:
         consulta = consulta.where(Ruta.lote_id == lote_id)
-    return [await _leer(session, ruta) for ruta in await session.scalars(consulta)]
+    return [await leer_ruta(session, ruta) for ruta in await session.scalars(consulta)]
 
 
 @router.get(
@@ -217,7 +217,7 @@ async def proponer_ruta(
 async def obtener_ruta(
     ruta_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
 ) -> RutaLeer:
-    return await _leer(session, await _exigir_ruta(session, usuario, ruta_id))
+    return await leer_ruta(session, await _exigir_ruta(session, usuario, ruta_id))
 
 
 @router.post(
@@ -250,7 +250,7 @@ async def crear_ruta(
                     status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
                 )
             response.status_code = status.HTTP_200_OK
-            return await _leer(session, existente)
+            return await leer_ruta(session, existente)
     await _validar_orden(session, entrada.lote_id, entrada.trampas)
     ruta = Ruta(lote_id=entrada.lote_id)
     if entrada.id is not None:
@@ -264,7 +264,7 @@ async def crear_ruta(
         existente = entrada.id and await session.get(Ruta, entrada.id)
         if existente and existente.lote_id == entrada.lote_id and existente.deleted_at is None:
             response.status_code = status.HTTP_200_OK
-            return await _leer(session, existente)
+            return await leer_ruta(session, existente)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="El lote ya tiene una ruta: modifíquela en lugar de crear otra",

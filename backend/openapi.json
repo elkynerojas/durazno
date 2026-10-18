@@ -6539,6 +6539,162 @@
           }
         }
       }
+    },
+    "/api/v1/sync/cambios": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Cambios desde la última sincronización",
+        "description": "Lo que la app debe guardar para trabajar sin conexión, por entidad: predios, lotes, trampas, rutas, actividades del plan (del año en curso en adelante) y lecturas (de los últimos 60 días). Cada entidad trae `creados`, `modificados` (mismos esquemas de sus endpoints) y los ids `borrados`. Sin `desde` es la carga completa (sin borrados). Un predio en `borrados` (borrado o desasignado) se descarta con todo su contenido; lo mismo un lote con sus trampas, ruta y actividades. Un predio recién asignado llega completo en `creados`. Las actividades de la semana en curso vienen siempre, porque su estado y avance se calculan con las lecturas. Para la siguiente vez use `siguiente_desde`. Los datos personales siguen las mismas reglas de cada endpoint (Ley 1581). Cualquier rol.",
+        "operationId": "cambios_api_v1_sync_cambios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cambios"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`desde` sin zona horaria o en el futuro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sync/lecturas": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Enviar en bloque las lecturas tomadas sin conexión",
+        "description": "Registra cada lectura con las mismas reglas de `POST /visitas/lecturas` y responde 200 con un resultado por lectura, en el orden del envío: una que falle no impide guardar las demás. Las procesa por `observado_en` (así los días de exposición de dos lecturas de la misma trampa salen bien aunque lleguen desordenadas). Idempotente: el `id` es obligatorio y reenviar el bloque (p. ej. si se cortó la conexión antes de la respuesta) devuelve `existente` con la lectura guardada, sin duplicarla. Si el reenvío trae otros datos con el mismo `id`, se conserva la primera versión (las lecturas no se editan desde la app): el cliente reemplaza su copia por la que devuelve el servidor, con su estado de validación. Si otro técnico ya registró esa trampa ese día, el resultado es `error` 409.",
+        "operationId": "enviar_lecturas_api_v1_sync_lecturas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LecturasBloque"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoBloque"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El productor no registra lecturas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El bloque está vacío, tiene más de 200 lecturas o alguna es inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -7155,6 +7311,282 @@
           "created_at"
         ],
         "title": "CambioLeer"
+      },
+      "Cambios": {
+        "properties": {
+          "desde": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desde",
+            "description": "El `desde` pedido; `null` en la carga completa"
+          },
+          "servidor_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Servidor En",
+            "description": "Momento de la consulta en el servidor"
+          },
+          "siguiente_desde": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Siguiente Desde",
+            "description": "Valor de `desde` para la próxima sincronización. Trae unos minutos de traslape: aplique los cambios como upsert por `id` y los repetidos no hacen daño"
+          },
+          "predios": {
+            "$ref": "#/components/schemas/CambiosEntidad_PredioLeer_"
+          },
+          "lotes": {
+            "$ref": "#/components/schemas/CambiosEntidad_LoteLeer_"
+          },
+          "trampas": {
+            "$ref": "#/components/schemas/CambiosEntidad_TrampaLeer_"
+          },
+          "rutas": {
+            "$ref": "#/components/schemas/CambiosEntidad_RutaLeer_"
+          },
+          "actividades": {
+            "$ref": "#/components/schemas/CambiosEntidad_ActividadLeer_"
+          },
+          "lecturas": {
+            "$ref": "#/components/schemas/CambiosEntidad_LecturaLeer_"
+          }
+        },
+        "type": "object",
+        "required": [
+          "desde",
+          "servidor_en",
+          "siguiente_desde",
+          "predios",
+          "lotes",
+          "trampas",
+          "rutas",
+          "actividades",
+          "lecturas"
+        ],
+        "title": "Cambios"
+      },
+      "CambiosEntidad_ActividadLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/ActividadLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/ActividadLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[ActividadLeer]"
+      },
+      "CambiosEntidad_LecturaLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/LecturaLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/LecturaLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[LecturaLeer]"
+      },
+      "CambiosEntidad_LoteLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/LoteLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/LoteLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[LoteLeer]"
+      },
+      "CambiosEntidad_PredioLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/PredioLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/PredioLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[PredioLeer]"
+      },
+      "CambiosEntidad_RutaLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/RutaLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/RutaLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[RutaLeer]"
+      },
+      "CambiosEntidad_TrampaLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/TrampaLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/TrampaLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[TrampaLeer]"
       },
       "CatalogoPlan": {
         "properties": {
@@ -8159,6 +8591,212 @@
         ],
         "title": "LecturaResumen",
         "description": "Última lectura de una trampa (ficha del QR y formulario)."
+      },
+      "LecturaSincronizar": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "Obligatorio: id generado en el dispositivo; reenviarlo no duplica la lectura"
+          },
+          "trampa_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Trampa Id"
+          },
+          "observado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observado En",
+            "description": "Momento de la observación en campo, con zona"
+          },
+          "capitata_machos": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Capitata Machos",
+            "description": "*Ceratitis capitata*, machos"
+          },
+          "capitata_hembras": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Capitata Hembras",
+            "description": "*Ceratitis capitata*, hembras"
+          },
+          "anastrepha": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Anastrepha",
+            "description": "*Anastrepha* spp."
+          },
+          "dias_exposicion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias Exposicion",
+            "description": "Opcional: si se omite, se usan los calculados por el servidor. Si difiere de ellos exige `justificacion_dias`."
+          },
+          "justificacion_dias": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justificacion Dias"
+          },
+          "estado_trampa": {
+            "type": "string",
+            "enum": [
+              "buena",
+              "danada",
+              "faltante",
+              "reubicada"
+            ],
+            "title": "Estado Trampa"
+          },
+          "cambio_atrayente": {
+            "type": "boolean",
+            "title": "Cambio Atrayente"
+          },
+          "observaciones": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observaciones"
+          },
+          "posicion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PuntoGeoJSON"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ubicación del dispositivo al registrar `[longitud, latitud]`"
+          },
+          "precision_m": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "description": "Precisión del GPS en metros"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "trampa_id",
+          "observado_en",
+          "capitata_machos",
+          "capitata_hembras",
+          "anastrepha",
+          "estado_trampa",
+          "cambio_atrayente"
+        ],
+        "title": "LecturaSincronizar",
+        "examples": [
+          {
+            "anastrepha": 0,
+            "cambio_atrayente": false,
+            "capitata_hembras": 1,
+            "capitata_machos": 3,
+            "estado_trampa": "buena",
+            "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e07",
+            "observaciones": "Frutos maduros caídos cerca de la trampa",
+            "observado_en": "2026-10-14T09:15:00-05:00",
+            "posicion": {
+              "coordinates": [
+                -72.64102,
+                7.27068
+              ],
+              "type": "Point"
+            },
+            "precision_m": 6.0,
+            "trampa_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e03"
+          }
+        ]
+      },
+      "LecturasBloque": {
+        "properties": {
+          "lecturas": {
+            "items": {
+              "$ref": "#/components/schemas/LecturaSincronizar"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Lecturas",
+            "description": "Lecturas guardadas sin conexión, en cualquier orden: el servidor las procesa por `observado_en` para calcular bien los días de exposición"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lecturas"
+        ],
+        "title": "LecturasBloque",
+        "examples": [
+          {
+            "lecturas": [
+              {
+                "anastrepha": 0,
+                "cambio_atrayente": false,
+                "capitata_hembras": 1,
+                "capitata_machos": 3,
+                "estado_trampa": "buena",
+                "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e07",
+                "observaciones": "Frutos maduros caídos cerca de la trampa",
+                "observado_en": "2026-10-14T09:15:00-05:00",
+                "posicion": {
+                  "coordinates": [
+                    -72.64102,
+                    7.27068
+                  ],
+                  "type": "Point"
+                },
+                "precision_m": 6.0,
+                "trampa_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e03"
+              }
+            ]
+          }
+        ]
       },
       "LoteActualizar": {
         "properties": {
@@ -9924,6 +10562,87 @@
             "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e0a",
             "motivo": "Lluvias fuertes impidieron la visita",
             "semana": 44
+          }
+        ]
+      },
+      "ResultadoBloque": {
+        "properties": {
+          "resultados": {
+            "items": {
+              "$ref": "#/components/schemas/ResultadoLectura"
+            },
+            "type": "array",
+            "title": "Resultados",
+            "description": "En el mismo orden del envío"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultados"
+        ],
+        "title": "ResultadoBloque"
+      },
+      "ResultadoLectura": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "creada",
+              "existente",
+              "error"
+            ],
+            "title": "Resultado",
+            "description": "`creada`; `existente` si ese `id` ya estaba (reenvío); `error` si no se guardó: el dispositivo la conserva y muestra `detalle`"
+          },
+          "codigo": {
+            "type": "integer",
+            "title": "Codigo",
+            "description": "Código HTTP que habría dado `POST /visitas/lecturas`: 201, 200, 404, 409 o 422"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle",
+            "description": "Motivo del error en español"
+          },
+          "lectura": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LecturaLeer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "La lectura como quedó en el servidor (también con su estado de validación, si el agrónomo ya la revisó); `null` si hubo error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "resultado",
+          "codigo",
+          "detalle",
+          "lectura"
+        ],
+        "title": "ResultadoLectura",
+        "examples": [
+          {
+            "codigo": 409,
+            "detalle": "Ya hay una lectura de NS-CAC-0001 del 14/10/2026",
+            "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e07",
+            "resultado": "error"
           }
         ]
       },

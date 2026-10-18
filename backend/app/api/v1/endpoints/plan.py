@@ -125,7 +125,7 @@ async def _con_cumplimiento(session: SessionDep, lista: list[ActividadLeer]) -> 
     return lista
 
 
-async def _leer_ids(session: SessionDep, ids: list[uuid.UUID]) -> list[ActividadLeer]:
+async def leer_actividades(session: SessionDep, ids: list[uuid.UUID]) -> list[ActividadLeer]:
     filas = await session.execute(
         _consulta().where(PlanActividad.id.in_(ids)).order_by(PlanActividad.semana)
     )
@@ -251,7 +251,7 @@ async def _ya_programada(
     if existente.deleted_at is not None or not misma:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso")
     response.status_code = status.HTTP_200_OK
-    return await _leer_ids(session, ids)
+    return await leer_actividades(session, ids)
 
 
 @router.get(
@@ -485,7 +485,7 @@ async def visita_adicional(
                 status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
             )
         response.status_code = status.HTTP_200_OK
-        [leida] = await _leer_ids(session, [existente.id])
+        [leida] = await leer_actividades(session, [existente.id])
         return leida
 
     capturas = lectura.capitata_machos + lectura.capitata_hembras + lectura.anastrepha
@@ -521,7 +521,7 @@ async def visita_adicional(
         actividad.id = entrada.id
     session.add(actividad)
     await session.flush()
-    [leida] = await _leer_ids(session, [actividad.id])
+    [leida] = await leer_actividades(session, [actividad.id])
     await session.commit()
     return leida
 
@@ -601,7 +601,7 @@ async def programar(
         if existente is None:
             raise
         return await _ya_programada(session, existente, entrada, ids, response)
-    creadas = await _leer_ids(session, ids)
+    creadas = await leer_actividades(session, ids)
     await session.commit()
     return creadas
 
@@ -633,7 +633,7 @@ async def actualizar_actividad(
         setattr(actividad, campo, valor)
     actividad.updated_at = func.now()
     await session.flush()
-    [leida] = await _leer_ids(session, [actividad.id])
+    [leida] = await leer_actividades(session, [actividad.id])
     await session.commit()
     return leida
 
@@ -683,7 +683,7 @@ async def reprogramar(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
             )
-        [leida] = await _leer_ids(session, [actividad.id])
+        [leida] = await leer_actividades(session, [actividad.id])
         return leida
     _exigir_semana(entrada.anio, entrada.semana)
     if (entrada.anio, entrada.semana) == (actividad.anio, actividad.semana):
@@ -703,7 +703,7 @@ async def reprogramar(
     actividad.estado = "reprogramada"
     actividad.updated_at = func.now()
     await session.flush()
-    [leida] = await _leer_ids(session, [actividad.id])
+    [leida] = await leer_actividades(session, [actividad.id])
     await session.commit()
     return leida
 
@@ -770,7 +770,7 @@ async def marcar_cumplimiento(
         actividad.cumplida_en = None
     await session.flush()
     await session.refresh(actividad)
-    [leida] = await _leer_ids(session, [actividad.id])
+    [leida] = await leer_actividades(session, [actividad.id])
     await session.commit()
     return leida
 
