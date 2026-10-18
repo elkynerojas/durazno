@@ -94,6 +94,9 @@ class ActividadLeer(BaseModel):
     cumplida_en: datetime | None = Field(
         default=None, description="Labores culturales: cuándo se marcó cumplida"
     )
+    lectura_origen_id: uuid.UUID | None = Field(
+        default=None, description="Visita adicional: la lectura con capturas que la originó"
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -191,3 +194,17 @@ class CambioLeer(BaseModel):
     motivo: str | None
     usuario: str = Field(description="Quién hizo el cambio")
     created_at: datetime
+
+
+class VisitaAdicional(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID | None = Field(
+        default=None, description="Opcional: reenviar el mismo `id` no duplica la visita"
+    )
+    lectura_id: uuid.UUID = Field(description="Lectura con capturas que motiva la visita")
+    anio: Anio | None = Field(default=None, description="Por defecto, el de la semana siguiente")
+    semana: Semana | None = Field(default=None, description="Por defecto, la semana siguiente")
+    responsable_id: uuid.UUID | None = Field(
+        default=None, description="Por defecto, quien registró la lectura"
+    )

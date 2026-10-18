@@ -655,6 +655,65 @@ test('el agrónomo rechaza con motivo una lectura tomada lejos de la trampa', as
   )
 })
 
+test('desde una lectura con capturas se programa una visita adicional', async ({ page }) => {
+  await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  // Ruta del lote y una lectura con 4 capturas registrada hoy.
+  await page.evaluate(
+    async ({ lote, codigo }) => {
+      const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+      const cabeceras = {
+        Authorization: `Bearer ${(await renovar.json()).access_token}`,
+        'Content-Type': 'application/json',
+      }
+      const api = async (ruta, cuerpo) =>
+        (
+          await fetch(`/api/v1${ruta}`, {
+            method: cuerpo ? 'POST' : 'GET',
+            headers: cabeceras,
+            body: cuerpo && JSON.stringify(cuerpo),
+          })
+        ).json()
+      const predioId = localStorage.getItem('icota.predio')
+      const loteId = (await api(`/lotes?predio_id=${predioId}`)).find((l) => l.codigo === lote).id
+      const trampa = (await api(`/trampas?predio_id=${predioId}`)).find(
+        (t) => t.codigo_ica === codigo,
+      )
+      await api('/rutas', { lote_id: loteId, trampas: [trampa.id] })
+      await api('/visitas/lecturas', {
+        trampa_id: trampa.id,
+        observado_en: new Date().toISOString(),
+        capitata_machos: 4,
+        capitata_hembras: 0,
+        anastrepha: 0,
+        estado_trampa: 'buena',
+        cambio_atrayente: false,
+      })
+    },
+    { lote, codigo },
+  )
+
+  await page.goto('/lecturas')
+  const tarjeta = page.getByRole('listitem', { name: `Lectura de ${codigo}` })
+  await tarjeta.getByRole('button', { name: 'Programar visita adicional' }).click()
+  // La lectura la registró el administrador: se elige al técnico como responsable.
+  await tarjeta.getByLabel('Responsable').selectOption({ label: 'Técnico E2E' })
+  await tarjeta.getByRole('button', { name: 'Programar' }).click()
+  await expect(tarjeta.getByRole('status')).toContainText(
+    'Visita adicional programada en la semana',
+  )
+  await tarjeta.getByRole('link', { name: 'Ver en el plan' }).click()
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
+  await page
+    .getByRole('button', { name: new RegExp(`^Ruta ${lote} \\(Monitoreo · trampeo\\)`) })
+    .click()
+  await expect(page.getByRole('region', { name: 'Actividad seleccionada' })).toContainText(
+    `Visita adicional por 4 capturas en ${codigo}`,
+  )
+})
+
 // --- MTD (HU-28) ---
 
 test('el MTD del predio muestra M, T y D de la semana con la lectura', async ({ page }) => {

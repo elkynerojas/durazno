@@ -698,7 +698,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 ### HU-23 · Reprogramar según los hallazgos
 
-- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S3 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S3 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero mover o agregar actividades a partir de lo encontrado en campo, para responder a un aumento de capturas.
 
 **Criterios de aceptación**
@@ -711,7 +711,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 - [x] `HU-23.1` [BD] Historial de cambios del plan
 - [x] `HU-23.2` [API] Reprogramación con motivo obligatorio
-- [ ] `HU-23.3` [Web] Acción «Reprogramar» y visita adicional desde una lectura
+- [x] `HU-23.3` [Web] Acción «Reprogramar» y visita adicional desde una lectura
 
 > `plan_cambio` guarda cada reprogramación (semana anterior y nueva, motivo), cambio de
 > responsable y eliminación, con quién y cuándo. `POST /plan/{id}/reprogramar` exige motivo
@@ -719,8 +719,10 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 > `reprogramada` y es idempotente por `id` del cambio. `GET /plan/{id}/historial` y
 > `GET /plan/cambios?predio_id=` (cualquier rol del predio). Web: «Reprogramar» e «Historial» en
 > la ficha de la actividad, color propio en la vista anual y tarjeta «Cambios del plan».
-> **Pendiente de HU-25:** crear una visita adicional desde una lectura con capturas (HU-23.3);
-> la historia se cierra cuando existan las lecturas.
+> Visita adicional (HU-23.3): `POST /plan/visita-adicional` desde una lectura válida con
+> capturas crea una visita de monitoreo al lote (exige ruta), por defecto la semana siguiente y
+> con quien registró la lectura como responsable; guarda `lectura_origen_id` y una nota con las
+> capturas. Web: «Programar visita adicional» en la bandeja de lecturas (semana y responsable).
 
 ### HU-24 · Ver mis actividades de la semana
 

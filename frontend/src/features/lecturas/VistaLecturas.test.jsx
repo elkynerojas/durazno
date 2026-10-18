@@ -75,7 +75,7 @@ describe('VistaLecturas', () => {
     const tarjeta = await screen.findByRole('listitem', { name: 'Lectura de ICA-01' })
     expect(tarjeta).toHaveTextContent('Tomada a 111 m de la trampa (±8 m)')
     expect(tarjeta).toHaveTextContent('5 (4 ♂ · 1 ♀)')
-    expect(fetchSimulado.mock.calls[0][0]).toBe(
+    expect(fetchSimulado.mock.calls.map(([url]) => url)).toContain(
       '/api/v1/visitas/lecturas?predio_id=p-1&estado=registrada&antiguas_primero=true&limite=200',
     )
 

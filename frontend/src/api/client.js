@@ -182,6 +182,10 @@ export const cumplimientoPlan = (predioId, anio) =>
 export const marcarCumplida = (id, cumplida) =>
   api(`/plan/${id}/cumplimiento`, { metodo: 'POST', cuerpo: { cumplida } })
 
+// Visita de monitoreo adicional a partir de una lectura con capturas (HU-23).
+export const programarVisitaAdicional = (datos) =>
+  api('/plan/visita-adicional', { metodo: 'POST', cuerpo: datos })
+
 export const eliminarActividad = (id, serie = false) =>
   api(`/plan/${id}${serie ? '?serie=true' : ''}`, { metodo: 'DELETE' })
 

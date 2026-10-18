@@ -4,12 +4,13 @@ import { Link } from 'react-router'
 import { revisarLectura } from '../../api/client'
 import { fechaHora } from '../../utils/fechas'
 import { ESTADOS_TRAMPA_LECTURA } from './catalogo'
+import VisitaAdicional from './VisitaAdicional'
 
 const ESTADOS = { registrada: 'Pendiente', validada: 'Validada', rechazada: 'Rechazada' }
 const INSIGNIAS = { registrada: 'inactiva', validada: 'activa', rechazada: 'retirada' }
 
 // Una lectura en la bandeja de validación (HU-26): datos, avisos y acciones del agrónomo.
-export default function TarjetaRevision({ lectura, editable, alRevisar }) {
+export default function TarjetaRevision({ lectura, editable, personal = [], alRevisar }) {
   const [rechazando, setRechazando] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState(null)
@@ -80,6 +81,9 @@ export default function TarjetaRevision({ lectura, editable, alRevisar }) {
         <p className="formulario__error" role="alert">
           {error}
         </p>
+      )}
+      {editable && lectura.estado !== 'rechazada' && capitata + lectura.anastrepha > 0 && (
+        <VisitaAdicional lectura={lectura} personal={personal} />
       )}
       {editable &&
         (rechazando ? (

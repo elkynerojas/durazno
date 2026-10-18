@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { lecturasDelPredio, revisarLectura } from '../../api/client'
+import { lecturasDelPredio, listarPersonal, revisarLectura } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
 import { useSesion } from '../auth/useSesion'
@@ -25,6 +25,23 @@ export default function VistaLecturas() {
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [validando, setValidando] = useState(false)
+  // Responsables posibles de una visita adicional (HU-23).
+  const [personal, setPersonal] = useState([])
+
+  useEffect(() => {
+    if (!editable) return
+    let vigente = true
+    listarPersonal(predio.id)
+      .then(
+        (lista) =>
+          vigente &&
+          setPersonal(lista.filter((p) => p.activo && ['tecnico', 'agronomo'].includes(p.rol))),
+      )
+      .catch(() => vigente && setPersonal([]))
+    return () => {
+      vigente = false
+    }
+  }, [editable, predio.id])
 
   useEffect(() => {
     let vigente = true
@@ -132,6 +149,7 @@ export default function VistaLecturas() {
               key={lectura.id}
               lectura={lectura}
               editable={editable}
+              personal={personal}
               alRevisar={alRevisar}
             />
           ))}

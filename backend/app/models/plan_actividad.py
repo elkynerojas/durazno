@@ -51,6 +51,10 @@ class PlanActividad(EntidadSincronizable, Base):
     # Actividades creadas juntas con «repetir cada N semanas» comparten la serie.
     serie_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
     notas: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Visita adicional creada a partir de una lectura con capturas (HU-23).
+    lectura_origen_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("lectura_trampa.id"), nullable=True
+    )
     # Labores culturales: quién y cuándo la marcó cumplida (las visitas y los cambios de
     # atrayente se cumplen con las lecturas, HU-22).
     cumplida_por_id: Mapped[uuid.UUID | None] = mapped_column(

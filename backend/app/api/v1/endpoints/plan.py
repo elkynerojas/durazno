@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -15,12 +15,14 @@ from app.api.acceso import (
     exigir_predio,
 )
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
+from app.models.lectura_trampa import LecturaTrampa
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
 from app.models.plan_cambio import PlanCambio
 from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
 from app.models.ruta import Ruta, RutaTrampa
+from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.plan import (
     ActividadActualizar,
@@ -40,6 +42,7 @@ from app.schemas.plan import (
     OpcionCatalogo,
     Reprogramacion,
     Semana,
+    VisitaAdicional,
 )
 from app.services.cumplimiento import ActividadAvance, avances, estado_actividad
 from app.services.monitoreo import hoy_bogota
@@ -431,6 +434,95 @@ async def historial_predio(
 ) -> list[CambioLeer]:
     await exigir_predio(session, usuario, predio_id)
     return await _cambios(session, PlanCambio.predio_id == predio_id)
+
+
+@router.post(
+    "/visita-adicional",
+    response_model=ActividadLeer,
+    status_code=status.HTTP_201_CREATED,
+    summary="Programar una visita adicional desde una lectura con capturas",
+    description="Responde a un hallazgo en campo: crea una visita de monitoreo al lote de la "
+    "trampa (con su ruta), por defecto en la semana siguiente a la lectura y con quien la "
+    "registró como responsable. La actividad guarda la lectura de origen. Reenviar el mismo "
+    "`id` devuelve la visita ya creada con 200.",
+    responses={
+        200: {"description": "La visita con ese `id` ya existía"},
+        **ERROR_401,
+        **ERROR_403,
+        **ERROR_404,
+        **ERROR_409,
+        422: {
+            "description": "La lectura no tiene capturas o está rechazada, el lote no tiene ruta, "
+            "la semana no existe o el responsable no está asignado"
+        },
+    },
+)
+async def visita_adicional(
+    entrada: VisitaAdicional, usuario: GestionDep, session: SessionDep, response: Response
+) -> ActividadLeer:
+    fila = (
+        await session.execute(
+            select(LecturaTrampa, Trampa.codigo_ica, Trampa.lote_id)
+            .join(Trampa, Trampa.id == LecturaTrampa.trampa_id)
+            .where(LecturaTrampa.id == entrada.lectura_id, LecturaTrampa.deleted_at.is_(None))
+        )
+    ).first()
+    no_existe = HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lectura no encontrada")
+    if fila is None:
+        raise no_existe
+    lectura, codigo_ica, lote_id = fila
+    try:
+        lote = await exigir_lote(session, usuario, lote_id, escribir=True)
+    except HTTPException as error:
+        if error.status_code == status.HTTP_404_NOT_FOUND:
+            raise no_existe from error
+        raise
+
+    if entrada.id is not None and (existente := await session.get(PlanActividad, entrada.id)):
+        if existente.deleted_at is not None or existente.lectura_origen_id != lectura.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
+            )
+        response.status_code = status.HTTP_200_OK
+        [leida] = await _leer_ids(session, [existente.id])
+        return leida
+
+    capturas = lectura.capitata_machos + lectura.capitata_hembras + lectura.anastrepha
+    if lectura.estado == "rechazada" or capturas == 0:
+        raise _no_valida("La visita adicional se programa desde una lectura válida con capturas")
+    siguiente = (lectura.fecha + timedelta(weeks=1)).isocalendar()
+    anio = entrada.anio or siguiente.year
+    semana = entrada.semana or (siguiente.week if anio == siguiente.year else 1)
+    _exigir_semana(anio, semana)
+    responsable_id = entrada.responsable_id or lectura.responsable_id
+    await _exigir_responsable(session, lote.predio_id, responsable_id)
+    ruta_id = await session.scalar(
+        select(Ruta.id).where(Ruta.lote_id == lote.id, Ruta.deleted_at.is_(None))
+    )
+    if ruta_id is None:
+        raise _no_valida(
+            f"El lote {lote.codigo} no tiene ruta: defínala antes de programar visitas"
+        )
+
+    actividad = PlanActividad(
+        predio_id=lote.predio_id,
+        lote_id=lote.id,
+        tipo="visita_monitoreo",
+        ruta_id=ruta_id,
+        anio=anio,
+        semana=semana,
+        responsable_id=responsable_id,
+        lectura_origen_id=lectura.id,
+        notas=f"Visita adicional por {capturas} capturas en {codigo_ica} "
+        f"({lectura.fecha:%d/%m/%Y})",
+    )
+    if entrada.id is not None:
+        actividad.id = entrada.id
+    session.add(actividad)
+    await session.flush()
+    [leida] = await _leer_ids(session, [actividad.id])
+    await session.commit()
+    return leida
 
 
 @router.post(

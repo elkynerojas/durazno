@@ -4,10 +4,12 @@ import uuid
 from datetime import UTC, date, datetime
 
 import pytest
+from sqlalchemy import func, update
 
 from app.api.v1.endpoints import plan as plan_endpoint
 from app.api.v1.endpoints import visitas
 from app.models.lote import Lote
+from app.models.predio import Predio
 from app.models.ruta import Ruta, RutaTrampa
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
@@ -234,3 +236,102 @@ async def test_indicadores_por_semana_y_por_lote(cliente, datos):
     ]
     [lote] = cuerpo["lotes"]
     assert (lote["lote_codigo"], lote["porcentaje"]) == ("L-01", 40.0)
+
+
+# --- Visita adicional desde una lectura con capturas (HU-23) ---
+
+URL_ADICIONAL = "/api/v1/plan/visita-adicional"
+
+
+async def _lectura_con(cliente, datos, codigo, dia, machos):
+    respuesta = await cliente.post(
+        "/api/v1/visitas/lecturas",
+        json={
+            "trampa_id": str(datos["trampas"][codigo].id),
+            "observado_en": f"2026-10-{dia:02d}T08:00:00-05:00",
+            "capitata_machos": machos,
+            "capitata_hembras": 0,
+            "anastrepha": 0,
+            "estado_trampa": "buena",
+            "cambio_atrayente": False,
+        },
+        headers=encabezados(datos["tecnico"]),
+    )
+    return respuesta.json()
+
+
+async def test_visita_adicional_desde_una_lectura_con_capturas(cliente, datos):
+    lectura = await _lectura_con(cliente, datos, "J1", 14, machos=5)
+    h = encabezados(datos["agronomo"])
+    visita_id = str(uuid.uuid4())
+    respuesta = await cliente.post(
+        URL_ADICIONAL, json={"id": visita_id, "lectura_id": lectura["id"]}, headers=h
+    )
+    assert respuesta.status_code == 201
+    visita = respuesta.json()
+    # Lectura del 14 de octubre (S42): la visita queda en la semana siguiente, la S43.
+    assert (visita["tipo"], visita["anio"], visita["semana"]) == ("visita_monitoreo", 2026, 43)
+    assert visita["responsable_id"] == str(datos["tecnico"].id)
+    assert visita["lectura_origen_id"] == lectura["id"]
+    assert visita["ruta_id"] is not None
+    assert visita["notas"] == "Visita adicional por 5 capturas en J1 (14/10/2026)"
+
+    repetida = await cliente.post(
+        URL_ADICIONAL, json={"id": visita_id, "lectura_id": lectura["id"]}, headers=h
+    )
+    assert (repetida.status_code, repetida.json()["id"]) == (200, visita_id)
+
+    elegida = await cliente.post(
+        URL_ADICIONAL,
+        json={
+            "lectura_id": lectura["id"],
+            "semana": 42,
+            "responsable_id": str(datos["agronomo"].id),
+        },
+        headers=h,
+    )
+    assert (elegida.json()["semana"], elegida.json()["responsable_id"]) == (
+        42,
+        str(datos["agronomo"].id),
+    )
+
+
+async def test_visita_adicional_solo_con_capturas_validas_y_ruta(cliente, datos, session):
+    h = encabezados(datos["agronomo"])
+    sin_capturas = await _lectura_con(cliente, datos, "J2", 14, machos=0)
+    assert (
+        await cliente.post(URL_ADICIONAL, json={"lectura_id": sin_capturas["id"]}, headers=h)
+    ).status_code == 422
+
+    con_capturas = await _lectura_con(cliente, datos, "M1", 14, machos=3)
+    await cliente.post(
+        f"/api/v1/visitas/lecturas/{con_capturas['id']}/revision",
+        json={"estado": "rechazada", "motivo": "Conteo dudoso"},
+        headers=h,
+    )
+    assert (
+        await cliente.post(URL_ADICIONAL, json={"lectura_id": con_capturas["id"]}, headers=h)
+    ).status_code == 422
+
+    otra = await _lectura_con(cliente, datos, "J1", 15, machos=2)
+    await session.execute(update(Ruta).values(deleted_at=func.now()))
+    sin_ruta = await cliente.post(URL_ADICIONAL, json={"lectura_id": otra["id"]}, headers=h)
+    assert sin_ruta.status_code == 422
+    assert "no tiene ruta" in sin_ruta.json()["detail"]
+
+
+async def test_visita_adicional_permisos(cliente, datos, crear_usuario, session):
+    lectura = await _lectura_con(cliente, datos, "J1", 14, machos=5)
+    cuerpo = {"lectura_id": lectura["id"]}
+    assert (await cliente.post(URL_ADICIONAL, json=cuerpo)).status_code == 401
+    tecnico = await cliente.post(URL_ADICIONAL, json=cuerpo, headers=encabezados(datos["tecnico"]))
+    assert tecnico.status_code == 403
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[otro])
+    for lectura_id in (lectura["id"], str(uuid.uuid4())):
+        respuesta = await cliente.post(
+            URL_ADICIONAL, json={"lectura_id": lectura_id}, headers=encabezados(ajeno)
+        )
+        assert (respuesta.status_code, respuesta.json()["detail"]) == (404, "Lectura no encontrada")
