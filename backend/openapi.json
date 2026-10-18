@@ -6959,13 +6959,29 @@
             "title": "Semana"
           },
           "responsable_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Responsable Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Id",
+            "description": "`null` para el productor (Ley 1581)"
           },
           "responsable_nombre": {
-            "type": "string",
-            "title": "Responsable Nombre"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Nombre",
+            "description": "`null` para el productor (Ley 1581)"
           },
           "estado": {
             "type": "string",
@@ -9365,13 +9381,29 @@
             "title": "Semana"
           },
           "responsable_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Responsable Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Id",
+            "description": "`null` para el productor (Ley 1581)"
           },
           "responsable_nombre": {
-            "type": "string",
-            "title": "Responsable Nombre"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Nombre",
+            "description": "`null` para el productor (Ley 1581)"
           },
           "estado": {
             "type": "string",

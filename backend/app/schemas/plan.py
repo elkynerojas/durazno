@@ -103,8 +103,8 @@ class ActividadLeer(BaseModel):
     ruta_id: uuid.UUID | None
     anio: int
     semana: int
-    responsable_id: uuid.UUID
-    responsable_nombre: str
+    responsable_id: uuid.UUID | None = Field(description="`null` para el productor (Ley 1581)")
+    responsable_nombre: str | None = Field(description="`null` para el productor (Ley 1581)")
     estado: EstadoActividad
     serie_id: uuid.UUID | None
     notas: str | None

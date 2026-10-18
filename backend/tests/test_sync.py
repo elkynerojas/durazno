@@ -400,3 +400,33 @@ async def test_rutas_y_actividades_de_la_semana_en_curso(cliente, session, finca
     assert (await cliente.delete(f"/api/v1/rutas/{leida['id']}", headers=h)).status_code == 204
     cuerpo = await _cambios(cliente, finca["tecnico"], DESDE)
     assert cuerpo["rutas"]["borrados"] == [leida["id"]]
+
+
+async def test_el_productor_sincroniza_sin_datos_del_personal(cliente, finca, crear_usuario):
+    hoy = hoy_bogota().isocalendar()
+    actividad = await cliente.post(
+        "/api/v1/plan",
+        json={
+            "lote_id": str(finca["lote"].id),
+            "tipo": "labor_cultural",
+            "labor": "poda",
+            "anio": hoy.year,
+            "semana": hoy.week,
+            "responsable_id": str(finca["tecnico"].id),
+        },
+        headers=encabezados(finca["agronomo"]),
+    )
+    assert actividad.status_code == 201
+    await _enviar(cliente, finca["tecnico"], [_lectura(finca, "J1", 1)])
+    productor = await crear_usuario(
+        _correo("productor"), rol="productor", predios=[finca["predio"]]
+    )
+    cuerpo = await _cambios(cliente, productor)
+    [vista] = cuerpo["actividades"]["creados"]
+    assert (vista["responsable_id"], vista["responsable_nombre"]) == (None, None)
+    [lectura] = cuerpo["lecturas"]["creados"]
+    assert (lectura["responsable_id"], lectura["responsable_nombre"], lectura["posicion"]) == (
+        None,
+        None,
+        None,
+    )

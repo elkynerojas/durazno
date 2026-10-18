@@ -59,7 +59,9 @@ export default function SemanaActual({
               <span className="semana-plan__vencida"> · vencida desde S{vencidaDesde}</span>
             )}
           </p>
-          <p className="semana-plan__detalle">{actividad.responsable_nombre}</p>
+          {actividad.responsable_nombre && (
+            <p className="semana-plan__detalle">{actividad.responsable_nombre}</p>
+          )}
         </div>
       </li>
     )

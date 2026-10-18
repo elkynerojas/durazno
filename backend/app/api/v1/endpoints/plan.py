@@ -125,6 +125,16 @@ async def _con_cumplimiento(session: SessionDep, lista: list[ActividadLeer]) -> 
     return lista
 
 
+def para_usuario(actividades: list[ActividadLeer], usuario: Usuario) -> list[ActividadLeer]:
+    """Datos personales (Ley 1581): el productor no ve quién realiza cada actividad, igual que en
+    las lecturas."""
+    if usuario.rol == "productor":
+        for actividad in actividades:
+            actividad.responsable_id = None
+            actividad.responsable_nombre = None
+    return actividades
+
+
 async def leer_actividades(session: SessionDep, ids: list[uuid.UUID]) -> list[ActividadLeer]:
     filas = await session.execute(
         _consulta().where(PlanActividad.id.in_(ids)).order_by(PlanActividad.semana)
@@ -295,7 +305,7 @@ async def listar_plan(
     filas = await session.execute(
         consulta.order_by(Lote.codigo, PlanActividad.tipo, PlanActividad.semana)
     )
-    return await _con_cumplimiento(session, [_leer(*fila) for fila in filas])
+    return para_usuario(await _con_cumplimiento(session, [_leer(*fila) for fila in filas]), usuario)
 
 
 @router.get(

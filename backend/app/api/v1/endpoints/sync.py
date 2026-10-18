@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.acceso import ADMINISTRADOR, ROLES_CAMPO
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
-from app.api.v1.endpoints.plan import leer_actividades
+from app.api.v1.endpoints.plan import leer_actividades, para_usuario
 from app.api.v1.endpoints.rutas import leer_ruta
 from app.api.v1.endpoints.visitas import (
     consulta_lecturas,
@@ -220,7 +220,8 @@ async def cambios(
         )
     )
     a_creados, a_modificados, a_borrados = _repartir(actividades, alcance)
-    leidas = {a.id: a for a in await leer_actividades(session, [*a_creados, *a_modificados])}
+    actividades_leidas = await leer_actividades(session, [*a_creados, *a_modificados])
+    leidas = {a.id: a for a in para_usuario(actividades_leidas, usuario)}
 
     lecturas = await session.execute(
         select(

@@ -253,6 +253,21 @@ async def test_listar_el_plan_del_anio(cliente, datos, monkeypatch):
     assert otro_lote.json() == []
 
 
+async def test_el_productor_no_ve_al_responsable(cliente, datos, crear_usuario):
+    # Ley 1581: como en las lecturas, el productor consulta el plan sin datos del personal.
+    await _programar(cliente, datos)
+    productor = await crear_usuario(
+        _correo("productor"), rol="productor", predios=[datos["predio"]]
+    )
+    params = {"predio_id": str(datos["predio"].id)}
+    [vista] = (await cliente.get(URL, params=params, headers=encabezados(productor))).json()
+    assert (vista["responsable_id"], vista["responsable_nombre"]) == (None, None)
+    [gestion] = (
+        await cliente.get(URL, params=params, headers=encabezados(datos["agronomo"]))
+    ).json()
+    assert gestion["responsable_nombre"] == "Persona de Prueba"
+
+
 async def test_catalogo(cliente, datos):
     respuesta = await cliente.get(f"{URL}/catalogo", headers=encabezados(datos["tecnico"]))
     assert [t["valor"] for t in respuesta.json()["tipos"]] == [

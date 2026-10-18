@@ -68,8 +68,13 @@ export default function FichaActividad({
       <dl className="ficha__datos">
         <dt>Fechas</dt>
         <dd>{rangoSemana(semanaDelAnio(actividad.anio, actividad.semana))}</dd>
-        <dt>Responsable</dt>
-        <dd>{actividad.responsable_nombre}</dd>
+        {/* El productor no recibe el responsable (Ley 1581). */}
+        {actividad.responsable_nombre && (
+          <>
+            <dt>Responsable</dt>
+            <dd>{actividad.responsable_nombre}</dd>
+          </>
+        )}
         {textoAvance(actividad) && (
           <>
             <dt>Avance</dt>

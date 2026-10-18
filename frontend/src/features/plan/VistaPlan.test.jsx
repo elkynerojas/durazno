@@ -104,6 +104,20 @@ describe('VistaPlan', () => {
     expect(within(ficha).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('al productor la API no le envía el responsable y la ficha no lo muestra', async () => {
+    simularApi([{ ...ACTIVIDAD, responsable_id: null, responsable_nombre: null }])
+    const usuarioEvento = userEvent.setup()
+    renderizar('productor')
+    await usuarioEvento.click(
+      await screen.findByRole('button', {
+        name: 'Ruta L-01 (Monitoreo · trampeo), semana 42: programada',
+      }),
+    )
+    const ficha = screen.getByRole('region', { name: 'Actividad seleccionada' })
+    expect(ficha).not.toHaveTextContent('Responsable')
+    expect(ficha).toHaveTextContent('12–18 oct 2026')
+  })
+
   it('sin actividades muestra el calendario y una celda vacía programa en esa semana', async () => {
     simularApi([])
     const usuarioEvento = userEvent.setup()
