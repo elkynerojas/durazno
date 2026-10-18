@@ -10,6 +10,7 @@ import io
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -18,7 +19,7 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from app.services.historial import decimal_es
+from app.services.historial import celda_segura, decimal_es
 from app.services.monitoreo import ZONA
 from app.services.mtd import TRAMPA_DE, Especie, FilaMtd
 
@@ -78,10 +79,10 @@ def a_csv(datos: DatosReporte, semanas: Iterable[FilaMtd]) -> str:
         inicio, fin = fechas_semana(f, datos.desde, datos.hasta)
         escritor.writerow(
             [
-                datos.predio,
-                datos.registro_ica or "",
-                datos.municipio,
-                datos.vereda,
+                celda_segura(datos.predio),
+                celda_segura(datos.registro_ica or ""),
+                celda_segura(datos.municipio),
+                celda_segura(datos.vereda),
                 f.anio,
                 f.semana,
                 f"{inicio:%d/%m/%Y}",
@@ -131,11 +132,13 @@ def a_pdf(datos: DatosReporte, semanas: list[FilaMtd], periodo: list[FilaMtd]) -
         author="Durazno Icota",
     )
     celda = ParagraphStyle("celda", parent=estilos["BodyText"], fontSize=8, leading=10)
-    registro = f" · Registro ICA {datos.registro_ica}" if datos.registro_ica else ""
+    # Los textos del predio van escapados: el Paragraph de reportlab interpreta marcado.
+    registro = f" · Registro ICA {escape(datos.registro_ica)}" if datos.registro_ica else ""
     partes = [
         Paragraph("Reporte del índice MTD (moscas/trampa/día)", estilos["Title"]),
         Paragraph(
-            f"<b>{datos.predio}</b>{registro}<br/>Vereda {datos.vereda}, {datos.municipio}<br/>"
+            f"<b>{escape(datos.predio)}</b>{registro}<br/>Vereda {escape(datos.vereda)}, "
+            f"{escape(datos.municipio)}<br/>"
             f"Periodo: {datos.desde:%d/%m/%Y} a {datos.hasta:%d/%m/%Y} · Generado el "
             f"{datos.generado_en.astimezone(ZONA):%d/%m/%Y %H:%M}",
             estilos["Normal"],

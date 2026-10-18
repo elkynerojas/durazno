@@ -38,6 +38,12 @@ def decimal_es(valor: float | None) -> str:
     return "" if valor is None else f"{valor:.4f}".replace(".", ",")
 
 
+def celda_segura(texto: str) -> str:
+    """Texto libre para una celda de CSV: si empieza como fórmula (`=`, `+`, `-`, `@`, tabulador
+    o retorno), Excel lo ejecutaría al abrir el archivo; con `'` delante queda como texto."""
+    return f"'{texto}" if texto[:1] in ("=", "+", "-", "@", "\t", "\r") else texto
+
+
 ENCABEZADO = [
     "Fecha y hora",
     "Lote",

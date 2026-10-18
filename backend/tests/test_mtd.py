@@ -1,5 +1,6 @@
 """Pruebas del índice MTD (HU-28) con casos calculados a mano (skill /revisar-mtd)."""
 
+import csv
 import uuid
 from datetime import UTC, date, datetime
 
@@ -496,3 +497,24 @@ async def test_reporte_permisos_y_rango(cliente, predio, crear_usuario, session)
             headers=encabezados(predio["tecnico"]),
         )
         assert al_reves.status_code == 422
+
+
+def test_reporte_con_textos_del_predio_peligrosos():
+    from app.services.reporte_mtd import DatosReporte, a_csv, a_pdf
+
+    datos = DatosReporte(
+        predio='=HYPERLINK("x")',
+        registro_ica="@SUM(1)",
+        vereda="Finca <A&B>",
+        municipio="-1+1",
+        desde=date(2026, 10, 12),
+        hasta=date(2026, 10, 18),
+        generado_en=datetime(2026, 10, 18, tzinfo=UTC),
+    )
+    semanas = mtd_por_semana([], datos.desde, datos.hasta, ["capitata"])
+    # CSV: el texto que Excel tomaría como fórmula va con «'» delante.
+    fila = list(csv.reader(a_csv(datos, semanas).splitlines(), delimiter=";"))[1]
+    assert fila[:4] == ['\'=HYPERLINK("x")', "'@SUM(1)", "'-1+1", "Finca <A&B>"]
+    # PDF: «<» y «&» no se interpretan como marcado de reportlab.
+    texto = _texto_pdf(a_pdf(datos, semanas, [resumir("capitata", [])]))
+    assert "Vereda Finca <A&B>, -1+1" in texto
