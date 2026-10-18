@@ -1629,3 +1629,44 @@ button {
 .mi-semana__actividad .boton-bloque {
   margin-top: auto;
 }
+
+/* ---------- Reprogramación e historial (HU-23) ---------- */
+.celda-plan--reprogramada {
+  background: #f2c037;
+}
+
+.insignia--plan-reprogramada {
+  color: var(--ambar-texto);
+  background: var(--ambar-fondo);
+}
+
+.historial-plan {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.historial-plan li {
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.historial-plan p {
+  margin: 0;
+}
+
+.historial-plan__motivo {
+  font-style: italic;
+}
+
+.historial-plan__autor {
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+}
+
+.ficha__accion {
+  margin: 0.25rem 0 1rem;
+}

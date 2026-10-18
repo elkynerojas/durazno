@@ -65,3 +65,19 @@ export function filasDelPlan(actividades) {
       a.titulo.localeCompare(b.titulo, 'es'),
   )
 }
+
+const semana = (anio, numero, anioBase) =>
+  anio === anioBase ? `S${numero}` : `S${numero} de ${anio}`
+
+// Una línea del historial del plan (HU-23): qué cambió, quién y por qué.
+export function describirCambio(cambio) {
+  const desde = semana(cambio.anio_anterior, cambio.semana_anterior, cambio.anio_anterior)
+  if (cambio.accion === 'reprogramada') {
+    const hasta = semana(cambio.anio_nuevo, cambio.semana_nueva, cambio.anio_anterior)
+    return `Reprogramada de ${desde} a ${hasta}`
+  }
+  if (cambio.accion === 'responsable') {
+    return `Responsable: ${cambio.responsable_anterior} → ${cambio.responsable_nuevo}`
+  }
+  return `Eliminada (${desde})`
+}

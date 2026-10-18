@@ -64,3 +64,21 @@ export function semanaDelAnio(anio, numero) {
   const lunes = new Date(lunes1.getTime() + (numero - 1) * 7 * DIA_MS)
   return { numero, anio, lunes, domingo: new Date(lunes.getTime() + 6 * DIA_MS) }
 }
+
+// Momento (timestamptz) como fecha y hora de Bogotá: «17/10/2026 22:15».
+export function fechaHora(iso) {
+  const partes = Object.fromEntries(
+    new Intl.DateTimeFormat('es-CO', {
+      timeZone: ZONA,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  )
+  return `${partes.day}/${partes.month}/${partes.year} ${partes.hour}:${partes.minute}`
+}

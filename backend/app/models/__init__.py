@@ -9,6 +9,7 @@ migraciones, por ejemplo:
 from app.db.base import Base  # noqa: F401
 from app.models.lote import Lote  # noqa: F401
 from app.models.plan_actividad import PlanActividad  # noqa: F401
+from app.models.plan_cambio import PlanCambio  # noqa: F401
 from app.models.predio import Predio  # noqa: F401
 from app.models.predio_usuario import PredioUsuario  # noqa: F401
 from app.models.reemplazo_qr import ReemplazoQr  # noqa: F401

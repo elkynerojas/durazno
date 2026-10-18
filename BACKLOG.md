@@ -687,7 +687,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 ### HU-23 · Reprogramar según los hallazgos
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S3 · **Responsable:** Ingry
+- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S3 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero mover o agregar actividades a partir de lo encontrado en campo, para responder a un aumento de capturas.
 
 **Criterios de aceptación**
@@ -698,9 +698,18 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 **Tareas**
 
-- [ ] `HU-23.1` [BD] Historial de cambios del plan
-- [ ] `HU-23.2` [API] Reprogramación con motivo obligatorio
+- [x] `HU-23.1` [BD] Historial de cambios del plan
+- [x] `HU-23.2` [API] Reprogramación con motivo obligatorio
 - [ ] `HU-23.3` [Web] Acción «Reprogramar» y visita adicional desde una lectura
+
+> `plan_cambio` guarda cada reprogramación (semana anterior y nueva, motivo), cambio de
+> responsable y eliminación, con quién y cuándo. `POST /plan/{id}/reprogramar` exige motivo
+> (5–300 caracteres) y otra semana válida (también del año siguiente), deja la actividad en
+> `reprogramada` y es idempotente por `id` del cambio. `GET /plan/{id}/historial` y
+> `GET /plan/cambios?predio_id=` (cualquier rol del predio). Web: «Reprogramar» e «Historial» en
+> la ficha de la actividad, color propio en la vista anual y tarjeta «Cambios del plan».
+> **Pendiente de HU-25:** crear una visita adicional desde una lectura con capturas (HU-23.3);
+> la historia se cierra cuando existan las lecturas.
 
 ### HU-24 · Ver mis actividades de la semana
 

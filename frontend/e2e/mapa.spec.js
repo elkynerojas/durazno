@@ -417,6 +417,66 @@ test('el agrónomo programa una labor que se repite y la ve en la vista anual', 
   await expect(celdas).toHaveCount(2)
 })
 
+test('el agrónomo reprograma una actividad con motivo y queda en el historial', async ({
+  page,
+}) => {
+  const tecnico = await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await page.evaluate(
+    async ({ lote, tecnicoId }) => {
+      const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+      const cabeceras = {
+        Authorization: `Bearer ${(await renovar.json()).access_token}`,
+        'Content-Type': 'application/json',
+      }
+      const predioId = localStorage.getItem('icota.predio')
+      const lotes = await (
+        await fetch(`/api/v1/lotes?predio_id=${predioId}`, { headers: cabeceras })
+      ).json()
+      const loteId = lotes.find((l) => l.codigo === lote).id
+      await fetch('/api/v1/plan', {
+        method: 'POST',
+        headers: cabeceras,
+        body: JSON.stringify({
+          lote_id: loteId,
+          tipo: 'cambio_atrayente',
+          tipo_trampa: 'jackson',
+          anio: new Date().getFullYear(),
+          semana: 10,
+          responsable_id: tecnicoId,
+        }),
+      })
+    },
+    { lote, tecnicoId: tecnico.id },
+  )
+
+  await page.goto('/plan')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
+  await page
+    .getByRole('button', {
+      name: `Recambio trimedlure (Trampas Jackson · ${lote}), semana 10: programada`,
+    })
+    .click()
+  const ficha = page.getByRole('region', { name: 'Actividad seleccionada' })
+  await ficha.getByRole('button', { name: 'Reprogramar' }).click()
+  const formulario = ficha.getByRole('form', { name: 'Reprogramar actividad' })
+  await formulario.getByLabel('Nueva semana').fill('12')
+  await formulario.getByLabel('Motivo').fill('Aumento de capturas en el lote')
+  await formulario.getByRole('button', { name: 'Reprogramar' }).click()
+
+  await expect(page.getByText(`Recambio trimedlure (${lote}) quedó en la semana 12.`)).toBeVisible()
+  await expect(
+    page.getByRole('button', {
+      name: `Recambio trimedlure (Trampas Jackson · ${lote}), semana 12: reprogramada`,
+    }),
+  ).toBeVisible()
+  await expect(ficha).toContainText('Reprogramada de S10 a S12')
+  await expect(ficha).toContainText('«Aumento de capturas en el lote»')
+  const cambios = page.getByRole('region', { name: 'Cambios del plan' })
+  await expect(cambios).toContainText(`Recambio trimedlure · ${lote}: Reprogramada de S10 a S12`)
+})
+
 // --- Mi semana (HU-24) ---
 
 test('el técnico ve su semana y abre la ruta en el mapa', async ({ page }) => {

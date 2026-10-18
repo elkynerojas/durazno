@@ -3,13 +3,15 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import case, func, select, update
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from app.api.acceso import ROLES_GESTION, consulta_predios_visibles, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
+from app.models.plan_cambio import PlanCambio
 from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
 from app.models.ruta import Ruta, RutaTrampa
@@ -19,10 +21,12 @@ from app.schemas.plan import (
     ActividadCrear,
     ActividadLeer,
     Anio,
+    CambioLeer,
     CatalogoPlan,
     MiActividad,
     MiSemana,
     OpcionCatalogo,
+    Reprogramacion,
     Semana,
 )
 from app.services.monitoreo import hoy_bogota
@@ -117,6 +121,66 @@ async def _exigir_responsable(
 def _exigir_semana(anio: int, semana: int) -> None:
     if semana > (total := semanas_del_anio(anio)):
         raise _no_valida(f"El año {anio} tiene {total} semanas ISO")
+
+
+def _registrar(
+    session: SessionDep, actividad: PlanActividad, usuario: Usuario, accion: str, **datos
+) -> PlanCambio:
+    """Agrega una fila al historial del plan (HU-23) con la semana que tenía la actividad."""
+    cambio = PlanCambio(
+        actividad_id=actividad.id,
+        predio_id=actividad.predio_id,
+        usuario_id=usuario.id,
+        accion=accion,
+        anio_anterior=actividad.anio,
+        semana_anterior=actividad.semana,
+        **datos,
+    )
+    session.add(cambio)
+    return cambio
+
+
+async def _cambios(session: SessionDep, *condiciones) -> list[CambioLeer]:
+    autor, anterior, nuevo = aliased(Usuario), aliased(Usuario), aliased(Usuario)
+    filas = await session.execute(
+        select(
+            PlanCambio,
+            PlanActividad,
+            Lote.codigo,
+            autor.nombre_completo,
+            anterior.nombre_completo,
+            nuevo.nombre_completo,
+        )
+        .join(PlanActividad, PlanActividad.id == PlanCambio.actividad_id)
+        .join(Lote, Lote.id == PlanActividad.lote_id)
+        .join(autor, autor.id == PlanCambio.usuario_id)
+        .outerjoin(anterior, anterior.id == PlanCambio.responsable_anterior_id)
+        .outerjoin(nuevo, nuevo.id == PlanCambio.responsable_nuevo_id)
+        .where(PlanCambio.deleted_at.is_(None), *condiciones)
+        .order_by(PlanCambio.created_at.desc(), PlanCambio.id.desc())
+        .limit(500)
+    )
+    return [
+        CambioLeer(
+            id=cambio.id,
+            actividad_id=actividad.id,
+            lote_codigo=lote,
+            tipo=actividad.tipo,
+            labor=actividad.labor,
+            tipo_trampa=actividad.tipo_trampa,
+            accion=cambio.accion,
+            anio_anterior=cambio.anio_anterior,
+            semana_anterior=cambio.semana_anterior,
+            anio_nuevo=cambio.anio_nuevo,
+            semana_nueva=cambio.semana_nueva,
+            responsable_anterior=nombre_anterior,
+            responsable_nuevo=nombre_nuevo,
+            motivo=cambio.motivo,
+            usuario=nombre_autor,
+            created_at=cambio.created_at,
+        )
+        for cambio, actividad, lote, nombre_autor, nombre_anterior, nombre_nuevo in filas
+    ]
 
 
 async def _exigir_actividad(
@@ -268,6 +332,21 @@ async def mis_actividades(
     )
 
 
+@router.get(
+    "/cambios",
+    response_model=list[CambioLeer],
+    summary="Historial de cambios del plan del predio",
+    description="Reprogramaciones, cambios de responsable y eliminaciones del plan del predio "
+    "(las 500 más recientes), con quién los hizo y por qué. Cualquier rol con el predio asignado.",
+    responses={**ERROR_401, **ERROR_404},
+)
+async def historial_predio(
+    predio_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
+) -> list[CambioLeer]:
+    await exigir_predio(session, usuario, predio_id)
+    return await _cambios(session, PlanCambio.predio_id == predio_id)
+
+
 @router.post(
     "",
     response_model=list[ActividadLeer],
@@ -362,6 +441,15 @@ async def actualizar_actividad(
     cambios = entrada.model_dump(exclude_unset=True)
     if "responsable_id" in cambios:
         await _exigir_responsable(session, actividad.predio_id, cambios["responsable_id"])
+        if cambios["responsable_id"] != actividad.responsable_id:
+            _registrar(
+                session,
+                actividad,
+                usuario,
+                "responsable",
+                responsable_anterior_id=actividad.responsable_id,
+                responsable_nuevo_id=cambios["responsable_id"],
+            )
     for campo, valor in cambios.items():
         setattr(actividad, campo, valor)
     actividad.updated_at = func.now()
@@ -389,9 +477,67 @@ async def eliminar_actividad(
             & (PlanActividad.semana >= actividad.semana)
             & (PlanActividad.predio_id == actividad.predio_id)
         )
-    await session.execute(
-        update(PlanActividad)
-        .where(condicion, PlanActividad.deleted_at.is_(None))
-        .values(deleted_at=func.now())
+    eliminadas = await session.scalars(
+        select(PlanActividad).where(condicion, PlanActividad.deleted_at.is_(None))
     )
+    for eliminada in eliminadas:
+        _registrar(session, eliminada, usuario, "eliminada")
+        eliminada.deleted_at = func.now()
     await session.commit()
+
+
+@router.post(
+    "/{actividad_id}/reprogramar",
+    response_model=ActividadLeer,
+    summary="Reprogramar una actividad",
+    description="Mueve la actividad a otra semana ISO (de este u otro año) con un motivo "
+    "obligatorio, p. ej. un aumento de capturas. Queda en estado `reprogramada` y el cambio "
+    "se guarda en el historial. Reenviar el mismo `id` de cambio no la mueve dos veces.",
+    responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_409, **ERROR_422},
+)
+async def reprogramar(
+    actividad_id: uuid.UUID, entrada: Reprogramacion, usuario: GestionDep, session: SessionDep
+) -> ActividadLeer:
+    actividad = await _exigir_actividad(session, usuario, actividad_id, escribir=True)
+    if entrada.id is not None and (previo := await session.get(PlanCambio, entrada.id)):
+        if previo.actividad_id != actividad.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
+            )
+        [leida] = await _leer_ids(session, [actividad.id])
+        return leida
+    _exigir_semana(entrada.anio, entrada.semana)
+    if (entrada.anio, entrada.semana) == (actividad.anio, actividad.semana):
+        raise _no_valida("La actividad ya está en esa semana: elija otra")
+    cambio = _registrar(
+        session,
+        actividad,
+        usuario,
+        "reprogramada",
+        anio_nuevo=entrada.anio,
+        semana_nueva=entrada.semana,
+        motivo=entrada.motivo,
+    )
+    if entrada.id is not None:
+        cambio.id = entrada.id
+    actividad.anio, actividad.semana = entrada.anio, entrada.semana
+    actividad.estado = "reprogramada"
+    actividad.updated_at = func.now()
+    await session.flush()
+    [leida] = await _leer_ids(session, [actividad.id])
+    await session.commit()
+    return leida
+
+
+@router.get(
+    "/{actividad_id}/historial",
+    response_model=list[CambioLeer],
+    summary="Historial de una actividad",
+    description="Cambios de la actividad, del más reciente al más antiguo.",
+    responses={**ERROR_401, **ERROR_404},
+)
+async def historial_actividad(
+    actividad_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep
+) -> list[CambioLeer]:
+    actividad = await _exigir_actividad(session, usuario, actividad_id)
+    return await _cambios(session, PlanCambio.actividad_id == actividad.id)

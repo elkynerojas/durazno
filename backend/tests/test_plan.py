@@ -9,6 +9,7 @@ from sqlalchemy import func, select, update
 from app.api.v1.endpoints import plan as plan_endpoint
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
+from app.models.plan_cambio import PlanCambio
 from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
 from app.models.ruta import Ruta, RutaTrampa
@@ -373,3 +374,140 @@ async def test_mis_actividades_sin_acceso_o_semana_invalida(cliente, datos, sess
     invalida = await cliente.get(f"{URL}/mias", params={"anio": 2027, "semana": 53}, headers=h)
     assert invalida.status_code == 422
     assert (await cliente.get(f"{URL}/mias")).status_code == 401
+
+
+# --- Reprogramación e historial (HU-23) ---
+
+
+async def _una(cliente, datos, **cambios):
+    [actividad] = (await _programar(cliente, datos, semana=42, **cambios)).json()
+    return actividad
+
+
+async def test_reprogramar_exige_motivo_y_queda_en_el_historial(cliente, datos):
+    actividad = await _una(cliente, datos)
+    url = f"{URL}/{actividad['id']}/reprogramar"
+    h = encabezados(datos["agronomo"])
+    for invalido in ({"anio": 2026, "semana": 44}, {"anio": 2026, "semana": 44, "motivo": "x"}):
+        assert (await cliente.post(url, json=invalido, headers=h)).status_code == 422
+
+    motivo = "Aumento de capturas de C. capitata en L-01"
+    movida = await cliente.post(url, json={"anio": 2026, "semana": 44, "motivo": motivo}, headers=h)
+    assert movida.status_code == 200
+    assert (movida.json()["semana"], movida.json()["estado"]) == (44, "reprogramada")
+
+    historial = await cliente.get(
+        f"{URL}/{actividad['id']}/historial", headers=encabezados(datos["tecnico"])
+    )
+    [cambio] = historial.json()
+    assert {
+        k: cambio[k]
+        for k in ("accion", "semana_anterior", "semana_nueva", "motivo", "usuario", "lote_codigo")
+    } == {
+        "accion": "reprogramada",
+        "semana_anterior": 42,
+        "semana_nueva": 44,
+        "motivo": motivo,
+        "usuario": "Persona de Prueba",
+        "lote_codigo": "L-01",
+    }
+
+
+@pytest.mark.parametrize(
+    ("destino", "detalle"),
+    [
+        ({"anio": 2026, "semana": 42}, "La actividad ya está en esa semana: elija otra"),
+        ({"anio": 2027, "semana": 53}, "El año 2027 tiene 52 semanas ISO"),
+    ],
+)
+async def test_reprogramar_a_una_semana_invalida_responde_422(cliente, datos, destino, detalle):
+    actividad = await _una(cliente, datos)
+    respuesta = await cliente.post(
+        f"{URL}/{actividad['id']}/reprogramar",
+        json={**destino, "motivo": "Lluvias fuertes en la vereda"},
+        headers=encabezados(datos["agronomo"]),
+    )
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"] == detalle
+
+
+async def test_reprogramar_al_anio_siguiente(cliente, datos):
+    actividad = await _una(cliente, datos)
+    respuesta = await cliente.post(
+        f"{URL}/{actividad['id']}/reprogramar",
+        json={"anio": 2027, "semana": 2, "motivo": "Se aplaza la cosecha"},
+        headers=encabezados(datos["agronomo"]),
+    )
+    assert (respuesta.json()["anio"], respuesta.json()["semana"]) == (2027, 2)
+
+
+async def test_reprogramar_es_idempotente_por_id(cliente, datos, session):
+    actividad = await _una(cliente, datos)
+    otra = await _una(cliente, datos, labor="raleo")
+    h = encabezados(datos["agronomo"])
+    cuerpo = {"id": str(uuid.uuid4()), "anio": 2026, "semana": 44, "motivo": "Reenvío sin señal"}
+    url = f"{URL}/{actividad['id']}/reprogramar"
+    assert (await cliente.post(url, json=cuerpo, headers=h)).status_code == 200
+    reenvio = await cliente.post(url, json={**cuerpo, "semana": 46}, headers=h)
+    assert reenvio.json()["semana"] == 44
+    total = await session.scalar(
+        select(func.count()).where(PlanCambio.actividad_id == uuid.UUID(actividad["id"]))
+    )
+    assert total == 1
+    ajeno = await cliente.post(f"{URL}/{otra['id']}/reprogramar", json=cuerpo, headers=h)
+    assert ajeno.status_code == 409
+
+
+async def test_reprogramar_permisos(cliente, datos, crear_usuario, session):
+    actividad = await _una(cliente, datos)
+    url = f"{URL}/{actividad['id']}/reprogramar"
+    cuerpo = {"anio": 2026, "semana": 44, "motivo": "Intento sin permiso"}
+    assert (await cliente.post(url, json=cuerpo)).status_code == 401
+    tecnico = await cliente.post(url, json=cuerpo, headers=encabezados(datos["tecnico"]))
+    assert tecnico.status_code == 403
+    otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+    session.add(otro)
+    await session.flush()
+    ajeno = await crear_usuario(_correo("agronomo"), rol="agronomo", predios=[otro])
+    h = encabezados(ajeno)
+    assert (await cliente.post(url, json=cuerpo, headers=h)).status_code == 404
+    assert (await cliente.get(f"{URL}/{actividad['id']}/historial", headers=h)).status_code == 404
+    cambios = await cliente.get(
+        f"{URL}/cambios", params={"predio_id": str(datos["predio"].id)}, headers=h
+    )
+    assert cambios.status_code == 404
+
+
+async def test_historial_del_predio(cliente, datos):
+    h = encabezados(datos["agronomo"])
+    actividad = await _una(cliente, datos)
+    serie = (
+        await _programar(
+            cliente, datos, semana=10, repetir={"cada_semanas": 10, "hasta_semana": 30}
+        )
+    ).json()
+    await cliente.patch(
+        f"{URL}/{actividad['id']}", json={"responsable_id": str(datos["agronomo"].id)}, headers=h
+    )
+    # Reasignar a la misma persona no deja rastro.
+    await cliente.patch(
+        f"{URL}/{actividad['id']}", json={"responsable_id": str(datos["agronomo"].id)}, headers=h
+    )
+    await cliente.delete(f"{URL}/{serie[1]['id']}?serie=true", headers=h)
+
+    respuesta = await cliente.get(
+        f"{URL}/cambios",
+        params={"predio_id": str(datos["predio"].id)},
+        headers=encabezados(datos["tecnico"]),
+    )
+    cambios = respuesta.json()
+    assert sorted((c["accion"], c["semana_anterior"]) for c in cambios) == [
+        ("eliminada", 20),
+        ("eliminada", 30),
+        ("responsable", 42),
+    ]
+    [reasignacion] = [c for c in cambios if c["accion"] == "responsable"]
+    assert (reasignacion["responsable_anterior"], reasignacion["responsable_nuevo"]) == (
+        "Persona de Prueba",
+        "Persona de Prueba",
+    )

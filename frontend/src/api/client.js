@@ -141,6 +141,14 @@ export const programarActividad = (datos) => api('/plan', { metodo: 'POST', cuer
 export const actualizarActividad = (id, cambios) =>
   api(`/plan/${id}`, { metodo: 'PATCH', cuerpo: cambios })
 
+// Mueve la actividad a otra semana con un motivo (queda en el historial del plan).
+export const reprogramarActividad = (id, datos) =>
+  api(`/plan/${id}/reprogramar`, { metodo: 'POST', cuerpo: datos })
+
+export const historialActividad = (id) => api(`/plan/${id}/historial`)
+
+export const cambiosDelPlan = (predioId) => api(`/plan/cambios?predio_id=${predioId}`)
+
 export const eliminarActividad = (id, serie = false) =>
   api(`/plan/${id}${serie ? '?serie=true' : ''}`, { metodo: 'DELETE' })
 

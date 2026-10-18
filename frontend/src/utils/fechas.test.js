@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   fechaCorta,
+  fechaHora,
   otraSemana,
   rangoSemana,
   semanaDelAnio,
@@ -55,5 +56,10 @@ describe('fechas', () => {
     expect(numero(otraSemana({ anio: 2027, numero: 1 }, -1))).toEqual([2026, 53])
     expect(numero(otraSemana({ anio: 2028, numero: 1 }, -1))).toEqual([2027, 52])
     expect(rangoSemana(otraSemana({ anio: 2026, numero: 42 }, 0))).toBe('12–18 oct 2026')
+  })
+
+  it('muestra un momento con fecha y hora de Bogotá', () => {
+    // 03:15 UTC del 18 de octubre son las 22:15 del 17 en Bogotá.
+    expect(fechaHora('2026-10-18T03:15:00Z')).toBe('17/10/2026 22:15')
   })
 })

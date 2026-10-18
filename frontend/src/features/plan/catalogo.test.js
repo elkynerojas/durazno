@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { filaDe, filasDelPlan } from './catalogo'
+import { describirCambio, filaDe, filasDelPlan } from './catalogo'
 
 const actividad = (id, extra) => ({
   id,
@@ -42,5 +42,26 @@ describe('plan: filas de la vista anual', () => {
     ])
     expect(filas.map((f) => f.titulo)).toEqual(['Ruta L-01', 'Poda', 'Ruta L-2', 'Ruta L-10'])
     expect([...filas[0].semanas.keys()]).toEqual([1, 2])
+  })
+})
+
+describe('plan: descripción de los cambios', () => {
+  const base = { anio_anterior: 2026, semana_anterior: 42 }
+  it('describe reprogramaciones, reasignaciones y eliminaciones', () => {
+    expect(
+      describirCambio({ ...base, accion: 'reprogramada', anio_nuevo: 2026, semana_nueva: 44 }),
+    ).toBe('Reprogramada de S42 a S44')
+    expect(
+      describirCambio({ ...base, accion: 'reprogramada', anio_nuevo: 2027, semana_nueva: 2 }),
+    ).toBe('Reprogramada de S42 a S2 de 2027')
+    expect(
+      describirCambio({
+        ...base,
+        accion: 'responsable',
+        responsable_anterior: 'Ana',
+        responsable_nuevo: 'Luis',
+      }),
+    ).toBe('Responsable: Ana → Luis')
+    expect(describirCambio({ ...base, accion: 'eliminada' })).toBe('Eliminada (S42)')
   })
 })

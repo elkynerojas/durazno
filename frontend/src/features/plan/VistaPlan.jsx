@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { listarPersonal, listarRutasPredio, obtenerPlan } from '../../api/client'
+import { cambiosDelPlan, listarPersonal, listarRutasPredio, obtenerPlan } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
 import { rangoSemana, semanaDelAnio, semanaIso, semanasDelAnio } from '../../utils/fechas'
@@ -11,6 +11,7 @@ import { ROLES_GESTION } from '../usuarios/roles'
 import { ESTADOS_ACTIVIDAD, filaDe, filasDelPlan } from './catalogo'
 import FichaActividad from './FichaActividad'
 import FormularioActividad from './FormularioActividad'
+import HistorialPlan from './HistorialPlan'
 import RejillaPlan from './RejillaPlan'
 
 const ROLES_RESPONSABLE = ['tecnico', 'agronomo']
@@ -34,11 +35,17 @@ export default function VistaPlan() {
   const [personal, setPersonal] = useState([])
   const [lotesConRuta, setLotesConRuta] = useState(new Set())
 
+  // Cambios recientes del plan del predio (HU-23); null mientras cargan.
+  const [cambios, setCambios] = useState(null)
+
   useEffect(() => {
     let vigente = true
     obtenerPlan(predio.id, anio)
       .then((lista) => vigente && setActividades(lista))
       .catch(() => vigente && setError('No se pudo cargar el plan del predio.'))
+    cambiosDelPlan(predio.id)
+      .then((lista) => vigente && setCambios(lista))
+      .catch(() => vigente && setCambios([]))
     return () => {
       vigente = false
     }
@@ -149,10 +156,12 @@ export default function VistaPlan() {
             {totalSemanas} semanas
           </h2>
           <div className="mapa-tarjeta__leyenda leyenda-plan">
-            <span>
-              <i className="leyenda__muestra celda-plan--programada" />
-              {ESTADOS_ACTIVIDAD.programada}
-            </span>
+            {['programada', 'reprogramada'].map((estado) => (
+              <span key={estado}>
+                <i className={`leyenda__muestra celda-plan--${estado}`} />
+                {ESTADOS_ACTIVIDAD[estado]}
+              </span>
+            ))}
             {semanaActual && (
               <span>
                 <i className="leyenda__muestra leyenda__muestra--actual" />
@@ -238,6 +247,15 @@ export default function VistaPlan() {
               )
               setSeleccionada(actualizada)
               setAviso('Responsable actualizado.')
+              setVersion((v) => v + 1)
+            }}
+            alReprogramar={(movida) => {
+              setAviso(
+                `${filaDe(movida).titulo} (${movida.lote_codigo}) quedó en la semana ${movida.semana}` +
+                  (movida.anio === anio ? '.' : ` de ${movida.anio}.`),
+              )
+              setSeleccionada(movida.anio === anio ? movida : null)
+              setVersion((v) => v + 1)
             }}
             alEliminar={() => {
               setSeleccionada(null)
@@ -245,6 +263,14 @@ export default function VistaPlan() {
               setVersion((v) => v + 1)
             }}
           />
+        )}
+        {cambios?.length > 0 && (
+          <section className="tarjeta" aria-labelledby="titulo-cambios">
+            <h2 id="titulo-cambios" className="tarjeta__titulo">
+              Cambios del plan
+            </h2>
+            <HistorialPlan cambios={cambios.slice(0, 10)} conActividad />
+          </section>
         )}
       </div>
     </Plantilla>

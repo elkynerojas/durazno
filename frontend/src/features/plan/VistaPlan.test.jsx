@@ -30,7 +30,7 @@ const ACTIVIDAD = {
 // La API simulada responde según la ruta pedida.
 function simularApi(plan = [ACTIVIDAD]) {
   const fetchSimulado = vi.fn(async (url) => {
-    if (url.startsWith('/api/v1/plan')) return respuestaJson(200, plan)
+    if (url.startsWith('/api/v1/plan?')) return respuestaJson(200, plan)
     if (url.startsWith('/api/v1/lotes')) {
       return respuestaJson(200, [{ id: 'l-1', codigo: 'L-01', nombre: null }])
     }

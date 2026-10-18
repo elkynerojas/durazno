@@ -114,3 +114,36 @@ class MiSemana(BaseModel):
     desde: date = Field(description="Lunes de la semana ISO")
     hasta: date = Field(description="Domingo de la semana ISO")
     actividades: list[MiActividad]
+
+
+Motivo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=300)]
+
+
+class Reprogramacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: uuid.UUID | None = Field(
+        default=None, description="Id del cambio: reenviar el mismo no reprograma dos veces"
+    )
+    anio: Anio
+    semana: Semana
+    motivo: Motivo = Field(description="Obligatorio: por qué se mueve (p. ej. aumento de capturas)")
+
+
+class CambioLeer(BaseModel):
+    id: uuid.UUID
+    actividad_id: uuid.UUID
+    lote_codigo: str
+    tipo: TipoActividad
+    labor: Labor | None
+    tipo_trampa: TipoTrampa | None
+    accion: Literal["reprogramada", "responsable", "eliminada"]
+    anio_anterior: int
+    semana_anterior: int
+    anio_nuevo: int | None
+    semana_nueva: int | None
+    responsable_anterior: str | None
+    responsable_nuevo: str | None
+    motivo: str | None
+    usuario: str = Field(description="Quién hizo el cambio")
+    created_at: datetime
