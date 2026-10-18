@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Durazno Icota API",
+    "title": "PERSICA API",
     "description": "Servicios de trazabilidad geolocalizada del trampeo de moscas de la fruta en durazno (vereda Icota, Cácota). Documentación OpenAPI para la integración de la aplicación móvil (fase 2).",
     "version": "0.1.0"
   },

@@ -129,7 +129,7 @@ def a_pdf(datos: DatosReporte, semanas: list[FilaMtd], periodo: list[FilaMtd]) -
         topMargin=1.6 * cm,
         bottomMargin=1.6 * cm,
         title=f"Reporte MTD {datos.predio}",
-        author="Durazno Icota",
+        author="PERSICA",
     )
     celda = ParagraphStyle("celda", parent=estilos["BodyText"], fontSize=8, leading=10)
     # Los textos del predio van escapados: el Paragraph de reportlab interpreta marcado.

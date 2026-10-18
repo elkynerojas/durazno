@@ -109,7 +109,7 @@ def generar_pdf(etiquetas: list[Etiqueta], predio: str, lote: str) -> bytes:
     salida = io.BytesIO()
     canvas = Canvas(salida, pagesize=letter, pageCompression=1)
     canvas.setTitle(f"Etiquetas QR · lote {lote}")
-    canvas.setAuthor("Durazno Icota")
+    canvas.setAuthor("PERSICA")
     for pagina in range(paginas):
         lote_pagina = etiquetas[pagina * POR_PAGINA : (pagina + 1) * POR_PAGINA]
         for i, etiqueta in enumerate(lote_pagina):
