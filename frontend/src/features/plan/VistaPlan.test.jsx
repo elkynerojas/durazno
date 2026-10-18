@@ -27,10 +27,20 @@ const ACTIVIDAD = {
   notas: null,
 }
 
+const fila = { programadas: 5, cumplidas: 2, vencidas: 2, reprogramadas: 1, porcentaje: 40 }
+const CUMPLIMIENTO = {
+  anio: 2026,
+  hasta_semana: 42,
+  total: fila,
+  semanas: [{ semana: 42, ...fila, porcentaje: 50 }],
+  lotes: [{ lote_id: 'l-1', lote_codigo: 'L-01', ...fila }],
+}
+
 // La API simulada responde según la ruta pedida.
 function simularApi(plan = [ACTIVIDAD]) {
   const fetchSimulado = vi.fn(async (url) => {
     if (url.startsWith('/api/v1/plan?')) return respuestaJson(200, plan)
+    if (url.startsWith('/api/v1/plan/cumplimiento')) return respuestaJson(200, CUMPLIMIENTO)
     if (url.startsWith('/api/v1/lotes')) {
       return respuestaJson(200, [{ id: 'l-1', codigo: 'L-01', nombre: null }])
     }
@@ -76,6 +86,12 @@ describe('VistaPlan', () => {
       '/api/v1/plan?predio_id=p-1&anio=2026',
     )
     expect(screen.getByRole('heading', { name: /Semana 42 · 12–18 oct 2026/ })).toBeInTheDocument()
+    const cumplimiento = await screen.findByRole('region', { name: 'Cumplimiento S1–S42' })
+    expect(cumplimiento).toHaveTextContent('40\u00a0%')
+    expect(cumplimiento).toHaveTextContent('2 de 5 cumplidas')
+    expect(
+      within(cumplimiento).getByRole('table', { name: 'Cumplimiento por lote' }),
+    ).toHaveTextContent('L-012 de 5240 %')
 
     await usuarioEvento.click(celda)
     const ficha = screen.getByRole('region', { name: 'Actividad seleccionada' })

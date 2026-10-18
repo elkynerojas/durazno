@@ -669,7 +669,7 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 ### HU-22 · Seguir el cumplimiento del plan
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S4 · **Responsable:** Ingry
 - **Historia:** Como agrónomo, quiero ver qué actividades se cumplieron y cuáles están vencidas, para corregir a tiempo.
 
 **Criterios de aceptación**
@@ -680,10 +680,21 @@ _Objetivo 3 · módulo iv._ Plan de 52 semanas, seguimiento de cumplimiento y aj
 
 **Tareas**
 
-- [ ] `HU-22.1` [API] Cálculo del estado a partir de las lecturas
-- [ ] `HU-22.2` [API] Indicadores de cumplimiento
-- [ ] `HU-22.3` [Web] Colores de estado en la vista anual
-- [ ] `HU-22.4` [Pruebas] Ruta completa, parcial y sin lecturas
+- [x] `HU-22.1` [API] Cálculo del estado a partir de las lecturas
+- [x] `HU-22.2` [API] Indicadores de cumplimiento
+- [x] `HU-22.3` [Web] Colores de estado en la vista anual
+- [x] `HU-22.4` [Pruebas] Ruta completa, parcial y sin lecturas
+
+> Estado calculado al consultar (`services/cumplimiento.py`): cumplida > vencida (su semana
+> pasó) > reprogramada/programada. Visita de monitoreo: cumplida cuando todas las trampas activas
+> de su ruta tienen lectura no rechazada en esa semana; cambio de atrayente: todas las trampas
+> activas de ese tipo en el lote con una lectura de esa semana que registra el cambio; ambas
+> traen `avance` (hechas/total). Labores culturales: `POST /plan/{id}/cumplimiento` (su
+> responsable, el agrónomo o el administrador). `GET /plan/cumplimiento?predio_id=&anio=`:
+> programadas (las que ya debían hacerse), cumplidas, vencidas, reprogramadas y porcentaje, en
+> total, por semana y por lote. Web: colores por estado en la vista anual, avance en la ficha y
+> en «Mi semana» (con «Marcar cumplida» para las labores) y la tarjeta de cumplimiento. Nota: la
+> ruta se evalúa con sus trampas activas de hoy (no se versiona la ruta por semana).
 
 ### HU-23 · Reprogramar según los hallazgos
 

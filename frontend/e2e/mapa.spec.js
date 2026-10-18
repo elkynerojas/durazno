@@ -406,7 +406,7 @@ test('el agrónomo programa una labor que se repite y la ve en la vista anual', 
   const celdas = page.getByRole('button', { name: /^Poda \(Cultivo · E2E-\d+\), semana \d+/ })
   await expect(celdas).toHaveCount(4)
   await page
-    .getByRole('button', { name: `Poda (Cultivo · ${lote}), semana 22: programada` })
+    .getByRole('button', { name: new RegExp(`^Poda \\(Cultivo · ${lote}\\), semana 22:`) })
     .click()
   const ficha = page.getByRole('region', { name: 'Actividad seleccionada' })
   await expect(ficha).toContainText('Técnico E2E')
@@ -442,7 +442,8 @@ test('el agrónomo reprograma una actividad con motivo y queda en el historial',
           lote_id: loteId,
           tipo: 'cambio_atrayente',
           tipo_trampa: 'jackson',
-          anio: new Date().getFullYear(),
+          // El año siguiente: sus semanas aún no vencen, sea cual sea la fecha de la prueba.
+          anio: new Date().getFullYear() + 1,
           semana: 10,
           responsable_id: tecnicoId,
         }),
@@ -452,6 +453,7 @@ test('el agrónomo reprograma una actividad con motivo y queda en el historial',
   )
 
   await page.goto('/plan')
+  await page.getByRole('button', { name: 'Año siguiente' }).click()
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: lote })
   await page
     .getByRole('button', {
@@ -528,7 +530,13 @@ test('el técnico ve su semana y abre la ruta en el mapa', async ({ page }) => {
   const visita = lista.getByRole('listitem').filter({ hasText: `Ruta ${lote}` })
   await expect(visita).toContainText(`Lote ${lote}`)
   await expect(visita).toContainText('ruta de 2 trampas')
-  await expect(lista.getByRole('listitem').filter({ hasText: 'Poda' })).toContainText('Con tijera')
+  const poda = lista.getByRole('listitem').filter({ hasText: 'Poda' })
+  await expect(poda).toContainText('Con tijera')
+  await expect(visita).toContainText('0 de 2 trampas leídas')
+  // HU-22: la labor la marca cumplida el técnico; las visitas se cumplen con las lecturas.
+  await poda.getByRole('button', { name: 'Marcar cumplida' }).click()
+  await expect(poda).toContainText('Cumplida')
+  await expect(poda.getByRole('button', { name: 'Desmarcar cumplida' })).toBeVisible()
 
   await visita.getByRole('button', { name: 'Ver la ruta en el mapa' }).click()
   await expect(page).toHaveURL(/\/rutas\?lote=/)

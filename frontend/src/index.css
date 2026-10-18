@@ -1843,3 +1843,44 @@ button {
     padding: 0.5rem 0.4rem;
   }
 }
+
+/* ---------- Cumplimiento (HU-22) ---------- */
+.celda-plan--cumplida {
+  background: var(--verde-600);
+}
+
+.celda-plan--vencida {
+  background: #d93a2b;
+}
+
+.insignia--plan-cumplida {
+  color: #fff;
+  background: var(--verde-600);
+}
+
+.insignia--plan-vencida {
+  color: var(--error);
+  background: var(--error-fondo);
+}
+
+.cumplimiento__total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.cumplimiento__total p {
+  margin: 0;
+}
+
+.cumplimiento__cifra {
+  font-family: var(--mono);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--verde-900);
+}
+
+.cumplimiento__cifra--vencidas {
+  color: var(--error);
+}

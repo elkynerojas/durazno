@@ -174,6 +174,14 @@ export const historialActividad = (id) => api(`/plan/${id}/historial`)
 
 export const cambiosDelPlan = (predioId) => api(`/plan/cambios?predio_id=${predioId}`)
 
+// Indicadores de cumplimiento del plan del año (HU-22).
+export const cumplimientoPlan = (predioId, anio) =>
+  api(`/plan/cumplimiento?predio_id=${predioId}&anio=${anio}`)
+
+// Marca (o desmarca) una labor cultural como cumplida.
+export const marcarCumplida = (id, cumplida) =>
+  api(`/plan/${id}/cumplimiento`, { metodo: 'POST', cuerpo: { cumplida } })
+
 export const eliminarActividad = (id, serie = false) =>
   api(`/plan/${id}${serie ? '?serie=true' : ''}`, { metodo: 'DELETE' })
 

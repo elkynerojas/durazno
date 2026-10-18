@@ -7,7 +7,13 @@ from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
-from app.api.acceso import ROLES_GESTION, consulta_predios_visibles, exigir_lote, exigir_predio
+from app.api.acceso import (
+    ROLES_CAMPO,
+    ROLES_GESTION,
+    consulta_predios_visibles,
+    exigir_lote,
+    exigir_predio,
+)
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
@@ -21,14 +27,21 @@ from app.schemas.plan import (
     ActividadCrear,
     ActividadLeer,
     Anio,
+    AvanceLeer,
     CambioLeer,
     CatalogoPlan,
+    Cumplimiento,
+    CumplimientoLote,
+    CumplimientoPlan,
+    CumplimientoSemana,
+    FilaCumplimiento,
     MiActividad,
     MiSemana,
     OpcionCatalogo,
     Reprogramacion,
     Semana,
 )
+from app.services.cumplimiento import ActividadAvance, avances, estado_actividad
 from app.services.monitoreo import hoy_bogota
 from app.services.plan import ids_de_serie, semanas_del_anio, semanas_repetidas
 
@@ -92,11 +105,28 @@ def _leer(actividad: PlanActividad, lote_codigo: str, responsable: str) -> Activ
     )
 
 
+async def _con_cumplimiento(session: SessionDep, lista: list[ActividadLeer]) -> list:
+    """Estado calculado y avance de cada actividad a partir de las lecturas (HU-22)."""
+    progreso = await avances(
+        session,
+        (
+            ActividadAvance(a.id, a.tipo, a.lote_id, a.ruta_id, a.tipo_trampa, a.anio, a.semana)
+            for a in lista
+        ),
+    )
+    hoy = hoy_bogota()
+    for a in lista:
+        avance = progreso.get(a.id)
+        a.avance = AvanceLeer(hechas=avance.hechas, total=avance.total) if avance else None
+        a.estado = estado_actividad(a.estado, a.anio, a.semana, hoy, avance)
+    return lista
+
+
 async def _leer_ids(session: SessionDep, ids: list[uuid.UUID]) -> list[ActividadLeer]:
     filas = await session.execute(
         _consulta().where(PlanActividad.id.in_(ids)).order_by(PlanActividad.semana)
     )
-    return [_leer(*fila) for fila in filas]
+    return await _con_cumplimiento(session, [_leer(*fila) for fila in filas])
 
 
 async def _exigir_responsable(
@@ -261,7 +291,7 @@ async def listar_plan(
     filas = await session.execute(
         consulta.order_by(Lote.codigo, PlanActividad.tipo, PlanActividad.semana)
     )
-    return [_leer(*fila) for fila in filas]
+    return await _con_cumplimiento(session, [_leer(*fila) for fila in filas])
 
 
 @router.get(
@@ -322,6 +352,7 @@ async def mis_actividades(
         )
         for actividad, lote, responsable, predio, total in filas
     ]
+    await _con_cumplimiento(session, actividades)
     lunes = date.fromisocalendar(anio, semana, 1)
     return MiSemana(
         anio=anio,
@@ -329,6 +360,61 @@ async def mis_actividades(
         desde=lunes,
         hasta=date.fromisocalendar(anio, semana, 7),
         actividades=actividades,
+    )
+
+
+@router.get(
+    "/cumplimiento",
+    response_model=CumplimientoPlan,
+    summary="Indicadores de cumplimiento del plan",
+    description="Porcentaje de actividades cumplidas por semana y por lote, contando las que ya "
+    "debían hacerse: de la semana 1 a la actual (o a la última, si el año ya pasó). Cualquier "
+    "rol con el predio asignado.",
+    responses={
+        401: {"description": "Sin sesión o sesión inválida"},
+        404: {"description": "Predio no encontrado (o no asignado)"},
+    },
+)
+async def indicadores_cumplimiento(
+    predio_id: uuid.UUID, usuario: UsuarioActualDep, session: SessionDep, anio: Anio | None = None
+) -> CumplimientoPlan:
+    await exigir_predio(session, usuario, predio_id)
+    hoy = hoy_bogota().isocalendar()
+    anio = anio or hoy.year
+    if anio > hoy.year:
+        hasta = 0
+    elif anio == hoy.year:
+        hasta = hoy.week
+    else:
+        hasta = semanas_del_anio(anio)
+    filas = await session.execute(
+        _consulta().where(
+            PlanActividad.predio_id == predio_id,
+            PlanActividad.anio == anio,
+            PlanActividad.semana <= hasta,
+            Lote.deleted_at.is_(None),
+        )
+    )
+    crudas = [(fila[0].estado, _leer(*fila)) for fila in filas]
+    lista = await _con_cumplimiento(session, [a for _, a in crudas])
+    pares = [(a.estado, base) for (base, _), a in zip(crudas, lista, strict=True)]
+    por_semana: dict[int, list] = {}
+    por_lote: dict[tuple, list] = {}
+    for (estado, base), a in zip(pares, lista, strict=True):
+        por_semana.setdefault(a.semana, []).append((estado, base))
+        por_lote.setdefault((a.lote_codigo, a.lote_id), []).append((estado, base))
+    return CumplimientoPlan(
+        anio=anio,
+        hasta_semana=hasta,
+        total=FilaCumplimiento(**_fila(pares)),
+        semanas=[
+            CumplimientoSemana(semana=semana, **_fila(estados))
+            for semana, estados in sorted(por_semana.items())
+        ],
+        lotes=[
+            CumplimientoLote(lote_id=lote_id, lote_codigo=codigo, **_fila(estados))
+            for (codigo, lote_id), estados in sorted(por_lote.items(), key=lambda x: x[0][0])
+        ],
     )
 
 
@@ -541,3 +627,69 @@ async def historial_actividad(
 ) -> list[CambioLeer]:
     actividad = await _exigir_actividad(session, usuario, actividad_id)
     return await _cambios(session, PlanCambio.actividad_id == actividad.id)
+
+
+@router.post(
+    "/{actividad_id}/cumplimiento",
+    response_model=ActividadLeer,
+    summary="Marcar una labor cultural como cumplida",
+    description="Las labores culturales no dejan lecturas: las marca cumplidas (o las desmarca) "
+    "su responsable, el agrónomo o el administrador. Las visitas de monitoreo y los cambios de "
+    "atrayente se cumplen solos con las lecturas de su semana.",
+    responses={
+        401: {"description": "Sin sesión o sesión inválida"},
+        403: {"description": "El técnico solo marca las labores de las que es responsable"},
+        404: {"description": "Actividad no encontrada (o no asignada)"},
+        422: {"description": "No es una labor cultural"},
+    },
+)
+async def marcar_cumplimiento(
+    actividad_id: uuid.UUID,
+    entrada: Cumplimiento,
+    usuario: Annotated[Usuario, Depends(requiere_rol(*ROLES_CAMPO))],
+    session: SessionDep,
+) -> ActividadLeer:
+    actividad = await _exigir_actividad(session, usuario, actividad_id)
+    await exigir_predio(
+        session, usuario, actividad.predio_id, escribir=True, roles_escritura=ROLES_CAMPO
+    )
+    if usuario.rol not in ROLES_GESTION and actividad.responsable_id != usuario.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el responsable, el agrónomo o el administrador marcan esta labor",
+        )
+    if actividad.tipo != "labor_cultural":
+        raise _no_valida(
+            "Las visitas y los cambios de atrayente se cumplen con las lecturas de su semana"
+        )
+    if entrada.cumplida and actividad.estado != "cumplida":
+        actividad.estado = "cumplida"
+        actividad.cumplida_por_id = usuario.id
+        actividad.cumplida_en = func.now()
+    elif not entrada.cumplida and actividad.estado == "cumplida":
+        reprogramada = await session.scalar(
+            select(PlanCambio.id).where(
+                PlanCambio.actividad_id == actividad.id, PlanCambio.accion == "reprogramada"
+            )
+        )
+        actividad.estado = "reprogramada" if reprogramada else "programada"
+        actividad.cumplida_por_id = None
+        actividad.cumplida_en = None
+    await session.flush()
+    await session.refresh(actividad)
+    [leida] = await _leer_ids(session, [actividad.id])
+    await session.commit()
+    return leida
+
+
+def _fila(estados: list[tuple[str, str]]) -> dict:
+    """Conteos de (estado calculado, estado base) de las actividades que ya debían hacerse."""
+    programadas = [e for e in estados if e[0] != "cancelada"]
+    cumplidas = sum(1 for e, _ in programadas if e == "cumplida")
+    return {
+        "programadas": len(programadas),
+        "cumplidas": cumplidas,
+        "vencidas": sum(1 for e, _ in programadas if e == "vencida"),
+        "reprogramadas": sum(1 for _, base in programadas if base == "reprogramada"),
+        "porcentaje": round(cumplidas / len(programadas) * 100, 1) if programadas else None,
+    }

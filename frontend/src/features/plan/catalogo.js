@@ -19,7 +19,18 @@ export const ESTADOS_ACTIVIDAD = {
   programada: 'Programada',
   cumplida: 'Cumplida',
   reprogramada: 'Reprogramada',
+  vencida: 'Vencida',
   cancelada: 'Cancelada',
+}
+
+// «2 de 3 trampas leídas» (visitas) o «1 de 2 trampas con cambio de atrayente».
+export function textoAvance(actividad) {
+  const { avance, tipo } = actividad
+  if (!avance) return null
+  if (avance.total === 0) return 'Sin trampas activas por revisar'
+  return tipo === 'visita_monitoreo'
+    ? `${avance.hechas} de ${avance.total} trampas leídas`
+    : `${avance.hechas} de ${avance.total} trampas con cambio de atrayente`
 }
 
 const RECAMBIO = { jackson: 'Recambio trimedlure', mcphail: 'Recambio proteína' }

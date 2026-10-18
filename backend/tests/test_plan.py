@@ -54,6 +54,12 @@ def test_ids_de_serie_deterministas():
 # --- Endpoints ---
 
 
+@pytest.fixture(autouse=True)
+def _hoy_fijo(monkeypatch):
+    # Por defecto, «hoy» es el lunes de la S2 de 2026: las semanas siguientes aún no vencen.
+    monkeypatch.setattr(plan_endpoint, "hoy_bogota", lambda: date(2026, 1, 5))
+
+
 @pytest.fixture
 async def datos(session, predio_vacio, crear_usuario):
     lote = Lote(

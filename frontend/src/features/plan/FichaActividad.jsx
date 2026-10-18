@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 
-import { actualizarActividad, eliminarActividad, historialActividad } from '../../api/client'
+import {
+  actualizarActividad,
+  eliminarActividad,
+  historialActividad,
+  marcarCumplida,
+} from '../../api/client'
 import { rangoSemana, semanaDelAnio } from '../../utils/fechas'
-import { ESTADOS_ACTIVIDAD, filaDe } from './catalogo'
+import { ESTADOS_ACTIVIDAD, filaDe, textoAvance } from './catalogo'
 import HistorialPlan from './HistorialPlan'
 import Reprogramar from './Reprogramar'
 
@@ -62,6 +67,12 @@ export default function FichaActividad({
         <dd>{rangoSemana(semanaDelAnio(actividad.anio, actividad.semana))}</dd>
         <dt>Responsable</dt>
         <dd>{actividad.responsable_nombre}</dd>
+        {textoAvance(actividad) && (
+          <>
+            <dt>Avance</dt>
+            <dd>{textoAvance(actividad)}</dd>
+          </>
+        )}
         {actividad.notas && (
           <>
             <dt>Notas</dt>
@@ -70,6 +81,20 @@ export default function FichaActividad({
         )}
       </dl>
 
+      {editable && actividad.tipo === 'labor_cultural' && (
+        <button
+          type="button"
+          className="boton-secundario boton-bloque ficha__accion"
+          disabled={enviando}
+          onClick={() =>
+            ejecutar(async () =>
+              alCambiar(await marcarCumplida(actividad.id, actividad.estado !== 'cumplida')),
+            )
+          }
+        >
+          {actividad.estado === 'cumplida' ? 'Desmarcar cumplida' : 'Marcar cumplida'}
+        </button>
+      )}
       {editable &&
         (reprogramando ? (
           <Reprogramar

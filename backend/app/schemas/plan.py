@@ -8,7 +8,8 @@ from app.schemas.trampa import TipoTrampa
 
 TipoActividad = Literal["visita_monitoreo", "cambio_atrayente", "labor_cultural"]
 Labor = Literal["poda", "fertilizacion", "raleo", "cosecha", "riego", "control_malezas", "otra"]
-EstadoActividad = Literal["programada", "cumplida", "reprogramada", "cancelada"]
+# `vencida` es calculado (HU-22): su semana pasó sin cumplirse.
+EstadoActividad = Literal["programada", "cumplida", "reprogramada", "vencida", "cancelada"]
 Anio = Annotated[int, Field(ge=2020, le=2100)]
 Semana = Annotated[int, Field(ge=1, le=53, description="Semana ISO 8601")]
 Notas = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
@@ -86,8 +87,51 @@ class ActividadLeer(BaseModel):
     estado: EstadoActividad
     serie_id: uuid.UUID | None
     notas: str | None
+    avance: "AvanceLeer | None" = Field(
+        default=None,
+        description="Visitas y cambios de atrayente: trampas hechas de las que tocan esa semana",
+    )
+    cumplida_en: datetime | None = Field(
+        default=None, description="Labores culturales: cuándo se marcó cumplida"
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class AvanceLeer(BaseModel):
+    hechas: int
+    total: int
+
+
+class Cumplimiento(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cumplida: bool = Field(description="`true` la marca cumplida; `false` la desmarca")
+
+
+class FilaCumplimiento(BaseModel):
+    programadas: int = Field(description="Actividades que ya debían hacerse (sin canceladas)")
+    cumplidas: int
+    vencidas: int
+    reprogramadas: int = Field(description="Reprogramadas alguna vez (estado base)")
+    porcentaje: float | None = Field(description="cumplidas ÷ programadas × 100; `null` si 0")
+
+
+class CumplimientoSemana(FilaCumplimiento):
+    semana: int
+
+
+class CumplimientoLote(FilaCumplimiento):
+    lote_id: uuid.UUID
+    lote_codigo: str
+
+
+class CumplimientoPlan(BaseModel):
+    anio: int
+    hasta_semana: int = Field(description="Última semana contada (la actual, o la última del año)")
+    total: FilaCumplimiento
+    semanas: list[CumplimientoSemana]
+    lotes: list[CumplimientoLote]
 
 
 class OpcionCatalogo(BaseModel):

@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 
-import { cambiosDelPlan, listarPersonal, listarRutasPredio, obtenerPlan } from '../../api/client'
+import {
+  cambiosDelPlan,
+  cumplimientoPlan,
+  listarPersonal,
+  listarRutasPredio,
+  obtenerPlan,
+} from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
 import { rangoSemana, semanaDelAnio, semanaIso, semanasDelAnio } from '../../utils/fechas'
@@ -13,6 +19,7 @@ import FichaActividad from './FichaActividad'
 import FormularioActividad from './FormularioActividad'
 import HistorialPlan from './HistorialPlan'
 import RejillaPlan from './RejillaPlan'
+import TarjetaCumplimiento from './TarjetaCumplimiento'
 
 const ROLES_RESPONSABLE = ['tecnico', 'agronomo']
 
@@ -37,6 +44,7 @@ export default function VistaPlan() {
 
   // Cambios recientes del plan del predio (HU-23); null mientras cargan.
   const [cambios, setCambios] = useState(null)
+  const [cumplimiento, setCumplimiento] = useState(null)
 
   useEffect(() => {
     let vigente = true
@@ -46,6 +54,9 @@ export default function VistaPlan() {
     cambiosDelPlan(predio.id)
       .then((lista) => vigente && setCambios(lista))
       .catch(() => vigente && setCambios([]))
+    cumplimientoPlan(predio.id, anio)
+      .then((datos) => vigente && setCumplimiento(datos))
+      .catch(() => vigente && setCumplimiento(null))
     return () => {
       vigente = false
     }
@@ -156,7 +167,7 @@ export default function VistaPlan() {
             {totalSemanas} semanas
           </h2>
           <div className="mapa-tarjeta__leyenda leyenda-plan">
-            {['programada', 'reprogramada'].map((estado) => (
+            {['cumplida', 'programada', 'reprogramada', 'vencida'].map((estado) => (
               <span key={estado}>
                 <i className={`leyenda__muestra celda-plan--${estado}`} />
                 {ESTADOS_ACTIVIDAD[estado]}
@@ -246,7 +257,7 @@ export default function VistaPlan() {
                 lista.map((a) => (a.id === actualizada.id ? actualizada : a)),
               )
               setSeleccionada(actualizada)
-              setAviso('Responsable actualizado.')
+              setAviso('Actividad actualizada.')
               setVersion((v) => v + 1)
             }}
             alReprogramar={(movida) => {
@@ -264,6 +275,7 @@ export default function VistaPlan() {
             }}
           />
         )}
+        {cumplimiento && <TarjetaCumplimiento cumplimiento={cumplimiento} />}
         {cambios?.length > 0 && (
           <section className="tarjeta" aria-labelledby="titulo-cambios">
             <h2 id="titulo-cambios" className="tarjeta__titulo">

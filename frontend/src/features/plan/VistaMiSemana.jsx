@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { misActividades } from '../../api/client'
+import { marcarCumplida, misActividades } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
 import { otraSemana, rangoSemana, semanaIso } from '../../utils/fechas'
 import { usePredio } from '../predios/usePredio'
-import { ESTADOS_ACTIVIDAD, filaDe } from './catalogo'
+import { ESTADOS_ACTIVIDAD, filaDe, textoAvance } from './catalogo'
 
 // «Mi semana» (HU-24): lo que le toca al usuario esta semana, en todos sus predios. Pensada para
 // el teléfono: tarjetas grandes y acceso directo a la ruta en el mapa.
@@ -34,6 +34,21 @@ export default function VistaMiSemana() {
     const { anio, numero } = otraSemana(semana, delta)
     setSemana({ anio, numero })
     setRespuesta(null)
+  }
+
+  async function alternarCumplida(actividad) {
+    setError(null)
+    try {
+      const actualizada = await marcarCumplida(actividad.id, actividad.estado !== 'cumplida')
+      setRespuesta((r) => ({
+        ...r,
+        actividades: r.actividades.map((a) =>
+          a.id === actualizada.id ? { ...a, ...actualizada } : a,
+        ),
+      }))
+    } catch {
+      setError('No se pudo actualizar la labor. Intente de nuevo.')
+    }
   }
 
   // Abre la vista en el predio de la actividad (puede no ser el elegido en el menú).
@@ -120,7 +135,19 @@ export default function VistaMiSemana() {
                       : ' · sin ruta vigente')}
                   {!visita && ` · ${fila.detalle.split(' · ')[0]}`}
                 </p>
+                {textoAvance(actividad) && (
+                  <p className="formulario__nota">{textoAvance(actividad)}</p>
+                )}
                 {actividad.notas && <p className="formulario__nota">{actividad.notas}</p>}
+                {actividad.tipo === 'labor_cultural' && (
+                  <button
+                    type="button"
+                    className="boton-secundario boton-bloque"
+                    onClick={() => alternarCumplida(actividad)}
+                  >
+                    {actividad.estado === 'cumplida' ? 'Desmarcar cumplida' : 'Marcar cumplida'}
+                  </button>
+                )}
                 <button
                   type="button"
                   className={
