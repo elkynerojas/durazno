@@ -567,9 +567,9 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 > FeatureCollection con lotes y trampas, `resumen`, `umbrales` y `fecha`. Estado de monitoreo de
 > las trampas activas (`services/monitoreo.py`): `al_dia` con menos de 7 días sin revisión,
 > `pendiente` desde 7 y `vencida` desde 14; las inactivas y retiradas no se monitorean. Umbrales
-> **provisionales** (revisión semanal del Manual ICA): acordarlos con el agrónomo de Icota. Hasta
-> HU-25 no hay lecturas: los días se cuentan desde la instalación y `ultima_lectura` llega en
-> `null`; completarlo allí. En la web: relleno del ícono por estado de monitoreo, ventana al tocar
+> **provisionales** (revisión semanal del Manual ICA): acordarlos con el agrónomo de Icota. Los
+> días se cuentan desde la última lectura no rechazada (HU-25) o, si no hay, desde la
+> instalación. En la web: relleno del ícono por estado de monitoreo, ventana al tocar
 > la trampa, indicador «Trampas por revisar», filtro por lote con encuadre.
 
 ### HU-19 · Definir la ruta de un lote
@@ -739,7 +739,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-25 · Registrar la lectura de una trampa
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S4 · **Responsable:** Ingry
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S4 · **Responsable:** Ingry
 - **Historia:** Como técnico de campo, quiero diligenciar el formulario de la trampa durante la visita, para que el dato quede ligado a la trampa, la fecha y el lugar.
 
 **Criterios de aceptación**
@@ -752,11 +752,28 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 **Tareas**
 
-- [ ] `HU-25.1` [BD] Modelos visita y lectura_trampa (observado_en, capturas por especie, precision_m)
-- [ ] `HU-25.2` [API] POST idempotente por id del cliente
-- [ ] `HU-25.3` [API] Cálculo de días de exposición y distancia a la trampa
-- [ ] `HU-25.4` [Web] Formulario adaptado al teléfono
-- [ ] `HU-25.5` [Pruebas] Idempotencia, fecha futura y trampa inactiva
+- [x] `HU-25.1` [BD] Modelos visita y lectura_trampa (observado_en, capturas por especie, precision_m)
+- [x] `HU-25.2` [API] POST idempotente por id del cliente
+- [x] `HU-25.3` [API] Cálculo de días de exposición y distancia a la trampa
+- [x] `HU-25.4` [Web] Formulario adaptado al teléfono
+- [x] `HU-25.5` [Pruebas] Idempotencia, fecha futura y trampa inactiva
+
+> `visita` (técnico, lote y fecha de Bogotá; la crea el servidor con la primera lectura del día)
+> y `lectura_trampa`: `observado_en` (con zona) además de `created_at`; capturas de *C.
+> capitata* machos y hembras y de *Anastrepha* spp.; días de exposición (los calcula el servidor
+> desde la lectura anterior no rechazada o la instalación; otros exigen `justificacion_dias`);
+> estado de la trampa (buena, dañada, faltante, reubicada); cambio de atrayente; observaciones;
+> posición del dispositivo, `precision_m` y `distancia_m` a la trampa (geodésica); `estado`
+> (registrada, para HU-26). Una lectura por trampa y día de Bogotá, de cualquier técnico (409; una
+> rechazada deja registrar otra); idempotente por `id` del mismo usuario. Rechaza fecha futura (5
+> min de tolerancia), de hace más de 30 días, anterior a la instalación y trampas no activas.
+> Ley 1581: la posición GPS solo la ven el agrónomo, el administrador y quien registró; el
+> productor no ve el responsable. API: `POST /visitas/lecturas`, `GET /visitas/lecturas/preparar`, `GET
+> /visitas/lecturas` (por trampa o lote) y `GET /visitas/lecturas/{id}`. El QR devuelve
+> `ultima_lectura` y el mapa (HU-18) calcula el monitoreo desde la última lectura. Web:
+> `/t/<código>/lectura` desde la ficha del QR o la ventana/ficha de la trampa en el mapa;
+> contadores −/+, MTD de referencia de la trampa, ubicación del teléfono al abrir (si no hay
+> permiso se guarda sin posición). Los campos se ajustarán cuando el SRS los valide (HU-01).
 
 ### HU-26 · Validar las lecturas
 

@@ -10,6 +10,7 @@ import { puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import { usePredio } from '../predios/usePredio'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from './catalogo'
+import ResumenLectura from '../lecturas/ResumenLectura'
 import ReponerEtiqueta from './ReponerEtiqueta'
 
 // Lo que se abre al escanear el QR de una trampa: <dominio>/t/<código>.
@@ -153,23 +154,15 @@ function Ficha({ trampa, lote, ruta, ultima_lectura }) {
           <h2 id="titulo-lectura" className="tarjeta__titulo">
             Última lectura
           </h2>
-          {!ultima_lectura && (
+          {ultima_lectura ? (
+            <ResumenLectura lectura={ultima_lectura} />
+          ) : (
             <p className="formulario__nota">Aún no hay lecturas registradas para esta trampa.</p>
           )}
-          {registra && (
-            <>
-              <button
-                type="button"
-                className="boton-primario boton-bloque"
-                disabled
-                aria-describedby="nota-lectura"
-              >
-                Registrar lectura
-              </button>
-              <p id="nota-lectura" className="formulario__nota ficha__nota-boton">
-                El formulario de lectura estará disponible próximamente.
-              </p>
-            </>
+          {registra && trampa.estado === 'activa' && (
+            <Link to={`/t/${trampa.codigo_qr}/lectura`} className="boton-primario boton-bloque">
+              Registrar lectura
+            </Link>
           )}
         </section>
       </div>

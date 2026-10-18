@@ -1670,3 +1670,76 @@ button {
 .ficha__accion {
   margin: 0.25rem 0 1rem;
 }
+
+/* ---------- Lectura de trampa (HU-25) ---------- */
+.contador {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.contador p {
+  margin: 0;
+}
+
+.contador__nombre {
+  font-weight: 600;
+}
+
+.contador__ayuda {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.contador__control {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.contador__control .boton-secundario {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+}
+
+.formulario .contador__control input[type='number'] {
+  width: 4rem;
+  margin-bottom: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+}
+
+.opciones-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.opciones-fila .opcion {
+  margin: 0;
+}
+
+.formulario-lectura__gps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.grupo-enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

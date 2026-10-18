@@ -1,10 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.acceso import exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep
+from app.models.lectura_trampa import LecturaTrampa
 from app.models.lote import Lote
 from app.models.ruta import Ruta
 from app.models.trampa import Trampa
@@ -19,6 +20,7 @@ from app.schemas.mapa import (
     RutaDeLote,
     Umbrales,
 )
+from app.services.lecturas import fecha_bogota
 from app.services.monitoreo import DIAS_REVISION, DIAS_VENCIDA, hoy_bogota, monitoreo_trampa
 
 router = APIRouter(prefix="/mapa", tags=["mapa"])
@@ -74,6 +76,19 @@ async def obtener_mapa(
         )
     ).all()
 
+    ultimas = dict(
+        (
+            await session.execute(
+                select(LecturaTrampa.trampa_id, func.max(LecturaTrampa.observado_en))
+                .where(
+                    LecturaTrampa.trampa_id.in_([t.id for t in trampas]),
+                    LecturaTrampa.deleted_at.is_(None),
+                    LecturaTrampa.estado != "rechazada",
+                )
+                .group_by(LecturaTrampa.trampa_id)
+            )
+        ).all()
+    )
     hoy = hoy_bogota()
     resumen = ResumenMonitoreo()
     features: list[FeatureLote | FeatureTrampa] = [
@@ -99,8 +114,10 @@ async def obtener_mapa(
         for lote in lotes
     ]
     for trampa in trampas:
-        # Sin lecturas todavía (HU-25): la referencia es la instalación.
-        monitoreo, dias = monitoreo_trampa(trampa.estado, trampa.fecha_instalacion, None, hoy)
+        ultima = ultimas.get(trampa.id)
+        monitoreo, dias = monitoreo_trampa(
+            trampa.estado, trampa.fecha_instalacion, ultima and fecha_bogota(ultima), hoy
+        )
         if monitoreo is None:
             resumen.no_activas += 1
         else:
@@ -119,6 +136,7 @@ async def obtener_mapa(
                     estado=trampa.estado,
                     fecha_instalacion=trampa.fecha_instalacion,
                     precision_m=None if trampa.precision_m is None else float(trampa.precision_m),
+                    ultima_lectura=ultima,
                     dias_sin_revision=dias,
                     monitoreo=monitoreo,
                 ),

@@ -11,11 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.lote import Lote
 from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
+from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 
 ADMINISTRADOR = "administrador"
 # Quién crea y modifica lotes, trampas y datos del predio.
 ROLES_GESTION = ("agronomo", ADMINISTRADOR)
+# Trabajo de campo: lecturas de trampa y reposición de etiquetas.
+ROLES_CAMPO = ("tecnico", "agronomo", ADMINISTRADOR)
 NO_ENCONTRADO = "Predio no encontrado"
 
 
@@ -81,3 +84,30 @@ async def exigir_lote(
         detalle_404="Lote no encontrado",
     )
     return lote
+
+
+async def exigir_trampa(
+    session: AsyncSession,
+    usuario: Usuario,
+    trampa_id: uuid.UUID,
+    *,
+    escribir: bool = False,
+    roles_escritura: tuple[str, ...] = ROLES_GESTION,
+) -> Trampa:
+    """La trampa vigente si el usuario ve su predio (a través del lote); si no, 404."""
+    fila = (
+        await session.execute(
+            select(Trampa, Lote.predio_id)
+            .join(Lote, Lote.id == Trampa.lote_id)
+            .where(Trampa.id == trampa_id, Trampa.deleted_at.is_(None))
+        )
+    ).first()
+    await exigir_predio(
+        session,
+        usuario,
+        fila[1] if fila else None,
+        escribir=escribir,
+        roles_escritura=roles_escritura,
+        detalle_404="Trampa no encontrada",
+    )
+    return fila[0]

@@ -120,7 +120,7 @@ test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page 
   await expect(page).toHaveURL(`/t/${codigoQr}`)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(codigo)
   await expect(page.getByText(`${codigoLote}`, { exact: true }).first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Registrar lectura' })).toBeDisabled()
+  await expect(page.getByRole('link', { name: 'Registrar lectura' })).toBeVisible()
 
   // HU-17: reemplazar la etiqueta desde la ficha invalida el código anterior.
   await page.getByRole('button', { name: 'Reemplazar etiqueta' }).click()
@@ -545,4 +545,54 @@ test('el técnico ve su semana y abre la ruta en el mapa', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     `Ruta de monitoreo · Lote ${lote}`,
   )
+})
+
+// --- Lecturas de trampa (HU-25) ---
+
+test('se registra la lectura de una trampa desde su QR, con la ubicación del teléfono', async ({
+  page,
+}) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  const [codigo] = await crearTrampasE2E(page, lote, [[0.5, 0.5]])
+  const { codigoQr, lat, lng } = await page.evaluate(async (codigo) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = { Authorization: `Bearer ${(await renovar.json()).access_token}` }
+    const predioId = localStorage.getItem('icota.predio')
+    const trampas = await (
+      await fetch(`/api/v1/trampas?predio_id=${predioId}`, { headers: cabeceras })
+    ).json()
+    const trampa = trampas.find((t) => t.codigo_ica === codigo)
+    const [lng, lat] = trampa.geom.coordinates
+    return { codigoQr: trampa.codigo_qr, lat, lng }
+  }, codigo)
+  // El técnico está a unos 11 m de la trampa (0,0001° al norte), con ±5 m de precisión.
+  await page.context().grantPermissions(['geolocation'])
+  await page.context().setGeolocation({ latitude: lat + 0.0001, longitude: lng, accuracy: 5 })
+
+  await page.goto(`/t/${codigoQr}`)
+  await expect(page.getByText('Aún no hay lecturas registradas para esta trampa.')).toBeVisible()
+  await page.getByRole('link', { name: 'Registrar lectura' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lectura de trampa')
+  const formulario = page.getByRole('form', { name: 'Lectura de trampa' })
+  await expect(formulario.getByLabel('Días de exposición')).toHaveValue('0')
+  await expect(formulario.getByText(/a ≈ 1\d m de la trampa/)).toBeVisible()
+  for (let i = 0; i < 3; i++) {
+    await formulario.getByRole('button', { name: 'Sumar Ceratitis capitata machos' }).click()
+  }
+  await formulario.getByLabel('Observaciones').fill('Prueba E2E')
+  await formulario.getByRole('button', { name: 'Registrar lectura' }).click()
+
+  const confirmacion = page.getByRole('status').filter({ hasText: 'registrada' })
+  await expect(confirmacion).toContainText(`Lectura de ${codigo} registrada.`)
+  await expect(confirmacion).toContainText('3 (3 ♂ · 0 ♀)')
+  await expect(confirmacion).toContainText(/Tomada a 1\d m de la trampa/)
+
+  await confirmacion.getByRole('link', { name: 'Ficha de la trampa' }).click()
+  const ultima = page.getByRole('region', { name: 'Última lectura' })
+  await expect(ultima).toContainText('3 (3 ♂ · 0 ♀)')
+  // Una segunda lectura el mismo día choca con la de la visita.
+  await page.getByRole('link', { name: 'Registrar lectura' }).click()
+  await page.getByRole('button', { name: 'Registrar lectura' }).click()
+  await expect(page.getByRole('alert')).toContainText(`Ya hay una lectura de ${codigo} del`)
 })

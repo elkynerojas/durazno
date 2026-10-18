@@ -7,3 +7,5 @@ export const ROLES = {
 
 // Gestionan lotes, trampas y los datos del predio.
 export const ROLES_GESTION = ['agronomo', 'administrador']
+// Trabajo de campo: lecturas de trampa y reposición de etiquetas.
+export const ROLES_CAMPO = ['tecnico', 'agronomo', 'administrador']

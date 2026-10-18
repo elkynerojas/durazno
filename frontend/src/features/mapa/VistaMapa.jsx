@@ -5,13 +5,13 @@ import { Link } from 'react-router'
 import Encabezado from '../../components/Encabezado'
 import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
-import { fechaCorta } from '../../utils/fechas'
+import { fechaCorta, fechaHora } from '../../utils/fechas'
 import { formatoCoordenada, formatoHa } from '../../utils/formato'
 import { geojsonALeaflet, puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
-import { ROLES_GESTION } from '../usuarios/roles'
+import { ROLES_CAMPO, ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
 import { COLOR_LIMITE, COLOR_LOTE } from './colores'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
@@ -26,6 +26,7 @@ import { useMapa } from './useMapa'
 export default function VistaMapa() {
   const { usuario } = useSesion()
   const editable = ROLES_GESTION.includes(usuario.rol)
+  const registra = ROLES_CAMPO.includes(usuario.rol)
   const { predio } = usePredio()
   const mapa = useMapa(predio?.id)
   const [capas, setCapas] = useState({ lotes: true, trampas: true })
@@ -169,7 +170,7 @@ export default function VistaMapa() {
                   trampas={trampas}
                   seleccionadaId={seleccion?.trampa?.id}
                   alSeleccionar={(trampa) => setSeleccion({ trampa })}
-                  ventana={(trampa) => <VentanaTrampa trampa={trampa} />}
+                  ventana={(trampa) => <VentanaTrampa trampa={trampa} registra={registra} />}
                 />
               )}
             </MapaPredio>
@@ -219,7 +220,9 @@ export default function VistaMapa() {
         </section>
 
         <div className="columna">
-          {seleccion?.trampa && <FichaTrampa trampa={seleccion.trampa} umbrales={mapa.umbrales} />}
+          {seleccion?.trampa && (
+            <FichaTrampa trampa={seleccion.trampa} umbrales={mapa.umbrales} registra={registra} />
+          )}
           {seleccion?.lote && (
             <FichaLote
               lote={seleccion.lote}
@@ -272,7 +275,7 @@ function InsigniaMonitoreo({ trampa }) {
 }
 
 // Ventana que se abre sobre la trampa al tocarla en el mapa (cómoda en el teléfono).
-function VentanaTrampa({ trampa }) {
+function VentanaTrampa({ trampa, registra }) {
   const tipo = TIPOS_TRAMPA[trampa.tipo]
   return (
     <div className="ventana-trampa" aria-label={`Trampa ${trampa.codigo_ica}`}>
@@ -284,13 +287,21 @@ function VentanaTrampa({ trampa }) {
         <InsigniaMonitoreo trampa={trampa} />
       </p>
       <p>{textoRevision(trampa)}</p>
-      <p>Última lectura: {trampa.ultima_lectura ? '—' : 'sin lecturas aún'}</p>
-      <Link to={`/t/${trampa.codigo_qr}`}>Abrir ficha</Link>
+      <p>
+        Última lectura:{' '}
+        {trampa.ultima_lectura ? fechaHora(trampa.ultima_lectura) : 'sin lecturas aún'}
+      </p>
+      <p className="grupo-enlaces">
+        {registra && trampa.estado === 'activa' && (
+          <Link to={`/t/${trampa.codigo_qr}/lectura`}>Registrar lectura</Link>
+        )}
+        <Link to={`/t/${trampa.codigo_qr}`}>Abrir ficha</Link>
+      </p>
     </div>
   )
 }
 
-function FichaTrampa({ trampa, umbrales }) {
+function FichaTrampa({ trampa, umbrales, registra }) {
   const [lat, lng] = puntoALeaflet(trampa.geom)
   const tipo = TIPOS_TRAMPA[trampa.tipo]
   return (
@@ -309,7 +320,7 @@ function FichaTrampa({ trampa, umbrales }) {
         <dt>Revisión</dt>
         <dd>{textoRevision(trampa)}</dd>
         <dt>Última lectura</dt>
-        <dd>{trampa.ultima_lectura ? '—' : 'Sin lecturas aún'}</dd>
+        <dd>{trampa.ultima_lectura ? fechaHora(trampa.ultima_lectura) : 'Sin lecturas aún'}</dd>
         <dt>Lat</dt>
         <dd>{formatoCoordenada(lat)}</dd>
         <dt>Lon</dt>
@@ -325,9 +336,16 @@ function FichaTrampa({ trampa, umbrales }) {
           {umbrales.dias_revision}, vencida desde el día {umbrales.dias_vencida}.
         </p>
       )}
-      <Link to={`/trampas?trampa=${trampa.id}`} className="boton-secundario">
-        Ver ficha y QR
-      </Link>
+      <div className="grupo-botones">
+        {registra && trampa.estado === 'activa' && (
+          <Link to={`/t/${trampa.codigo_qr}/lectura`} className="boton-primario">
+            Registrar lectura
+          </Link>
+        )}
+        <Link to={`/trampas?trampa=${trampa.id}`} className="boton-secundario">
+          Ver ficha y QR
+        </Link>
+      </div>
     </section>
   )
 }

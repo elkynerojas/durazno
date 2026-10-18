@@ -53,7 +53,10 @@ describe('VistaFichaTrampa', () => {
     expect(
       screen.getByText('Aún no hay lecturas registradas para esta trampa.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Registrar lectura' })).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'Registrar lectura' })).toHaveAttribute(
+      'href',
+      '/t/ABCD2345/lectura',
+    )
     expect(screen.getByRole('link', { name: 'Ver en el mapa' })).toHaveAttribute(
       'href',
       '/trampas?trampa=t-1',
@@ -91,7 +94,7 @@ describe('VistaFichaTrampa', () => {
     renderizar('productor')
 
     await screen.findByRole('heading', { level: 1, name: 'ICA-0031' })
-    expect(screen.queryByRole('button', { name: 'Registrar lectura' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Registrar lectura' })).not.toBeInTheDocument()
   })
 
   it('ante un código inexistente muestra el mensaje y permite escribir el de la etiqueta', async () => {

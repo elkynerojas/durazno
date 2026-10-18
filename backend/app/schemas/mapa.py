@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -39,8 +39,8 @@ class PropiedadesTrampa(BaseModel):
     estado: EstadoTrampa
     fecha_instalacion: date
     precision_m: float | None
-    ultima_lectura: None = Field(
-        default=None, description="Última lectura de la trampa. Llega en `null` hasta HU-25."
+    ultima_lectura: datetime | None = Field(
+        description="Momento de la última lectura no rechazada; `null` si no tiene"
     )
     dias_sin_revision: int | None = Field(
         description="Días desde la última lectura (o desde la instalación si no tiene). "

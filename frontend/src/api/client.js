@@ -120,6 +120,15 @@ export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
 
 export const listarTrampas = (predioId) => api(`/trampas?predio_id=${predioId}`)
 
+// Revisión anterior y días de exposición calculados para diligenciar una lectura.
+export const prepararLectura = (trampaId, observadoEn) =>
+  api(
+    `/visitas/lecturas/preparar?trampa_id=${trampaId}&observado_en=${encodeURIComponent(observadoEn)}`,
+  )
+
+export const registrarLectura = (datos) =>
+  api('/visitas/lecturas', { metodo: 'POST', cuerpo: datos })
+
 export const listarRutasPredio = (predioId) => api(`/rutas?predio_id=${predioId}`)
 
 // Orden propuesto por vecino más cercano (no se guarda).

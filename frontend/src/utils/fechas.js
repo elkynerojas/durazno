@@ -82,3 +82,27 @@ export function fechaHora(iso) {
   )
   return `${partes.day}/${partes.month}/${partes.year} ${partes.hour}:${partes.minute}`
 }
+
+// Bogotá no tiene horario de verano: siempre UTC−5.
+const DESFASE_BOGOTA = '-05:00'
+
+// Ahora en Bogotá como valor de <input type="datetime-local">: «2026-10-17T22:15».
+export function ahoraLocalBogota(fecha = new Date()) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: ZONA,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(fecha)
+      .map((x) => [x.type, x.value]),
+  )
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`
+}
+
+// Valor de <input type="datetime-local"> (hora de Bogotá) a ISO 8601 con zona.
+export const localBogotaAIso = (valor) => `${valor}:00${DESFASE_BOGOTA}`

@@ -16,6 +16,7 @@ from app.schemas.geo import PuntoGeoJSON, a_geojson
 
 TipoTrampa = Literal["jackson", "mcphail"]
 EstadoTrampa = Literal["activa", "inactiva", "retirada"]
+EstadoLectura = Literal["registrada", "validada", "rechazada"]
 CodigoIca = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=30)]
 Atrayente = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
 PrecisionM = Annotated[
@@ -99,6 +100,20 @@ class LoteResumen(BaseModel):
     nombre: str | None
 
 
+class LecturaResumen(BaseModel):
+    """Última lectura de una trampa (ficha del QR y formulario)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    observado_en: datetime
+    capitata_machos: int
+    capitata_hembras: int
+    anastrepha: int
+    dias_exposicion: int
+    estado: EstadoLectura
+
+
 class RutaDeTrampa(BaseModel):
     """Posición de una trampa en la ruta de su lote (al resolver su QR)."""
 
@@ -118,10 +133,8 @@ class TrampaResuelta(BaseModel):
         description="Posición de la trampa en la ruta de monitoreo de su lote; `null` si el lote "
         "no tiene ruta o la trampa no está en ella.",
     )
-    ultima_lectura: None = Field(
-        default=None,
-        description="Última lectura registrada de la trampa. Siempre `null` hasta que existan "
-        "las lecturas (HU-25).",
+    ultima_lectura: LecturaResumen | None = Field(
+        default=None, description="Última lectura no rechazada de la trampa; `null` si no tiene"
     )
 
 
