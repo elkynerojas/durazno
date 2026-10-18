@@ -5943,6 +5943,230 @@
         }
       }
     },
+    "/api/v1/mtd/reporte.csv": {
+      "get": {
+        "tags": [
+          "mtd"
+        ],
+        "summary": "Reporte MTD para el ICA en CSV",
+        "description": "Consolidado semanal del MTD del predio para entregar al ICA (HU-29), con el mismo cálculo de `GET /mtd` y las dos especies: por semana ISO, M, T, D, MTD y lecturas sin validar. Formato provisional hasta acordar el del convenio con el ICA. Sin datos personales. Cualquier rol con el predio asignado; por defecto, las últimas 12 semanas. Una fila por especie y semana; separador «;», coma decimal y BOM UTF-8 para abrirlo en Excel. El MTD va vacío cuando T × D = 0.",
+        "operationId": "reporte_csv_api_v1_mtd_reporte_csv_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "predio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Predio Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Predio no encontrado (o no asignado al usuario)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Predio no encontrado (o no asignado al usuario)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rango de fechas inválido (al revés o de más de tres años)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mtd/reporte.pdf": {
+      "get": {
+        "tags": [
+          "mtd"
+        ],
+        "summary": "Reporte MTD para el ICA en PDF",
+        "description": "Consolidado semanal del MTD del predio para entregar al ICA (HU-29), con el mismo cálculo de `GET /mtd` y las dos especies: por semana ISO, M, T, D, MTD y lecturas sin validar. Formato provisional hasta acordar el del convenio con el ICA. Sin datos personales. Cualquier rol con el predio asignado; por defecto, las últimas 12 semanas. Encabezado del predio, consolidado del periodo y una tabla semanal por especie; las semanas sin lecturas dicen «sin dato».",
+        "operationId": "reporte_pdf_api_v1_mtd_reporte_pdf_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "predio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Predio Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Predio no encontrado (o no asignado al usuario)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Predio no encontrado (o no asignado al usuario)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rango de fechas inválido (al revés o de más de tres años)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/historial": {
       "get": {
         "tags": [

@@ -883,7 +883,7 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 ### HU-29 · Exportar el reporte MTD para el ICA
 
-- **Estado:** Por hacer · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debería · **Puntos:** 3 · **Sprint:** S4 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero descargar el consolidado semanal del MTD, para entregarlo al ICA en el formato del convenio.
 
 **Criterios de aceptación**
@@ -893,8 +893,19 @@ _Objetivo 3 · módulo v._ Formulario de lectura, validación, historial y cálc
 
 **Tareas**
 
-- [ ] `HU-29.1` [API] Generación del reporte en el formato acordado
-- [ ] `HU-29.2` [Web] Botón de descarga por periodo
+- [x] `HU-29.1` [API] Generación del reporte en el formato acordado
+- [x] `HU-29.2` [Web] Botón de descarga por periodo
+
+> `GET /mtd/reporte.csv` y `GET /mtd/reporte.pdf?predio_id=&desde=&hasta=` (cualquier rol con el
+> predio; por defecto las últimas 12 semanas) usan el mismo cálculo de `GET /mtd`
+> (`services/reporte_mtd.py`). CSV: una fila por especie y semana ISO con predio, registro ICA,
+> municipio, vereda, fechas (la primera y la última semana recortadas al periodo), especie,
+> trampa y atrayente, M, T, D, MTD (vacío si T × D = 0) y lecturas sin validar; «;», coma
+> decimal y BOM. PDF carta: encabezado del predio, fórmula, consolidado del periodo y tabla
+> semanal por especie («sin dato»), con número de página. Sin datos personales. Web: botones
+> «Reporte ICA (PDF)» y «Reporte ICA (CSV)» en `/mtd`, con el periodo calculado.
+> **Pendiente:** el formato es provisional; queda en revisión hasta confirmar con Icota el
+> formato del convenio con el ICA (criterio 2).
 
 ### HU-30 · Alerta por MTD alto
 

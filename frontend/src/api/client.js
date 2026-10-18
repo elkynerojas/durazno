@@ -146,6 +146,12 @@ export const obtenerMtd = (predioId, desde, hasta) =>
     `/mtd?predio_id=${predioId}${desde ? `&desde=${desde}` : ''}${hasta ? `&hasta=${hasta}` : ''}`,
   )
 
+// Reporte MTD para el ICA (HU-29). `formato`: 'csv' o 'pdf'.
+export const reporteMtd = (predioId, desde, hasta, formato) =>
+  api(`/mtd/reporte.${formato}?predio_id=${predioId}&desde=${desde}&hasta=${hasta}`, {
+    binario: true,
+  })
+
 // Historial de capturas (HU-27). `filtros`: predio_id | lote_id | trampa_id, desde, hasta,
 // especie, pagina, por_pagina (los vacíos se omiten).
 const consultaHistorial = (filtros) =>

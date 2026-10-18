@@ -3,6 +3,7 @@
 import uuid
 from datetime import UTC, date, datetime
 
+import pypdfium2 as pdfium
 import pytest
 
 from app.api.v1.endpoints import mtd as mtd_endpoint
@@ -394,3 +395,104 @@ async def test_historial_permisos_y_ambito(cliente, predio, crear_usuario, sessi
     assert (await cliente.get(f"{URL_HISTORIAL}.csv", params=params, headers=h)).status_code == 404
     sin_ambito = await cliente.get(URL_HISTORIAL, headers=encabezados(predio["tecnico"]))
     assert sin_ambito.status_code == 422
+
+
+# --- Reporte MTD para el ICA en CSV y PDF (HU-29) ---
+
+
+def _texto_pdf(pdf: bytes) -> str:
+    return "\n".join(p.get_textpage().get_text_bounded() for p in pdfium.PdfDocument(pdf))
+
+
+async def test_reporte_csv_con_el_mtd_calculado_a_mano(cliente, predio):
+    await _escenario(cliente, predio)
+    predio["predio"].registro_ica = "54-125-0001"
+    respuesta = await cliente.get(
+        f"{URL}/reporte.csv",
+        # Del miércoles 14 al domingo 25: la semana 42 va recortada desde el 14.
+        params={
+            "predio_id": str(predio["predio"].id),
+            "desde": "2026-10-14",
+            "hasta": "2026-10-25",
+        },
+        headers=encabezados(predio["tecnico"]),
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"] == "text/csv; charset=utf-8"
+    assert respuesta.headers["content-disposition"] == (
+        'attachment; filename="mtd-Finca-Icota-20261014-20261025.csv"'
+    )
+    texto = respuesta.content.decode("utf-8")
+    assert texto.startswith("﻿")
+    lineas = texto.lstrip("﻿").splitlines()
+    assert lineas[0].split(";")[-5:] == [
+        "M (moscas)",
+        "T (trampas revisadas)",
+        "D (días promedio)",
+        "MTD",
+        "Lecturas sin validar",
+    ]
+    assert len(lineas) == 5  # encabezado + 2 especies × 2 semanas
+    predio_csv = "Finca Icota;54-125-0001;Cácota;Icota"
+    # C. capitata S42: 6 ÷ (2 × 7) = 0,4286; tres lecturas registradas sin validar.
+    assert lineas[1] == (
+        f"{predio_csv};2026;42;14/10/2026;18/10/2026;Ceratitis capitata;Jackson + trimedlure;"
+        "6;2;7,00;0,4286;2"
+    )
+    # C. capitata S43: la rechazada no cuenta; 0 ÷ (1 × 7) = 0.
+    assert lineas[2].endswith(
+        ";2026;43;19/10/2026;25/10/2026;Ceratitis capitata;Jackson + trimedlure;0;1;7,00;0,0000;1"
+    )
+    # Anastrepha S43: sin lecturas McPhail, MTD vacío (sin dato).
+    assert lineas[4].endswith(";Anastrepha spp.;McPhail + proteína hidrolizada;0;0;0,00;;0")
+    assert "Persona de Prueba" not in texto  # sin datos personales
+
+
+async def test_reporte_pdf_con_consolidado_y_semanas(cliente, predio):
+    await _escenario(cliente, predio)
+    respuesta = await cliente.get(
+        f"{URL}/reporte.pdf",
+        params={
+            "predio_id": str(predio["predio"].id),
+            "desde": "2026-10-12",
+            "hasta": "2026-10-25",
+        },
+        headers=encabezados(predio["agronomo"]),
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.headers["content-type"] == "application/pdf"
+    assert respuesta.headers["content-disposition"].endswith('-20261012-20261025.pdf"')
+    texto = _texto_pdf(respuesta.content)
+    assert "Finca Icota" in texto and "Periodo: 12/10/2026 a 25/10/2026" in texto
+    # Consolidado de C. capitata: 6 ÷ (2 × 10,5) = 0,2857; Anastrepha: 5 ÷ (1 × 7) = 0,7143.
+    assert "0,2857" in texto and "0,7143" in texto
+    assert "2026-S42" in texto and "0,4286" in texto
+    assert "sin dato" in texto  # Anastrepha S43
+    assert "Incluye 4 lecturas sin validar" in texto
+    assert "Página 1" in texto
+
+
+async def test_reporte_permisos_y_rango(cliente, predio, crear_usuario, session):
+    params = {"predio_id": str(predio["predio"].id)}
+    for formato in ("csv", "pdf"):
+        url = f"{URL}/reporte.{formato}"
+        assert (await cliente.get(url, params=params)).status_code == 401
+        productor = await crear_usuario(
+            _correo("productor"), rol="productor", predios=[predio["predio"]]
+        )
+        assert (
+            await cliente.get(url, params=params, headers=encabezados(productor))
+        ).status_code == 200
+        otro = Predio(nombre="Otra finca", vereda="Icota", municipio="Cácota", area_ha=5)
+        session.add(otro)
+        await session.flush()
+        ajeno = await crear_usuario(_correo("tecnico"), rol="tecnico", predios=[otro])
+        assert (
+            await cliente.get(url, params=params, headers=encabezados(ajeno))
+        ).status_code == 404
+        al_reves = await cliente.get(
+            url,
+            params={**params, "desde": "2026-10-20", "hasta": "2026-10-01"},
+            headers=encabezados(predio["tecnico"]),
+        )
+        assert al_reves.status_code == 422

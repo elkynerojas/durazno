@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 
-import { obtenerMtd } from '../../api/client'
+import { obtenerMtd, reporteMtd } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
+import { descargar } from '../../utils/descargas'
 import { rangoSemana, semanaDelAnio } from '../../utils/fechas'
 import { usePredio } from '../predios/usePredio'
 import { ESPECIES, formula, textoMtd } from './formato'
@@ -39,12 +40,41 @@ export default function VistaMtd() {
     }
   }, [predio.id, consulta])
 
+  // Descarga el reporte del periodo calculado (el que se ve), no el que se está editando.
+  async function descargarReporte(formato) {
+    setError(null)
+    try {
+      descargar(
+        await reporteMtd(predio.id, datos.desde, datos.hasta, formato),
+        `mtd-${predio.nombre}-${datos.desde}-${datos.hasta}.${formato}`,
+      )
+    } catch {
+      setError('No se pudo descargar el reporte.')
+    }
+  }
+
   return (
     <Plantilla>
       <Encabezado
         migas={[{ texto: predio.nombre, a: '/mapa' }, { texto: 'MTD' }]}
         titulo="Índice MTD del predio"
       >
+        <button
+          type="button"
+          className="boton-secundario"
+          onClick={() => descargarReporte('pdf')}
+          disabled={!datos}
+        >
+          Reporte ICA (PDF)
+        </button>
+        <button
+          type="button"
+          className="boton-secundario"
+          onClick={() => descargarReporte('csv')}
+          disabled={!datos}
+        >
+          Reporte ICA (CSV)
+        </button>
         <Link to="/historial" className="boton-secundario">
           Historial de capturas
         </Link>

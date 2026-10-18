@@ -801,6 +801,23 @@ test('el MTD del predio muestra M, T y D de la semana con la lectura', async ({ 
   await expect(page.getByRole('region', { name: 'MTD de Anastrepha spp.' })).toContainText(
     'sin dato (T × D = 0)',
   )
+
+  // Reporte para el ICA (HU-29) del mismo periodo, en CSV y PDF.
+  const { readFileSync } = await import('node:fs')
+  const [csv] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Reporte ICA (CSV)' }).click(),
+  ])
+  expect(csv.suggestedFilename()).toMatch(/^mtd-.+\.csv$/)
+  const texto = readFileSync(await csv.path(), 'utf-8')
+  expect(texto).toContain('M (moscas);T (trampas revisadas);D (días promedio);MTD')
+  expect(texto).toContain(';Ceratitis capitata;Jackson + trimedlure;3;1;7,00;0,4286;1')
+  const [pdf] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Reporte ICA (PDF)' }).click(),
+  ])
+  expect(pdf.suggestedFilename()).toMatch(/^mtd-.+\.pdf$/)
+  expect(readFileSync(await pdf.path()).subarray(0, 4).toString()).toBe('%PDF')
 })
 
 // --- Historial de capturas (HU-27) ---

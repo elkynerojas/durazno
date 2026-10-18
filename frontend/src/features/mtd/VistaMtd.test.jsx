@@ -1,13 +1,15 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ConContextos } from '../../test/contextos'
-import { respuestaJson } from '../../test/utilidades'
+import { respuestaBinaria, respuestaJson } from '../../test/utilidades'
 import VistaMtd from './VistaMtd'
 
 vi.mock('../../components/EstadoApi', () => ({ default: () => null }))
+const descargar = vi.hoisted(() => vi.fn())
+vi.mock('../../utils/descargas', () => ({ descargar }))
 
 const fila = (especie, semana, moscas, trampas, dias, mtd, pendientes = 0) => ({
   especie,
@@ -37,7 +39,11 @@ const RESPUESTA = {
 }
 
 function renderizar() {
-  const fetchSimulado = vi.fn(async () => respuestaJson(200, RESPUESTA))
+  const fetchSimulado = vi.fn(async (url) =>
+    url.includes('/reporte.')
+      ? respuestaBinaria(200, '%PDF', 'application/pdf')
+      : respuestaJson(200, RESPUESTA),
+  )
   vi.stubGlobal('fetch', fetchSimulado)
   render(
     <ConContextos usuario={{ nombre_completo: 'Ana', rol: 'productor' }}>
@@ -79,6 +85,29 @@ describe('VistaMtd', () => {
     await usuarioEvento.click(screen.getByRole('button', { name: 'Calcular' }))
     expect(fetchSimulado.mock.calls.at(-1)[0]).toBe(
       '/api/v1/mtd?predio_id=p-1&desde=2026-09-01&hasta=2026-10-25',
+    )
+  })
+
+  it('descarga el reporte para el ICA del periodo calculado', async () => {
+    const fetchSimulado = renderizar()
+    const usuarioEvento = userEvent.setup()
+    await screen.findByRole('region', { name: 'MTD de Ceratitis capitata' })
+    // Un cambio sin «Calcular» no cambia el periodo del reporte.
+    await usuarioEvento.clear(screen.getByLabelText('Desde'))
+    await usuarioEvento.type(screen.getByLabelText('Desde'), '2026-09-01')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Reporte ICA (PDF)' }))
+    expect(fetchSimulado.mock.calls.at(-1)[0]).toBe(
+      '/api/v1/mtd/reporte.pdf?predio_id=p-1&desde=2026-10-12&hasta=2026-10-25',
+    )
+    await waitFor(() =>
+      expect(descargar).toHaveBeenLastCalledWith(
+        expect.any(Blob),
+        expect.stringMatching(/^mtd-.+-2026-10-12-2026-10-25\.pdf$/),
+      ),
+    )
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Reporte ICA (CSV)' }))
+    expect(fetchSimulado.mock.calls.at(-1)[0]).toBe(
+      '/api/v1/mtd/reporte.csv?predio_id=p-1&desde=2026-10-12&hasta=2026-10-25',
     )
   })
 })

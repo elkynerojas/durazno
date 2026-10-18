@@ -33,7 +33,7 @@ def mtd_de_la_lectura(fila: FilaHistorial) -> float | None:
     return moscas / fila.dias_exposicion
 
 
-def _decimal(valor: float | None) -> str:
+def decimal_es(valor: float | None) -> str:
     # Excel en español espera coma decimal.
     return "" if valor is None else f"{valor:.4f}".replace(".", ",")
 
@@ -70,7 +70,7 @@ def a_csv(filas: Iterable[FilaHistorial]) -> str:
                 f.capitata_hembras,
                 f.anastrepha,
                 f.dias_exposicion,
-                _decimal(mtd_de_la_lectura(f)),
+                decimal_es(mtd_de_la_lectura(f)),
                 f.estado,
             ]
         )
