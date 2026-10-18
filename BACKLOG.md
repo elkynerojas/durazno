@@ -1094,7 +1094,7 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 
 ### HU-38 · Manual de usuario e informe final
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Luis
+- **Estado:** En curso · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S5 · **Responsable:** Luis
 - **Historia:** Como equipo del proyecto, quiero entregar el manual, el informe final y preparar la sustentación, para cerrar el trabajo de grado.
 
 **Criterios de aceptación**
@@ -1104,6 +1104,13 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 
 **Tareas**
 
-- [ ] `HU-38.1` [Doc] Manual de usuario
+- [x] `HU-38.1` [Doc] Manual de usuario
+
+> `docs/manual/Manual_de_usuario_PERSICA.docx` (37 páginas, 32 figuras): ingreso y navegación, mapa,
+> lotes, trampas y QR, rutas, planeación, trabajo de campo con el teléfono (QR y lectura),
+> validación, MTD y reporte ICA, historial, administración del predio y las cuentas, preguntas
+> frecuentes y glosario. Las capturas salen de `frontend/e2e/manual.spec.js` (a pedido, con
+> `MANUAL=1`) sobre un predio de demostración con datos ficticios; `docs/manual/generar.js` arma el
+> Word. Falta la revisión del director.
 - [ ] `HU-38.2` [Doc] Informe final del trabajo de grado
 - [ ] `HU-38.3` [Doc] Presentación de la sustentación
