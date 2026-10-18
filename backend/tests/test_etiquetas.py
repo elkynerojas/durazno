@@ -13,7 +13,7 @@ from app.models.lote import Lote
 from app.models.predio import Predio
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
-from app.services.etiquetas import Etiqueta, generar_pdf
+from app.services.etiquetas import COLUMNAS, MARGEN, SEPARACION, Etiqueta, generar_pdf
 from app.services.qr import generar_codigo, url_trampa
 from tests.utilidades import encabezados, predio_de_lote
 
@@ -76,6 +76,23 @@ def test_un_codigo_ica_largo_cabe_en_la_etiqueta():
     [pagina] = _leer(generar_pdf([largo], "Finca", "L-03"))
     assert largo.codigo_ica in pagina["texto"]
     assert len(pagina["qr"]) == 1
+
+
+def test_textos_largos_no_se_salen_de_la_etiqueta():
+    # Nombre de predio, código ICA (30) y código de lote (20) en su largo máximo.
+    largo = Etiqueta("ICA-54125-CACOTA-0000031-ABCDE", generar_codigo(), "L-12345678901234567", "x")
+    pdf = generar_pdf([largo], "Finca La Esperanza (demostración) de la vereda Icota", "L-1")
+    pagina = pdfium.PdfDocument(pdf)[0]
+    ancho_pagina = pagina.get_width()
+    derecha = MARGEN + (ancho_pagina - 2 * MARGEN - (COLUMNAS - 1) * SEPARACION) / COLUMNAS
+    texto = pagina.get_textpage()
+    cajas = [texto.get_charbox(i) for i in range(texto.count_chars())]
+    # Todo lo de la etiqueta (el pie de página va debajo del margen) queda dentro de su borde.
+    dentro = [c for c in cajas if c[1] > MARGEN]
+    assert dentro and max(c[2] for c in dentro) <= derecha
+    contenido = texto.get_text_bounded()
+    assert "· PNMF" in contenido and "…" in contenido
+    assert largo.codigo_ica in contenido
 
 
 # --- API ---

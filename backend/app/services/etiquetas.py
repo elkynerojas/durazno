@@ -31,11 +31,25 @@ class Etiqueta:
     tipo: str
 
 
-def _ajustar_fuente(canvas: Canvas, texto: str, fuente: str, tamano: float, ancho: float) -> float:
+def _ajustar_fuente(
+    canvas: Canvas, texto: str, fuente: str, tamano: float, ancho: float, minimo: float = 6
+) -> float:
     """Reduce el tamaño hasta que el texto quepa en `ancho` (códigos ICA largos)."""
-    while tamano > 6 and canvas.stringWidth(texto, fuente, tamano) > ancho:
+    while tamano > minimo and canvas.stringWidth(texto, fuente, tamano) > ancho:
         tamano -= 0.5
     return tamano
+
+
+def _encabezado(canvas: Canvas, predio: str, fuente: str, tamano: float, ancho: float) -> str:
+    """«PREDIO · PNMF» en el ancho de la etiqueta: si aun con la letra mínima no cabe, se recorta
+    el nombre del predio con «…» y se conserva «· PNMF»."""
+    sufijo = " · PNMF"
+    nombre = predio.upper()
+    if canvas.stringWidth(nombre + sufijo, fuente, tamano) <= ancho:
+        return nombre + sufijo
+    while nombre and canvas.stringWidth(nombre.rstrip() + "…" + sufijo, fuente, tamano) > ancho:
+        nombre = nombre[:-1]
+    return nombre.rstrip() + "…" + sufijo
 
 
 def _dibujar_qr(canvas: Canvas, codigo: str, x: float, y: float) -> None:
@@ -78,16 +92,23 @@ def _dibujar_etiqueta(
     arriba = y + alto - RELLENO
 
     canvas.setFillColor(GRIS_GUIA)
-    canvas.setFont("Helvetica-Bold", 6.5)
-    canvas.drawString(texto_x, arriba - 0.3 * cm, f"{predio} · PNMF".upper()[:40])
+    encabezado = f"{predio} · PNMF".upper()
+    tamano = _ajustar_fuente(canvas, encabezado, "Helvetica-Bold", 6.5, texto_ancho, minimo=5)
+    canvas.setFont("Helvetica-Bold", tamano)
+    canvas.drawString(
+        texto_x,
+        arriba - 0.3 * cm,
+        _encabezado(canvas, predio, "Helvetica-Bold", tamano, texto_ancho),
+    )
 
     canvas.setFillColor(black)
-    tamano = _ajustar_fuente(canvas, etiqueta.codigo_ica, "Courier-Bold", 15, texto_ancho)
+    tamano = _ajustar_fuente(canvas, etiqueta.codigo_ica, "Courier-Bold", 15, texto_ancho, minimo=5)
     canvas.setFont("Courier-Bold", tamano)
     canvas.drawString(texto_x, arriba - 1.2 * cm, etiqueta.codigo_ica)
 
-    canvas.setFont("Helvetica", 9)
-    canvas.drawString(texto_x, arriba - 1.9 * cm, f"Lote {etiqueta.lote}")
+    texto_lote = f"Lote {etiqueta.lote}"
+    canvas.setFont("Helvetica", _ajustar_fuente(canvas, texto_lote, "Helvetica", 9, texto_ancho))
+    canvas.drawString(texto_x, arriba - 1.9 * cm, texto_lote)
     tamano = _ajustar_fuente(canvas, etiqueta.tipo, "Helvetica", 9, texto_ancho)
     canvas.setFont("Helvetica", tamano)
     canvas.drawString(texto_x, arriba - 2.4 * cm, etiqueta.tipo)

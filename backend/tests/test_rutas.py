@@ -371,7 +371,10 @@ async def test_solo_el_agronomo_cambia_el_orden(cliente, crear_usuario, datos, a
 
 async def test_id_de_ruta_de_otro_lote_responde_409(cliente, datos, agronomo, session):
     ruta = (await _crear(cliente, agronomo, datos, "t1", "t3", "t2")).json()
-    otro_lote = await session.scalar(select(Lote).where(Lote.codigo == "L-02"))
+    # Solo los vigentes: la base de desarrollo puede tener otros «L-02» (ocultos en la prueba).
+    otro_lote = await session.scalar(
+        select(Lote).where(Lote.codigo == "L-02", Lote.deleted_at.is_(None))
+    )
     respuesta = await cliente.post(
         URL,
         json={"id": ruta["id"], "lote_id": str(otro_lote.id), "trampas": [str(datos["ajena"].id)]},
