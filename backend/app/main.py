@@ -6,6 +6,7 @@ from app.api.errores import documentar_errores
 from app.api.origen import origen_permitido
 from app.api.v1.router import api_router
 from app.core.config import ENTORNOS_LOCALES, get_settings
+from app.core.version import VERSION
 
 settings = get_settings()
 # Swagger y ReDoc cargan scripts de un CDN en el mismo origen que la sesión: solo en desarrollo.
@@ -14,7 +15,7 @@ documentacion = settings.environment in ENTORNOS_LOCALES
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version=VERSION,
     description=(
         "Servicios de trazabilidad geolocalizada del trampeo de moscas de la fruta "
         "en durazno (vereda Icota, Cácota). Documentación OpenAPI para la "

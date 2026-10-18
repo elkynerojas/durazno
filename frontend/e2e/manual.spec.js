@@ -422,6 +422,19 @@ test('administrador y agrónomo', async ({ page }) => {
     .click({ timeout: 5000 })
     .catch(() => {})
   await captura(page, '22-usuario-nuevo', { espera: 600 })
+  await page.getByRole('button', { name: 'Ayuda' }).click()
+  await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.0.0')
+  await captura(page, '25-ayuda', { espera: 600 })
+})
+
+test('logo para la portada', async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 600 })
+  await page.goto('/persica-logo.svg')
+  await page.locator('svg').evaluate((svg) => {
+    svg.setAttribute('width', '600')
+    svg.setAttribute('height', '600')
+  })
+  await page.locator('svg').screenshot({ path: ruta('logo'), omitBackground: true })
 })
 
 test('técnico en el teléfono', async ({ page, context }) => {

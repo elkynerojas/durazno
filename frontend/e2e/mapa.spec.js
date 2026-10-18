@@ -944,3 +944,22 @@ test('el técnico registra una lectura desde «Lecturas de trampa» eligiendo la
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Lecturas de trampa')
   await expect(page.getByRole('listitem', { name: `Lectura de ${codigo}` })).toBeVisible()
 })
+
+// --- Ayuda: versión, créditos y manual de usuario ---
+
+test('«Ayuda» muestra la versión y abre el manual de usuario en PDF', async ({ page }) => {
+  // En el teléfono el menú está plegado.
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('button', { name: 'Ayuda' }).click()
+  const ayuda = page.getByRole('dialog', { name: 'Ayuda' })
+  await expect(ayuda).toContainText('Versión1.0.0')
+  await expect(ayuda).toContainText('Servicios (API)1.0.0')
+  const manual = ayuda.getByRole('link', { name: 'Manual de usuario (PDF)' })
+  await expect(manual).toHaveAttribute('href', '/manual-usuario.pdf')
+  const respuesta = await page.request.get('/manual-usuario.pdf')
+  expect(respuesta.status()).toBe(200)
+  expect(respuesta.headers()['content-type']).toContain('application/pdf')
+  expect((await respuesta.body()).subarray(0, 4).toString()).toBe('%PDF')
+  await page.keyboard.press('Escape')
+  await expect(ayuda).toHaveCount(0)
+})

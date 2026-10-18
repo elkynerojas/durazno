@@ -1111,6 +1111,8 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 > validación, MTD y reporte ICA, historial, administración del predio y las cuentas, preguntas
 > frecuentes y glosario. Las capturas salen de `frontend/e2e/manual.spec.js` (a pedido, con
 > `MANUAL=1`) sobre un predio de demostración con datos ficticios; `docs/manual/generar.js` arma el
-> Word. Falta la revisión del director.
+> Word (`preparar-imagenes.py` arma las imágenes) y `generar-pdf.sh` el PDF con el índice ya
+> paginado, publicado en `frontend/public/manual-usuario.pdf` y enlazado desde «Ayuda» en el menú
+> (versión 1.0.0 del aplicativo y de la API, y créditos). Falta la revisión del director.
 - [ ] `HU-38.2` [Doc] Informe final del trabajo de grado
 - [ ] `HU-38.3` [Doc] Presentación de la sustentación

@@ -7,6 +7,8 @@
 //    primera página de los PDF como 23-etiquetas-pdf(-recorte).jpg y 24-reporte-mtd-pdf.jpg, y el
 //    logo (frontend/public/persica-logo.svg) como logo.png.
 // 3. npm install docx@9 && node generar.js
+// 4. PDF (frontend/public/manual-usuario.pdf): ver generar-pdf.sh, que convierte con LibreOffice y
+//    escribe el índice con las páginas reales.
 const fs = require('fs')
 const path = require('path')
 const {
@@ -26,13 +28,14 @@ const {
   Table,
   TableCell,
   TableOfContents,
+  TabStopType,
   TableRow,
   TextRun,
   WidthType,
   VerticalAlign,
 } = require('docx')
 
-const IMG = path.join(__dirname, 'img')
+const IMG = process.env.MANUAL_IMG || path.join(__dirname, 'img')
 const VERDE = '1F5A32'
 const VERDE_CLARO = 'E8F1EA'
 const DURAZNO = 'C4572E'
@@ -66,9 +69,15 @@ function runs(texto, base = {}) {
 
 const p = (texto, opciones = {}) =>
   new Paragraph({ children: runs(texto), spacing: { after: 120 }, ...opciones })
-const h1 = (texto) =>
-  new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(texto)] })
-const h2 = (texto) => new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(texto)] })
+const titulos = []
+const h1 = (texto) => {
+  titulos.push({ texto, nivel: 1 })
+  return new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(texto)] })
+}
+const h2 = (texto) => {
+  titulos.push({ texto, nivel: 2 })
+  return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(texto)] })
+}
 const h3 = (texto) => new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(texto)] })
 const vinetas = (items) =>
   items.map((t) => new Paragraph({ numbering: { reference: 'vinetas', level: 0 }, children: runs(t), spacing: { after: 60 } }))
@@ -235,7 +244,19 @@ const portada = [
 
 const indice = [
   new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: 'Contenido', bold: true, size: 32, color: VERDE })], spacing: { after: 240 } }),
-  new TableOfContents('Contenido', { headingStyleRange: '1-2' }),
+  // Para el PDF (convertido con LibreOffice) el índice va escrito con las páginas ya conocidas:
+  // MANUAL_TOC apunta a un JSON [{ texto, nivel, pagina }]. En el Word queda el campo de Word.
+  ...(process.env.MANUAL_TOC
+    ? JSON.parse(fs.readFileSync(process.env.MANUAL_TOC, 'utf8')).map(
+        ({ texto, nivel, pagina }) =>
+          new Paragraph({
+            tabStops: [{ type: TabStopType.RIGHT, position: ANCHO_PAGINA, leader: 'dot' }],
+            indent: { left: nivel === 2 ? 280 : 0 },
+            spacing: { after: 20 },
+            children: [new TextRun({ text: `${texto}\t${pagina}`, size: 19, bold: nivel === 1 })],
+          }),
+      )
+    : [new TableOfContents('Contenido', { headingStyleRange: '1-2' })]),
 ]
 
 const introduccion = [
@@ -343,6 +364,7 @@ const ingreso = [
       ['**MTD e historial**', 'Índice MTD, reporte para el ICA e historial de capturas. Capítulo 11.'],
       ['**Predio**', 'Datos y límite del predio; para el administrador, personal y todos los predios. Capítulo 12.'],
       ['**Usuarios**', 'Cuentas del personal (solo administrador). Capítulo 12.'],
+      ['**Ayuda**', 'Versión del aplicativo, créditos y este manual en PDF. Sección 3.3.'],
     ],
     [2600, 6760],
   ),
@@ -350,6 +372,12 @@ const ingreso = [
   p(
     'Al pie del menú aparecen la semana ISO actual, su rol, su nombre y el botón **Salir** para cerrar la sesión. La etiqueta **API ok** confirma que hay conexión con el servidor.',
   ),
+  h2('3.3 Ayuda'),
+  p(
+    'La opción **Ayuda**, al final del menú, abre una ventana con la versión del aplicativo y de sus servicios (API), los créditos del proyecto y el botón **Manual de usuario (PDF)**, que abre este manual en una pestaña nueva para consultarlo o descargarlo. La ventana se cierra con **Cerrar**, con la tecla Esc o tocando fuera de ella.',
+  ),
+  ...figura('25-ayuda.jpg', 'Ventana de Ayuda con la versión, los créditos y el enlace al manual.'),
+  nota('Al reportar un problema al administrador, indique la versión que aparece en esta ventana.'),
 ]
 
 const mapa = [
@@ -799,6 +827,7 @@ const doc = new Document({
 })
 
 const salida = process.argv[2] || path.join(__dirname, 'Manual_de_usuario_PERSICA.docx')
+if (process.env.MANUAL_TITULOS) fs.writeFileSync(process.env.MANUAL_TITULOS, JSON.stringify(titulos))
 Packer.toBuffer(doc).then((buffer) => {
   fs.writeFileSync(salida, buffer)
   console.log(`${salida} · ${figuras} figuras · ${(buffer.length / 1e6).toFixed(1)} MB`)

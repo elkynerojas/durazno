@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, NavLink } from 'react-router'
 
 import { useSesion } from '../features/auth/useSesion'
@@ -7,6 +7,7 @@ import { ROLES } from '../features/usuarios/roles'
 import { rangoSemana, semanaIso } from '../utils/fechas'
 import EstadoApi from './EstadoApi'
 import Logo from './Logo'
+import ModalAyuda from './ModalAyuda'
 
 // Secciones del aplicativo; algunas solo para ciertos roles.
 const SECCIONES = [
@@ -26,6 +27,8 @@ export default function Plantilla({ children }) {
   const { usuario, salir } = useSesion()
   const { predios, predio, seleccionar } = usePredio()
   const [abierto, setAbierto] = useState(false)
+  const [ayuda, setAyuda] = useState(false)
+  const cerrarAyuda = useCallback(() => setAyuda(false), [])
   const semana = semanaIso()
 
   return (
@@ -67,6 +70,17 @@ export default function Plantilla({ children }) {
               {s.texto}
             </NavLink>
           ))}
+          <button
+            type="button"
+            className="lateral__ayuda"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setAbierto(false)
+              setAyuda(true)
+            }}
+          >
+            Ayuda
+          </button>
         </nav>
 
         <div className="lateral__pie">
@@ -89,6 +103,7 @@ export default function Plantilla({ children }) {
         </div>
       </aside>
       <main className="principal">{children}</main>
+      {ayuda && <ModalAyuda alCerrar={cerrarAyuda} />}
     </div>
   )
 }

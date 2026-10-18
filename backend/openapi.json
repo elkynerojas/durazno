@@ -3,7 +3,7 @@
   "info": {
     "title": "PERSICA API",
     "description": "Servicios de trazabilidad geolocalizada del trampeo de moscas de la fruta en durazno (vereda Icota, Cácota). Documentación OpenAPI para la integración de la aplicación móvil (fase 2).",
-    "version": "0.1.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -7791,6 +7791,11 @@
       },
       "EstadoSalud": {
         "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Versión del aplicativo"
+          },
           "api": {
             "type": "string",
             "title": "Api"
@@ -7813,6 +7818,7 @@
         },
         "type": "object",
         "required": [
+          "version",
           "api",
           "base_datos"
         ],

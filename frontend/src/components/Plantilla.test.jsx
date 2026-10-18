@@ -110,4 +110,20 @@ describe('Plantilla', () => {
     await userEvent.setup().click(boton)
     expect(boton).toHaveAttribute('aria-expanded', 'true')
   })
+
+  it('«Ayuda» abre el modal con la versión y el manual, y se cierra', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ version: '1.0.0' }) })),
+    )
+    const usuarioEvento = userEvent.setup()
+    renderizar('tecnico')
+    const boton = screen.getByRole('button', { name: 'Ayuda' })
+    await usuarioEvento.click(boton)
+    expect(screen.getByRole('dialog', { name: 'Ayuda' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manual de usuario (PDF)' })).toBeInTheDocument()
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(boton).toHaveFocus()
+  })
 })
