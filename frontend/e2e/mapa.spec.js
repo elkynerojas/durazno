@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import {
   CLAVE,
   asegurarPredio,
+  crearTrampasE2E,
   dibujarLote,
   ingresar,
   limpiarDatosE2E,
@@ -239,4 +240,98 @@ test('el mapa muestra el estado de monitoreo de las trampas y filtra por lote', 
   await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigo })
   await expect(page.getByRole('region', { name: 'Lote seleccionado' })).toContainText(codigo)
   await expect(page.locator('.marcador-trampa')).toHaveCount(1)
+})
+
+// --- Rutas de monitoreo (HU-19) ---
+
+const ordenEnLista = async (page) =>
+  (
+    await page
+      .getByRole('list', { name: 'Orden de visita' })
+      .locator('.parada__codigo')
+      .allTextContents()
+  ).map((c) => c.trim())
+
+test('el agrónomo define la ruta de un lote: propuesta, ajuste, mapa y guardado', async ({
+  page,
+}) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  // Sobre una diagonal: 1 en un extremo, 3 en el medio y 2 en el otro extremo.
+  const [c1, c2, c3] = await crearTrampasE2E(page, lote, [
+    [0.2, 0.2],
+    [0.8, 0.8],
+    [0.5, 0.5],
+  ])
+
+  await page.goto('/rutas')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: `${lote} · 3 trampas` })
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    `Ruta de monitoreo · Lote ${lote}`,
+  )
+  // Sin ruta guardada se propone el recorrido por cercanía: de un extremo al otro.
+  await expect(page.getByText(/Propuesta por cercanía/)).toBeVisible()
+  const propuesta = await ordenEnLista(page)
+  expect([propuesta, [...propuesta].reverse()]).toContainEqual([c1, c3, c2])
+  await expect(page.getByText('La ruta incluye las 3 trampas activas del lote')).toBeVisible()
+  await expect(page.locator('.leaflet-overlay-pane path')).not.toHaveCount(0)
+  await expect(page.locator('.mapa-tarjeta__leyenda')).toContainText(/Recorrido: ≈ [\d.]+ m/)
+
+  // Ajuste con las flechas y guardado: el servidor calcula la distancia.
+  await page.getByRole('button', { name: `Subir ${propuesta[2]}` }).click()
+  const ajustada = [propuesta[0], propuesta[2], propuesta[1]]
+  expect(await ordenEnLista(page)).toEqual(ajustada)
+  await page.getByRole('button', { name: 'Guardar ruta' }).click()
+  await expect(page.getByText('Ruta guardada.')).toBeVisible()
+  await expect(page.locator('.mapa-tarjeta__leyenda')).toContainText(/Recorrido: [\d.]+ m/)
+
+  // Orden con clics sucesivos en el mapa.
+  await page.getByRole('button', { name: 'Ordenar en el mapa' }).click()
+  await expect(page.getByText('Faltan 3 de 3 trampas')).toBeVisible()
+  for (const codigo of [c2, c3, c1]) {
+    await page.locator(`.leaflet-marker-icon[title="Agregar ${codigo}"]`).click()
+  }
+  expect(await ordenEnLista(page)).toEqual([c2, c3, c1])
+  await page.getByRole('button', { name: 'Guardar ruta' }).click()
+  await expect(page.getByText('Ruta guardada.')).toBeVisible()
+
+  await page.reload()
+  await expect.poll(() => ordenEnLista(page)).toEqual([c2, c3, c1])
+})
+
+test('se reordena arrastrando la lista', async ({ page }) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await crearTrampasE2E(page, lote, [
+    [0.2, 0.2],
+    [0.5, 0.5],
+    [0.8, 0.8],
+  ])
+  await page.goto('/rutas')
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: `${lote} · 3 trampas` })
+  await expect(page.getByText(/Propuesta por cercanía/)).toBeVisible()
+  const antes = await ordenEnLista(page)
+
+  // Arrastre con el dedo (eventos táctiles reales): tocar la manija, sostener y deslizar.
+  const manijas = page.locator('.parada__manija')
+  await page.getByRole('list', { name: 'Orden de visita' }).scrollIntoViewIfNeeded()
+  const origen = await manijas.nth(0).boundingBox()
+  const destino = await manijas.nth(2).boundingBox()
+  const x = origen.x + origen.width / 2
+  const y0 = origen.y + origen.height / 2
+  const y1 = destino.y + destino.height / 2 + 12
+  const cdp = await page.context().newCDPSession(page)
+  const tocar = (type, y) =>
+    cdp.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+    })
+  await tocar('touchStart', y0)
+  await page.waitForTimeout(400)
+  for (let paso = 1; paso <= 15; paso++) {
+    await tocar('touchMove', y0 + ((y1 - y0) * paso) / 15)
+    await page.waitForTimeout(20)
+  }
+  await tocar('touchEnd')
+  await expect.poll(() => ordenEnLista(page)).toEqual([antes[1], antes[2], antes[0]])
 })

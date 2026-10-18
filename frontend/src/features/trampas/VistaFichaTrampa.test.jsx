@@ -58,7 +58,22 @@ describe('VistaFichaTrampa', () => {
       'href',
       '/trampas?trampa=t-1',
     )
+    expect(screen.getByText('Sin ruta definida')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('indica la posición de la trampa en la ruta del lote', async () => {
+    simularFetch(
+      respuestaJson(200, {
+        ...RESUELTA,
+        ruta: { id: 'r-1', orden: 2, total: 6, siguiente: 'ICA-0032' },
+      }),
+    )
+    renderizar()
+
+    expect(
+      await screen.findByRole('link', { name: 'Parada 2 de 6 · sigue ICA-0032' }),
+    ).toHaveAttribute('href', '/rutas?lote=l-3')
   })
 
   it('indica en la ficha que la trampa fue retirada', async () => {

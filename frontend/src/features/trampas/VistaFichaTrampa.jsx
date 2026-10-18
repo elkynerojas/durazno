@@ -55,7 +55,7 @@ export default function VistaFichaTrampa() {
   )
 }
 
-function Ficha({ trampa, lote, ultima_lectura }) {
+function Ficha({ trampa, lote, ruta, ultima_lectura }) {
   const { usuario } = useSesion()
   const { predio } = usePredio()
   const navegar = useNavigate()
@@ -115,6 +115,17 @@ function Ficha({ trampa, lote, ultima_lectura }) {
             <dd>
               {lote.codigo}
               {lote.nombre ? ` · ${lote.nombre}` : ''}
+            </dd>
+            <dt>Ruta</dt>
+            <dd>
+              {ruta ? (
+                <Link to={`/rutas?lote=${lote.id}`}>
+                  Parada {ruta.orden} de {ruta.total}
+                  {ruta.siguiente ? ` · sigue ${ruta.siguiente}` : ' · última'}
+                </Link>
+              ) : (
+                'Sin ruta definida'
+              )}
             </dd>
             <dt>Coordenadas</dt>
             <dd>

@@ -120,6 +120,16 @@ export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
 
 export const listarTrampas = (predioId) => api(`/trampas?predio_id=${predioId}`)
 
+export const listarRutas = (loteId) => api(`/rutas?lote_id=${loteId}`)
+
+// Orden propuesto por vecino más cercano (no se guarda).
+export const proponerRuta = (loteId) => api(`/rutas/propuesta?lote_id=${loteId}`)
+
+export const crearRuta = (datos) => api('/rutas', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarRuta = (id, trampas) =>
+  api(`/rutas/${id}`, { metodo: 'PUT', cuerpo: { trampas } })
+
 // Lotes y trampas del predio (FeatureCollection) con el estado de monitoreo de cada trampa.
 export const obtenerMapa = (predioId) => api(`/mapa?predio_id=${predioId}`)
 

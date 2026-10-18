@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     lotes,
     mapa,
     predios,
+    rutas,
     trampas,
     usuarios,
 )
@@ -20,6 +21,7 @@ api_router.include_router(lotes.router)
 api_router.include_router(trampas.router)
 api_router.include_router(exportar.router)
 api_router.include_router(mapa.router)
+api_router.include_router(rutas.router)
 
 # Grupos de servicios previstos (Tabla 2 de la propuesta). Regístralos aquí
 # a medida que se implementen, cada uno en app/api/v1/endpoints/<grupo>.py:

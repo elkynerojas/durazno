@@ -574,7 +574,7 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 ### HU-19 · Definir la ruta de un lote
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S3 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 8 · **Sprint:** S3 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero fijar el orden de visita de las trampas de cada lote, para que ningún punto de monitoreo se omita.
 
 **Criterios de aceptación**
@@ -586,11 +586,26 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 **Tareas**
 
-- [ ] `HU-19.1` [BD] Modelos ruta y ruta_trampa con orden
-- [ ] `HU-19.2` [API] CRUD /rutas con validación de completitud
-- [ ] `HU-19.3` [API] Propuesta por vecino más cercano (distancia geodésica)
-- [ ] `HU-19.4` [Web] Lista arrastrable y polilínea del recorrido
-- [ ] `HU-19.5` [Pruebas] Omisión, duplicado y trampa retirada
+- [x] `HU-19.1` [BD] Modelos ruta y ruta_trampa con orden
+- [x] `HU-19.2` [API] CRUD /rutas con validación de completitud
+- [x] `HU-19.3` [API] Propuesta por vecino más cercano (distancia geodésica)
+- [x] `HU-19.4` [Web] Lista arrastrable y polilínea del recorrido
+- [x] `HU-19.5` [Pruebas] Omisión, duplicado y trampa retirada
+
+> Una ruta vigente por lote (`uq_ruta_lote`); sus paradas (`ruta_trampa`) se reemplazan con
+> `PUT` y las anteriores quedan con borrado lógico. `POST`/`PUT /rutas` exigen todas las trampas
+> activas del lote una sola vez (422 con lo que falta, sobra o se repite); distancias geodésicas
+> con `ST_Distance` sobre `geography`. `GET /rutas/propuesta?lote_id=` aplica vecino más cercano
+> probando cada trampa como inicio (o `inicio_id`) y no guarda nada. El QR (`/trampas/qr/...`)
+> ahora trae `ruta` (`orden`, `total`, `siguiente`) y la ficha `/t/...` lo muestra. Web `/rutas`:
+> propuesta automática si el lote no tiene ruta, lista arrastrable con el dedo (`@dnd-kit/react`)
+> o con flechas, orden con toques sucesivos en el mapa, línea del recorrido y distancia (≈ hasta
+> guardar). Si cambian las trampas del lote, la vista quita las no activas y agrega las nuevas al
+> final con un aviso; el marcado «requiere revisión» queda para HU-20. Tiempo estimado y
+> frecuencia del mockup no se implementan (frecuencia va con la planeación, HU-21).
+> Auditoría: la propuesta corre fuera del bucle de eventos y prueba como máximo 50 inicios. Se
+> aceptan: el 409 por `id` ya usado confirma que ese UUID existe (como en lotes), y el listado
+> por predio consulta cada ruta por separado (paginar si los lotes crecen mucho).
 
 ### HU-20 · Avisar rutas desactualizadas
 

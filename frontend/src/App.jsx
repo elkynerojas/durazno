@@ -9,6 +9,7 @@ import VistaLotes from './features/lotes/VistaLotes'
 import VistaMapa from './features/mapa/VistaMapa'
 import VistaPredio from './features/predio/VistaPredio'
 import VistaPredios from './features/predios/VistaPredios'
+import VistaRutas from './features/rutas/VistaRutas'
 import VistaFichaTrampa from './features/trampas/VistaFichaTrampa'
 import VistaTrampas from './features/trampas/VistaTrampas'
 import VistaUsuarios from './features/usuarios/VistaUsuarios'
@@ -42,6 +43,14 @@ export default function App() {
                 element={
                   <PorPredio>
                     <VistaTrampas />
+                  </PorPredio>
+                }
+              />
+              <Route
+                path="/rutas"
+                element={
+                  <PorPredio>
+                    <VistaRutas />
                   </PorPredio>
                 }
               />

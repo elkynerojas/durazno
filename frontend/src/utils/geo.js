@@ -61,3 +61,16 @@ export const contarVertices = (poligono) => poligono.coordinates[0].length - 1
 
 // Dos geometrías GeoJSON (o null) iguales por contenido, no por referencia.
 export const mismaGeometria = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+// Distancia aproximada (haversine) entre dos puntos GeoJSON, en metros. Solo para mostrarla
+// mientras se edita una ruta: la oficial la calcula el servidor con ST_Distance sobre geography.
+export function distanciaAproximadaM(a, b) {
+  const [lng1, lat1] = a.coordinates
+  const [lng2, lat2] = b.coordinates
+  const h =
+    Math.sin(aRadianes(lat2 - lat1) / 2) ** 2 +
+    Math.cos(aRadianes(lat1)) *
+      Math.cos(aRadianes(lat2)) *
+      Math.sin(aRadianes(lng2 - lng1) / 2) ** 2
+  return 2 * RADIO_TIERRA_M * Math.asin(Math.sqrt(h))
+}

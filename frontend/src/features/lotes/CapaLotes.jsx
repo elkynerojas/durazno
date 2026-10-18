@@ -6,7 +6,8 @@ import { estiloLote } from '../mapa/colores'
 
 // Polígonos de los lotes. Con `editandoId`, activa la edición de vértices de ese lote y
 // expone su forma actual a través de `refCapas` (id → capa de Leaflet). `colorSeleccionado`
-// previsualiza el color que se está eligiendo para el lote seleccionado.
+// previsualiza el color que se está eligiendo para el lote seleccionado. Sin `etiquetas`, no
+// muestra el código en el centro (p. ej. en las rutas, donde taparía las paradas).
 export default function CapaLotes({
   lotes,
   lotesIniciales,
@@ -16,6 +17,7 @@ export default function CapaLotes({
   alSeleccionar,
   refCapas,
   version = 0,
+  etiquetas = true,
 }) {
   const map = useMap()
 
@@ -49,9 +51,11 @@ export default function CapaLotes({
         else refCapas.current.delete(lote.id)
       }}
     >
-      <Tooltip direction="center" permanent className="etiqueta-lote">
-        {lote.codigo}
-      </Tooltip>
+      {etiquetas && (
+        <Tooltip direction="center" permanent className="etiqueta-lote">
+          {lote.codigo}
+        </Tooltip>
+      )}
     </Polygon>
   ))
 }

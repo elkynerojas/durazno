@@ -92,3 +92,51 @@ export async function limpiarDatosE2E(page) {
   })
   await page.reload()
 }
+
+// Crea por la API trampas activas dentro del lote, en los puntos dados como fracciones de su
+// rectángulo ([fx, fy], 0..1). Devuelve los códigos ICA en el mismo orden.
+export async function crearTrampasE2E(page, codigoLote, fracciones) {
+  return page.evaluate(
+    async ({ codigoLote, fracciones, sufijo }) => {
+      const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+      const cabeceras = {
+        Authorization: `Bearer ${(await renovar.json()).access_token}`,
+        'Content-Type': 'application/json',
+      }
+      const predioId = localStorage.getItem('icota.predio')
+      const lotes = await (
+        await fetch(`/api/v1/lotes?predio_id=${predioId}`, { headers: cabeceras })
+      ).json()
+      const lote = lotes.find((l) => l.codigo === codigoLote)
+      const [esquina, , opuesta] = lote.geom.coordinates[0]
+      const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(
+        new Date(),
+      )
+      const codigos = []
+      for (const [i, [fx, fy]] of fracciones.entries()) {
+        const codigo = `ICA-E2E-${sufijo}-${i + 1}`
+        await fetch('/api/v1/trampas', {
+          method: 'POST',
+          headers: cabeceras,
+          body: JSON.stringify({
+            lote_id: lote.id,
+            codigo_ica: codigo,
+            tipo: 'jackson',
+            atrayente: 'Trimedlure',
+            fecha_instalacion: hoy,
+            geom: {
+              type: 'Point',
+              coordinates: [
+                esquina[0] + (opuesta[0] - esquina[0]) * fx,
+                esquina[1] + (opuesta[1] - esquina[1]) * fy,
+              ],
+            },
+          }),
+        })
+        codigos.push(codigo)
+      }
+      return codigos
+    },
+    { codigoLote, fracciones, sufijo: Date.now() % 1_000_000 },
+  )
+}

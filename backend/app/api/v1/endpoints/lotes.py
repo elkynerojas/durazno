@@ -3,13 +3,14 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.acceso import ROLES_GESTION, exigir_lote, exigir_predio
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.models.lote import Lote
 from app.models.predio import Predio
+from app.models.ruta import Ruta
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
 from app.schemas.geo import PoligonoGeoJSON, a_geometria
@@ -207,4 +208,10 @@ async def eliminar_lote(lote_id: uuid.UUID, usuario: GestionDep, session: Sessio
             detail="El lote tiene trampas registradas: muévalas o elimínelas antes de borrarlo",
         )
     lote.deleted_at = datetime.now(UTC)
+    # La ruta del lote (sin trampas ya) se va con él.
+    await session.execute(
+        update(Ruta)
+        .where(Ruta.lote_id == lote.id, Ruta.deleted_at.is_(None))
+        .values(deleted_at=lote.deleted_at)
+    )
     await session.commit()

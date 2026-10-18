@@ -99,15 +99,24 @@ class LoteResumen(BaseModel):
     nombre: str | None
 
 
+class RutaDeTrampa(BaseModel):
+    """Posición de una trampa en la ruta de su lote (al resolver su QR)."""
+
+    id: uuid.UUID
+    orden: int
+    total: int = Field(description="Número de paradas de la ruta")
+    siguiente: str | None = Field(description="Código ICA de la siguiente trampa; `null` al final")
+
+
 class TrampaResuelta(BaseModel):
     """Lo que necesita el técnico al leer el QR de una trampa en campo."""
 
     trampa: TrampaLeer
     lote: LoteResumen
-    ruta: None = Field(
+    ruta: RutaDeTrampa | None = Field(
         default=None,
-        description="Ruta de monitoreo del lote y posición de la trampa en ella. Siempre `null` "
-        "hasta que existan las rutas (HU-19).",
+        description="Posición de la trampa en la ruta de monitoreo de su lote; `null` si el lote "
+        "no tiene ruta o la trampa no está en ella.",
     )
     ultima_lectura: None = Field(
         default=None,

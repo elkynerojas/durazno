@@ -28,6 +28,7 @@ from app.schemas.trampa import (
 )
 from app.services.etiquetas import Etiqueta, generar_pdf
 from app.services.qr import ALFABETO, LONGITUD, generar_codigo, qr_png, qr_svg
+from app.services.rutas import ruta_de_trampa
 from app.services.trampas import punto_en_lote
 
 router = APIRouter(tags=["trampas"])
@@ -161,8 +162,8 @@ async def listar_trampas_del_lote(
     summary="Resolver el código QR de una trampa",
     description="Servicio que usa la app móvil al leer una etiqueta: recibe el código corto del "
     "QR (`<QR_URL_BASE>/t/<código>`, sin distinguir mayúsculas) y devuelve la trampa con su "
-    "lote. Una trampa retirada se resuelve igual y lo indica en `trampa.estado`; una trampa "
-    "eliminada ya no se resuelve.",
+    "lote y su posición en la ruta del lote. Una trampa retirada se resuelve igual y lo indica "
+    "en `trampa.estado`; una trampa eliminada ya no se resuelve.",
     responses={
         **ERROR_401,
         404: {"description": "No hay ninguna trampa con ese código QR"},
@@ -206,7 +207,7 @@ async def resolver_qr(codigo: str, usuario: UsuarioActualDep, session: SessionDe
     trampa, lote = fila
     # Un código de otro predio responde igual que uno inexistente.
     await exigir_predio(session, usuario, lote.predio_id, detalle_404=no_existe.detail)
-    return {"trampa": trampa, "lote": lote}
+    return {"trampa": trampa, "lote": lote, "ruta": await ruta_de_trampa(session, trampa.id)}
 
 
 @router.get(
