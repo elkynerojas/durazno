@@ -349,3 +349,27 @@ async def test_advierte_si_el_lote_sale_del_limite_del_predio(cliente, predio, a
     assert respuesta.status_code == 201
     [aviso] = respuesta.json()["advertencias"]
     assert aviso.startswith("El lote sale del límite del predio (")
+
+
+async def test_color_del_lote(cliente, predio, agronomo):
+    creado = await cliente.post(
+        URL,
+        json={"predio_id": str(predio.id), "codigo": "L-01", "color": "#4ADE80", "geom": A},
+        headers=encabezados(agronomo),
+    )
+    assert creado.status_code == 201
+    assert creado.json()["color"] == "#4ade80"
+    url = f"{URL}/{creado.json()['id']}"
+
+    otro = await cliente.patch(url, json={"color": "#e63946"}, headers=encabezados(agronomo))
+    assert otro.json()["color"] == "#e63946"
+    sin_color = await cliente.patch(url, json={"color": None}, headers=encabezados(agronomo))
+    assert sin_color.json()["color"] is None
+
+
+@pytest.mark.parametrize("color", ["verde", "#12345", "4ade80"])
+async def test_color_del_lote_invalido_responde_422(cliente, predio, agronomo, lote_a, color):
+    respuesta = await cliente.patch(
+        f"{URL}/{lote_a.id}", json={"color": color}, headers=encabezados(agronomo)
+    )
+    assert respuesta.status_code == 422

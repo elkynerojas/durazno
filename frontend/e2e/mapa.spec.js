@@ -38,6 +38,22 @@ test('el agrónomo dibuja un lote, ve su área y lo elimina', async ({ page }) =
   await expect(page.getByRole('row', { name: new RegExp(codigo) })).toHaveCount(0)
 })
 
+test('el color elegido del lote se ve en el mapa y se conserva al abrirlo por enlace', async ({
+  page,
+}) => {
+  const codigo = `E2E-${Date.now() % 1_000_000}`
+  const formulario = await dibujarLote(page, codigo)
+  await formulario.getByLabel('Color en el mapa').fill('#00b4d8')
+  await expect(page.locator('.leaflet-overlay-pane path[stroke="#00b4d8"]')).toHaveCount(1)
+  await formulario.getByRole('button', { name: 'Guardar cambios' }).click()
+  await expect(formulario.getByText('Polígono válido.', { exact: false })).toBeVisible()
+
+  await page.reload()
+  await expect(formulario.getByLabel('Código')).toHaveValue(codigo)
+  await expect(formulario.getByLabel('Color en el mapa')).toHaveValue('#00b4d8')
+  await expect(page.locator('.leaflet-overlay-pane path[stroke="#00b4d8"]')).toHaveCount(1)
+})
+
 test('el agrónomo ubica una trampa en su lote y descarga el QR', async ({ page }) => {
   const sufijo = Date.now() % 1_000_000
   const codigoLote = `E2E-T${sufijo}`
@@ -134,7 +150,9 @@ test('el administrador crea un predio desde Predios y lo elimina', async ({ page
   await expect(page.getByRole('row', { name: new RegExp(nombre) })).toHaveCount(0)
 })
 
-test('se dibuja el límite del predio y el servidor calcula su área', async ({ page }) => {
+test('se dibuja el límite del predio con su color y el servidor calcula su área', async ({
+  page,
+}) => {
   await page.goto('/predio')
   const formulario = page.getByRole('form', { name: 'Datos del predio' })
   await expect(formulario.getByLabel('Nombre')).toHaveValue('Predio E2E')
@@ -150,6 +168,8 @@ test('se dibuja el límite del predio y el servidor calcula su área', async ({ 
     await page.mouse.click(...(await puntoDelMapa(page, fx, fy)))
   }
   await expect(formulario.getByLabel('Área (hectáreas)')).toHaveValue(/^≈ [\d.,]+ ha$/)
+  await formulario.getByLabel('Color del límite en el mapa').fill('#ff006e')
+  await expect(page.locator('.leaflet-overlay-pane path[stroke="#ff006e"]')).toHaveCount(1)
   await formulario.getByRole('button', { name: 'Guardar' }).click()
   await expect(formulario.getByText('Datos del predio guardados.')).toBeVisible()
   // Ya guardada, el área es la calculada por el servidor (sin «≈»).

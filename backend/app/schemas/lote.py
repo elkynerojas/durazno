@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.color import ColorHex
 from app.schemas.geo import PoligonoGeoJSON, a_geojson
 
 Codigo = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
@@ -26,6 +27,9 @@ class LoteCrear(BaseModel):
     predio_id: uuid.UUID = Field(description="Predio al que pertenece el lote")
     codigo: Codigo = Field(description="Código único dentro del predio, p. ej. `L-01`")
     nombre: NombreLote | None = None
+    color: ColorHex | None = Field(
+        default=None, description="Color del lote en los mapas (`#rrggbb`)"
+    )
     geom: PoligonoGeoJSON
 
 
@@ -34,11 +38,16 @@ class LoteActualizar(BaseModel):
 
     codigo: Codigo | None = None
     nombre: NombreLote | None = Field(default=None, description="`null` borra el nombre")
+    color: ColorHex | None = Field(
+        default=None, description="`#rrggbb`; `null` vuelve al color de la aplicación"
+    )
     geom: PoligonoGeoJSON | None = None
 
     @model_validator(mode="after")
     def _rechazar_nulos(self) -> "LoteActualizar":
-        nulos = sorted(c for c in self.model_fields_set - {"nombre"} if getattr(self, c) is None)
+        nulos = sorted(
+            c for c in self.model_fields_set - {"nombre", "color"} if getattr(self, c) is None
+        )
         if nulos:
             raise ValueError(f"Estos campos no admiten null: {', '.join(nulos)}")
         return self
@@ -51,6 +60,7 @@ class LoteLeer(BaseModel):
     predio_id: uuid.UUID
     codigo: str
     nombre: str | None
+    color: str | None
     area_ha: float = Field(description="Área geodésica calculada en el servidor")
     geom: PoligonoGeoJSON
     created_at: datetime

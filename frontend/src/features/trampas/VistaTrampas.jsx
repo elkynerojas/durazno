@@ -159,6 +159,7 @@ export default function VistaTrampas() {
             <MapaPredio ref={setMapa}>
               <CapaLimitePredio
                 limite={predio.limite}
+                color={predio.color_limite}
                 encuadrar={datos.lotesIniciales?.length === 0}
               />
               <CapaLotes

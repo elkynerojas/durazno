@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -101,6 +101,33 @@ describe('FormularioPredio', () => {
     expect(
       await screen.findByText('El lote L-02 sale del límite del predio (120 m²)'),
     ).toBeInTheDocument()
+  })
+
+  it('con límite se elige su color y se envía', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(200, { ...PREDIO, limite: LIMITE }))
+    const usuarioEvento = userEvent.setup()
+    const alCambiarColor = vi.fn()
+    const predio = { ...PREDIO, limite: LIMITE, color_limite: '#ffffff' }
+    render(
+      <FormularioPredio
+        predio={predio}
+        editable
+        alCambiarColor={alCambiarColor}
+        alGuardar={vi.fn()}
+      />,
+    )
+
+    const selector = screen.getByLabelText('Color del límite en el mapa')
+    expect(selector).toHaveValue('#ffffff')
+    fireEvent.input(selector, { target: { value: '#ff006e' } })
+    expect(alCambiarColor).toHaveBeenLastCalledWith('#ff006e')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(cuerpoEnviado(fetchSimulado).color_limite).toBe('#ff006e')
+  })
+
+  it('sin límite no muestra el color del límite', () => {
+    render(<FormularioPredio predio={PREDIO} editable alGuardar={vi.fn()} />)
+    expect(screen.queryByLabelText('Color del límite en el mapa')).not.toBeInTheDocument()
   })
 
   it('al editar vértices lee el límite del mapa al guardar', async () => {

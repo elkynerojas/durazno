@@ -12,6 +12,7 @@ class Lote(EntidadSincronizable, Base):
     __tablename__ = "lote"
     __table_args__ = (
         CheckConstraint("area_ha > 0", name="area_positiva"),
+        CheckConstraint("color ~ '^#[0-9a-f]{6}$'", name="color_hex"),
         # Código único dentro de cada predio entre los lotes vigentes, sin distinguir mayúsculas.
         Index(
             "uq_lote_predio_codigo",
@@ -30,3 +31,5 @@ class Lote(EntidadSincronizable, Base):
     geom: Mapped[WKBElement] = mapped_column(
         Geometry("POLYGON", srid=4326, spatial_index=True), nullable=False
     )
+    # Color del lote en los mapas; null usa el de la aplicación.
+    color: Mapped[str | None] = mapped_column(String(7), nullable=True)

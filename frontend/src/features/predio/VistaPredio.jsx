@@ -7,19 +7,20 @@ import Plantilla from '../../components/Plantilla'
 import { geojsonALeaflet, leafletAGeojson, mismaGeometria } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import CapaLotes from '../lotes/CapaLotes'
+import { estiloLimite } from '../mapa/colores'
 import EditorPoligono from '../lotes/EditorPoligono'
 import { useDatosPredio } from '../mapa/useDatosPredio'
 import FormularioPredio from '../predios/FormularioPredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_GESTION } from '../usuarios/roles'
 
-const ESTILO_LIMITE = {
-  color: '#17322a',
-  weight: 3,
-  dashArray: '10 6',
-  fillColor: '#e8875a',
+// En esta vista el límite se edita: con relleno tenue e interactivo para Geoman.
+const estiloEditable = (color) => ({
+  ...estiloLimite(color),
+  fill: true,
   fillOpacity: 0.08,
-}
+  interactive: true,
+})
 
 // Datos del predio actual y su límite (polígono). El agrónomo asignado o el administrador los
 // editan; con límite, el área la calcula el servidor.
@@ -31,6 +32,9 @@ export default function VistaPredio() {
   const [mapa, setMapa] = useState(null)
   // Límite pendiente de guardar (GeoJSON o null si se quitó).
   const [limite, setLimite] = useState(predio.limite)
+  // Color del límite elegido en el formulario (undefined: el guardado).
+  const [colorPrevio, setColorPrevio] = useState(undefined)
+  const color = colorPrevio !== undefined ? colorPrevio : predio.color_limite
   const [dibujando, setDibujando] = useState(false)
   const [editando, setEditando] = useState(false)
   // Sube para volver a pintar el polígono (tras dibujar o guardar).
@@ -69,6 +73,7 @@ export default function VistaPredio() {
   function alGuardar(guardado) {
     setLimite(guardado.limite)
     setEditando(false)
+    setColorPrevio(undefined)
     setVersion((v) => v + 1)
     recargar()
   }
@@ -141,7 +146,7 @@ export default function VistaPredio() {
                   key={version}
                   ref={refLimite}
                   positions={geojsonALeaflet(limite)}
-                  pathOptions={ESTILO_LIMITE}
+                  pathOptions={estiloEditable(color)}
                 />
               )}
               {editable && (
@@ -161,6 +166,7 @@ export default function VistaPredio() {
             limite={limite}
             obtenerLimite={editando ? leerLimite : undefined}
             editable={editable}
+            alCambiarColor={setColorPrevio}
             alGuardar={alGuardar}
           />
         </section>

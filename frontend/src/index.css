@@ -648,9 +648,8 @@ button {
   border-radius: 50%;
 }
 
-.leyenda__muestra--lote {
-  background: rgb(43 110 84 / 35%);
-  border-color: var(--verde-600);
+.leyenda__muestra--limite {
+  border-style: dashed;
 }
 
 .etiqueta-lote {
@@ -1305,4 +1304,18 @@ button {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--borde);
+}
+
+.selector-color {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.formulario .selector-color input[type='color'] {
+  width: 64px;
+  margin-bottom: 0;
+  padding: 0.25rem;
+  cursor: pointer;
 }

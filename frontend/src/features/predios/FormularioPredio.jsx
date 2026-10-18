@@ -3,23 +3,40 @@ import { useState } from 'react'
 import { actualizarPredio, crearPredio } from '../../api/client'
 import { formatoHa } from '../../utils/formato'
 import { areaAproximadaHa, mismaGeometria } from '../../utils/geo'
+import { COLOR_LIMITE } from '../mapa/colores'
 
-const VACIO = { nombre: '', vereda: '', municipio: 'Cácota', registro_ica: '', area_ha: '' }
+const VACIO = {
+  nombre: '',
+  vereda: '',
+  municipio: 'Cácota',
+  registro_ica: '',
+  area_ha: '',
+  color_limite: null,
+}
 
 function aFormulario(predio) {
   if (!predio) return VACIO
-  const { nombre, vereda, municipio, registro_ica, area_ha } = predio
-  return { nombre, vereda, municipio, registro_ica: registro_ica ?? '', area_ha: String(area_ha) }
+  const { nombre, vereda, municipio, registro_ica, area_ha, color_limite } = predio
+  return {
+    nombre,
+    vereda,
+    municipio,
+    registro_ica: registro_ica ?? '',
+    area_ha: String(area_ha),
+    color_limite: color_limite ?? null,
+  }
 }
 
 // Datos de un predio. Sin `predio` crea uno nuevo (administrador); con `predio` lo actualiza.
 // `limite`: límite a enviar si se dibujó uno nuevo (`null` lo quita; sin la prop, se conserva el
 // actual). `obtenerLimite`: lo lee del mapa al guardar, si se están editando los vértices.
+// `alCambiarColor` avisa el color del límite elegido para previsualizarlo en el mapa.
 export default function FormularioPredio({
   predio,
   limite,
   obtenerLimite,
   editable,
+  alCambiarColor,
   alGuardar,
   alCancelar,
 }) {
@@ -32,6 +49,11 @@ export default function FormularioPredio({
 
   const cambiar = (campo) => (evento) =>
     setDatos((previos) => ({ ...previos, [campo]: evento.target.value }))
+
+  function cambiarColor(color) {
+    setDatos((previos) => ({ ...previos, color_limite: color }))
+    alCambiarColor?.(color)
+  }
 
   const limiteActual = limite !== undefined ? limite : (predio?.limite ?? null)
   // Con límite, el área la calcula el servidor: aquí solo se muestra (aproximada si cambió).
@@ -134,6 +156,24 @@ export default function FormularioPredio({
             )}
           </div>
         </div>
+        {limiteActual && (
+          <>
+            <label htmlFor="color_limite">Color del límite en el mapa</label>
+            <div className="selector-color">
+              <input
+                id="color_limite"
+                type="color"
+                value={datos.color_limite ?? COLOR_LIMITE}
+                onChange={(e) => cambiarColor(e.target.value)}
+              />
+              {datos.color_limite && (
+                <button type="button" className="enlace" onClick={() => cambiarColor(null)}>
+                  Usar el color por defecto
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </fieldset>
 
       <p className="formulario__nota">

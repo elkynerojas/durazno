@@ -225,6 +225,7 @@ _Soporte de todos los módulos._ Entorno, integración continua, usuarios con ro
 - [x] `HU-07.3` [Web] Formulario de datos del predio
 - [x] `HU-07.4` [Web] Dibujar, editar y quitar el límite del predio; verlo en los mapas
 - [x] `HU-07.5` [API] Área desde el límite y advertencia de lotes por fuera
+- [x] `HU-07.6` [API/Web] Color del límite del predio en los mapas
 
 > Un solo predio garantizado en la base (índice único parcial `uq_predio_unico` sobre las filas
 > sin `deleted_at`). `GET /predio` para cualquier rol con sesión; `PUT /predio` solo el agrónomo
@@ -322,6 +323,7 @@ _Objetivo 3 · módulo i._ Polígonos de lotes y trampas como puntos validados d
 - [x] `HU-09.4` [Web] Utilidad de conversión [lat, lng] ↔ GeoJSON
 - [x] `HU-09.5` [Web] Capa de lotes con Leaflet-Geoman y formulario
 - [x] `HU-09.6` [Pruebas] Polígono inválido, traslape y borrado lógico
+- [x] `HU-09.7` [API/Web] Color propio de cada lote en los mapas
 
 > `/lotes`: consulta cualquier rol; crea, edita y elimina (borrado lógico) el agrónomo. Exige el
 > predio registrado (409). Área geodésica `ST_Area(geography)` guardada en `area_ha`; polígono

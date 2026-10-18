@@ -150,7 +150,12 @@ async def crear_lote(
             response.status_code = status.HTTP_200_OK
             return await _con_advertencias(session, existente)
 
-    lote = Lote(predio_id=entrada.predio_id, codigo=entrada.codigo, nombre=entrada.nombre)
+    lote = Lote(
+        predio_id=entrada.predio_id,
+        codigo=entrada.codigo,
+        nombre=entrada.nombre,
+        color=entrada.color,
+    )
     if entrada.id is not None:
         lote.id = entrada.id
     await _aplicar_geometria(session, lote, entrada.geom)
@@ -163,7 +168,8 @@ async def crear_lote(
     response_model=LoteGuardado,
     summary="Editar un lote",
     description="Cambia solo los campos enviados. Si cambia `geom`, se valida y se recalcula el "
-    "área. `nombre: null` borra el nombre; los demás campos no admiten `null`.",
+    "área. `nombre: null` borra el nombre y `color: null` vuelve al color de la aplicación; "
+    "los demás campos no admiten `null`.",
     responses={**ERROR_401, **ERROR_403, **ERROR_404, **ERROR_409, **ERROR_422},
 )
 async def actualizar_lote(

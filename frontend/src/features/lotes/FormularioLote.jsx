@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { actualizarLote, crearLote, eliminarLote } from '../../api/client'
 import { formatoHa } from '../../utils/formato'
 import { areaAproximadaHa, contarVertices } from '../../utils/geo'
+import { COLOR_LOTE } from '../mapa/colores'
 
 function mensajeDeError(error) {
   if (typeof error.detalle === 'string') return error.detalle
@@ -12,6 +13,7 @@ function mensajeDeError(error) {
 
 // «Datos del lote». Sin `lote` registra uno nuevo con `geomNueva` (dibujada en el mapa).
 // `advertencias` (o null) viene del último guardado; `obtenerForma` da el polígono editado.
+// `alCambiarColor` avisa el color elegido para previsualizarlo en el mapa.
 export default function FormularioLote({
   predioId,
   lote,
@@ -20,6 +22,7 @@ export default function FormularioLote({
   editable,
   editandoForma = false,
   obtenerForma,
+  alCambiarColor,
   alGuardar,
   alEliminar,
 }) {
@@ -28,6 +31,8 @@ export default function FormularioLote({
   const [id] = useState(() => globalThis.crypto?.randomUUID?.())
   const [codigo, setCodigo] = useState(lote?.codigo ?? '')
   const [nombre, setNombre] = useState(lote?.nombre ?? '')
+  // null: el color por defecto de la aplicación.
+  const [color, setColor] = useState(lote?.color ?? null)
   const [error, setError] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [confirmarBorrado, setConfirmarBorrado] = useState(false)
@@ -49,11 +54,13 @@ export default function FormularioLote({
             predio_id: predioId,
             codigo,
             ...(nombre.trim() && { nombre }),
+            ...(color && { color }),
             geom: geomNueva,
           })
         : await actualizarLote(lote.id, {
             codigo,
             nombre: nombre.trim() || null,
+            color,
             ...(editandoForma && { geom: obtenerForma() }),
           })
       alGuardar(guardado)
@@ -106,6 +113,31 @@ export default function FormularioLote({
           maxLength={100}
           placeholder="Ej. Lote alto junto a la quebrada"
         />
+
+        <label htmlFor="color_lote">Color en el mapa</label>
+        <div className="selector-color">
+          <input
+            id="color_lote"
+            type="color"
+            value={color ?? COLOR_LOTE}
+            onChange={(e) => {
+              setColor(e.target.value)
+              alCambiarColor?.(e.target.value)
+            }}
+          />
+          {color && (
+            <button
+              type="button"
+              className="enlace"
+              onClick={() => {
+                setColor(null)
+                alCambiarColor?.(null)
+              }}
+            >
+              Usar el color por defecto
+            </button>
+          )}
+        </div>
       </fieldset>
 
       {editable && nuevo && !geomNueva && (

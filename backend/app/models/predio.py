@@ -10,7 +10,10 @@ from app.db.base import Base, EntidadSincronizable
 class Predio(EntidadSincronizable, Base):
     __tablename__ = "predio"
     # Varios predios: cada usuario ve los que tiene asignados (predio_usuario).
-    __table_args__ = (CheckConstraint("area_ha > 0", name="area_positiva"),)
+    __table_args__ = (
+        CheckConstraint("area_ha > 0", name="area_positiva"),
+        CheckConstraint("color_limite ~ '^#[0-9a-f]{6}$'", name="color_limite_hex"),
+    )
 
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
     vereda: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -20,3 +23,5 @@ class Predio(EntidadSincronizable, Base):
     limite: Mapped[WKBElement | None] = mapped_column(
         Geometry("POLYGON", srid=4326, spatial_index=True), nullable=True
     )
+    # Color del límite en los mapas; null usa el de la aplicación.
+    color_limite: Mapped[str | None] = mapped_column(String(7), nullable=True)

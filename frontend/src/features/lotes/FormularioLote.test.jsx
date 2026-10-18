@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -90,7 +90,7 @@ describe('FormularioLote', () => {
 
     await usuarioEvento.clear(screen.getByLabelText('Nombre o referencia'))
     await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-    expect(cuerpoEnviado(fetchSimulado)).toEqual({ codigo: 'L-01', nombre: null })
+    expect(cuerpoEnviado(fetchSimulado)).toEqual({ codigo: 'L-01', nombre: null, color: null })
     expect(obtenerForma).not.toHaveBeenCalled()
 
     rerender(
@@ -105,6 +105,37 @@ describe('FormularioLote', () => {
     await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(cuerpoEnviado(fetchSimulado).geom).toEqual(GEOM)
     expect(fetchSimulado.mock.calls.at(-1)[0]).toBe('/api/v1/lotes/l-1')
+  })
+
+  it('envía el color elegido y lo avisa para previsualizarlo', async () => {
+    const fetchSimulado = simularFetch(
+      respuestaJson(200, { ...LOTE, color: '#e63946', advertencias: [] }),
+      respuestaJson(200, { ...LOTE, advertencias: [] }),
+    )
+    const usuarioEvento = userEvent.setup()
+    const alCambiarColor = vi.fn()
+    renderizar({ lote: LOTE, alCambiarColor })
+
+    const selector = screen.getByLabelText('Color en el mapa')
+    expect(selector).toHaveValue('#4ade80')
+    fireEvent.input(selector, { target: { value: '#e63946' } })
+    expect(alCambiarColor).toHaveBeenLastCalledWith('#e63946')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(cuerpoEnviado(fetchSimulado).color).toBe('#e63946')
+
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Usar el color por defecto' }))
+    expect(alCambiarColor).toHaveBeenLastCalledWith(null)
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(cuerpoEnviado(fetchSimulado).color).toBeNull()
+  })
+
+  it('un lote nuevo solo envía el color si se eligió', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(201, { ...LOTE, advertencias: [] }))
+    const usuarioEvento = userEvent.setup()
+    renderizar({ geomNueva: GEOM })
+    await usuarioEvento.type(screen.getByLabelText('Código'), 'L-09')
+    await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar lote' }))
+    expect(cuerpoEnviado(fetchSimulado)).not.toHaveProperty('color')
   })
 
   it('pide confirmación antes de eliminar', async () => {

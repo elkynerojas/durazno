@@ -12,6 +12,7 @@ import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_GESTION } from '../usuarios/roles'
 import CapaLotes from '../lotes/CapaLotes'
+import { COLOR_LIMITE, COLOR_LOTE } from './colores'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
 import CapaTrampas from '../trampas/CapaTrampas'
 import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from '../trampas/catalogo'
@@ -103,6 +104,7 @@ export default function VistaMapa() {
             <MapaPredio>
               <CapaLimitePredio
                 limite={predio.limite}
+                color={predio.color_limite}
                 encuadrar={datos.lotesIniciales?.length === 0}
               />
               {capas.lotes && (
@@ -125,9 +127,21 @@ export default function VistaMapa() {
           </div>
           <div className="mapa-tarjeta__leyenda">
             <span>
-              <i className="leyenda__muestra leyenda__muestra--lote" />
+              <i
+                className="leyenda__muestra"
+                style={{ borderColor: COLOR_LOTE, background: `${COLOR_LOTE}55` }}
+              />
               Lote
             </span>
+            {predio.limite && (
+              <span>
+                <i
+                  className="leyenda__muestra leyenda__muestra--limite"
+                  style={{ borderColor: predio.color_limite ?? COLOR_LIMITE }}
+                />
+                Límite del predio
+              </span>
+            )}
             <span>
               <i className="leyenda__muestra leyenda__muestra--circulo" />
               Jackson

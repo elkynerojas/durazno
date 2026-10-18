@@ -12,6 +12,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.color import ColorHex
 from app.schemas.geo import PoligonoGeoJSON, a_geojson
 
 Nombre = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)]
@@ -41,6 +42,10 @@ class PredioGuardar(BaseModel):
     limite: PoligonoGeoJSON | None = Field(
         default=None, description="Límite del predio (opcional). `null` lo elimina."
     )
+    color_limite: ColorHex | None = Field(
+        default=None,
+        description="Color del límite en los mapas (`#rrggbb`). `null` usa el de la aplicación.",
+    )
 
     @model_validator(mode="after")
     def _area_o_limite(self) -> "PredioGuardar":
@@ -59,6 +64,7 @@ class PredioLeer(BaseModel):
     registro_ica: str | None
     area_ha: float
     limite: PoligonoGeoJSON | None
+    color_limite: str | None
     created_at: datetime
     updated_at: datetime
 

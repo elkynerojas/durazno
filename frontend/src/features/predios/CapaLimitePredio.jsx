@@ -2,12 +2,11 @@ import { useEffect } from 'react'
 import { Polygon, useMap } from 'react-leaflet'
 
 import { geojsonALeaflet } from '../../utils/geo'
-
-const ESTILO = { color: '#17322a', weight: 3, dashArray: '10 6', fill: false, interactive: false }
+import { estiloLimite } from '../mapa/colores'
 
 // Contorno del límite del predio. Con `encuadrar`, el mapa se ajusta al límite (cuando el predio
 // aún no tiene lotes que encuadrar).
-export default function CapaLimitePredio({ limite, encuadrar = false }) {
+export default function CapaLimitePredio({ limite, color, encuadrar = false }) {
   const map = useMap()
 
   useEffect(() => {
@@ -16,5 +15,5 @@ export default function CapaLimitePredio({ limite, encuadrar = false }) {
   }, [map, limite, encuadrar])
 
   if (!limite) return null
-  return <Polygon positions={geojsonALeaflet(limite)} pathOptions={ESTILO} />
+  return <Polygon positions={geojsonALeaflet(limite)} pathOptions={estiloLimite(color)} />
 }

@@ -27,6 +27,8 @@ export default function VistaLotes() {
   const [loteId, setLoteId] = useState(parametros.get('lote'))
   const [geomNueva, setGeomNueva] = useState(null)
   const [advertencias, setAdvertencias] = useState(null)
+  // Color elegido en el formulario y aún sin guardar (undefined: sin cambios).
+  const [colorPrevio, setColorPrevio] = useState(undefined)
   const [dibujando, setDibujando] = useState(false)
   const [editandoForma, setEditandoForma] = useState(false)
   // Sube al cancelar una edición de forma para volver a pintar los polígonos guardados.
@@ -53,6 +55,7 @@ export default function VistaLotes() {
     if (dibujando || editandoForma) return
     setLoteId(otro?.id ?? null)
     setGeomNueva(null)
+    setColorPrevio(undefined)
     setAdvertencias(null)
     setParametros(otro ? { lote: otro.id } : {}, { replace: true })
   }
@@ -72,6 +75,7 @@ export default function VistaLotes() {
     datos.guardarLote(guardado)
     setLoteId(guardado.id)
     setGeomNueva(null)
+    setColorPrevio(undefined)
     setEditandoForma(false)
     setAdvertencias(avisos)
     setParametros({ lote: guardado.id }, { replace: true })
@@ -140,12 +144,14 @@ export default function VistaLotes() {
             <MapaPredio ref={setMapa}>
               <CapaLimitePredio
                 limite={predio.limite}
+                color={predio.color_limite}
                 encuadrar={datos.lotesIniciales?.length === 0}
               />
               <CapaLotes
                 lotes={datos.lotes}
                 lotesIniciales={loteId ? null : datos.lotesIniciales}
                 seleccionadoId={loteId}
+                colorSeleccionado={colorPrevio}
                 editandoId={editandoForma ? loteId : null}
                 alSeleccionar={seleccionar}
                 refCapas={refCapas}
@@ -166,13 +172,15 @@ export default function VistaLotes() {
         <section className="tarjeta">
           <FormularioLote
             predioId={predio.id}
-            key={loteId ?? `nuevo-${reinicio}`}
+            // Se vuelve a montar cuando el lote termina de cargar (p. ej. al abrirlo por enlace).
+            key={lote?.id ?? (loteId ? `cargando-${loteId}` : `nuevo-${reinicio}`)}
             lote={lote}
             geomNueva={geomNueva}
             advertencias={advertencias}
             editable={editable}
             editandoForma={editandoForma}
             obtenerForma={() => leafletAGeojson(refCapas.current.get(loteId).getLatLngs())}
+            alCambiarColor={setColorPrevio}
             alGuardar={alGuardar}
             alEliminar={(id) => {
               datos.quitarLote(id)

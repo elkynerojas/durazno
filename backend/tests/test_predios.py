@@ -288,3 +288,28 @@ async def test_advierte_los_lotes_por_fuera_del_limite(cliente, admin, dos_predi
     assert respuesta.status_code == 200
     [aviso] = respuesta.json()["advertencias"]
     assert aviso.startswith("El lote L-2 sale del límite del predio (")
+
+
+async def test_color_del_limite(cliente, admin, dos_predios):
+    a, _ = dos_predios
+    url = f"{URL}/{a.id}"
+    guardado = await cliente.put(
+        url, json=_datos(color_limite="#FFD60A"), headers=encabezados(admin)
+    )
+    assert guardado.status_code == 200
+    assert guardado.json()["color_limite"] == "#ffd60a"
+    leido = await cliente.get(url, headers=encabezados(admin))
+    assert leido.json()["color_limite"] == "#ffd60a"
+
+    # PUT reemplaza el predio: sin el color vuelve al de la aplicación.
+    sin_color = await cliente.put(url, json=_datos(), headers=encabezados(admin))
+    assert sin_color.json()["color_limite"] is None
+
+
+@pytest.mark.parametrize("color", ["rojo", "#12345", "#1234567", "ffd60a", "#ggg000"])
+async def test_color_del_limite_invalido_responde_422(cliente, admin, dos_predios, color):
+    a, _ = dos_predios
+    respuesta = await cliente.put(
+        f"{URL}/{a.id}", json=_datos(color_limite=color), headers=encabezados(admin)
+    )
+    assert respuesta.status_code == 422
