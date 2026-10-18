@@ -546,7 +546,7 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 ### HU-18 · Ver el estado del predio en el mapa
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S3 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 5 · **Sprint:** S3 · **Responsable:** Luis
 - **Historia:** Como agrónomo, quiero ver los lotes y las trampas con su estado de monitoreo, para detectar de un vistazo qué falta revisar.
 
 **Criterios de aceptación**
@@ -558,10 +558,19 @@ _Objetivo 3 · módulo iii._ Vista del predio con el estado de cada trampa y ord
 
 **Tareas**
 
-- [ ] `HU-18.1` [API] GET /mapa con FeatureCollection y estado calculado
-- [ ] `HU-18.2` [Web] Íconos por tipo y estado, y leyenda
-- [ ] `HU-18.3` [Web] Filtro por lote y encuadre automático
-- [ ] `HU-18.4` [Pruebas] Cálculo del estado de monitoreo
+- [x] `HU-18.1` [API] GET /mapa con FeatureCollection y estado calculado
+- [x] `HU-18.2` [Web] Íconos por tipo y estado, y leyenda
+- [x] `HU-18.3` [Web] Filtro por lote y encuadre automático
+- [x] `HU-18.4` [Pruebas] Cálculo del estado de monitoreo
+
+> `GET /mapa?predio_id=` (o `lote_id=`; cualquier rol con el predio asignado) devuelve una
+> FeatureCollection con lotes y trampas, `resumen`, `umbrales` y `fecha`. Estado de monitoreo de
+> las trampas activas (`services/monitoreo.py`): `al_dia` con menos de 7 días sin revisión,
+> `pendiente` desde 7 y `vencida` desde 14; las inactivas y retiradas no se monitorean. Umbrales
+> **provisionales** (revisión semanal del Manual ICA): acordarlos con el agrónomo de Icota. Hasta
+> HU-25 no hay lecturas: los días se cuentan desde la instalación y `ultima_lectura` llega en
+> `null`; completarlo allí. En la web: relleno del ícono por estado de monitoreo, ventana al tocar
+> la trampa, indicador «Trampas por revisar», filtro por lote con encuadre.
 
 ### HU-19 · Definir la ruta de un lote
 

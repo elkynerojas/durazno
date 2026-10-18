@@ -1319,3 +1319,63 @@ button {
   padding: 0.25rem;
   cursor: pointer;
 }
+
+/* Monitoreo de las trampas activas (HU-18): relleno según los días sin revisión. */
+.marcador-trampa--al_dia,
+.leyenda__muestra--al_dia {
+  background: #3fae6a;
+}
+
+.marcador-trampa--pendiente,
+.leyenda__muestra--pendiente {
+  background: #f2c037;
+}
+
+.marcador-trampa--vencida,
+.leyenda__muestra--vencida {
+  background: #d93a2b;
+}
+
+.insignia--al_dia {
+  color: var(--verde-700);
+  background: var(--verde-100);
+}
+
+.insignia--pendiente {
+  color: var(--ambar-texto);
+  background: var(--ambar-fondo);
+}
+
+.insignia--vencida {
+  color: var(--error);
+  background: var(--error-fondo);
+}
+
+.filtro-lote {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.filtro-lote select {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.ventana-trampa {
+  min-width: 180px;
+  font-family: var(--fuente);
+}
+
+.ventana-trampa p {
+  margin: 0.15rem 0;
+}
+
+.ventana-trampa__titulo {
+  font-weight: 600;
+}

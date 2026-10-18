@@ -181,3 +181,62 @@ test('se dibuja el límite del predio con su color y el servidor calcula su áre
   await formulario.getByRole('button', { name: 'Guardar' }).click()
   await expect(formulario.getByText('Datos del predio guardados.')).toBeVisible()
 })
+
+test('el mapa muestra el estado de monitoreo de las trampas y filtra por lote', async ({
+  page,
+}) => {
+  const codigo = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, codigo)
+  const codigoIca = `ICA-E2E-${Date.now() % 1_000_000}`
+  // Trampa instalada hace 10 días y sin lecturas: le toca revisión (pendiente).
+  await page.evaluate(
+    async ({ codigo, codigoIca }) => {
+      const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+      const cabeceras = {
+        Authorization: `Bearer ${(await renovar.json()).access_token}`,
+        'Content-Type': 'application/json',
+      }
+      const predioId = localStorage.getItem('icota.predio')
+      const lotes = await (
+        await fetch(`/api/v1/lotes?predio_id=${predioId}`, { headers: cabeceras })
+      ).json()
+      const lote = lotes.find((l) => l.codigo === codigo)
+      const anillo = lote.geom.coordinates[0]
+      const centro = [0, 1].map((i) => (anillo[0][i] + anillo[2][i]) / 2)
+      // Fecha en la zona del predio, como la calcula el servidor.
+      const hace10 = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(
+        new Date(Date.now() - 10 * 86_400_000),
+      )
+      await fetch('/api/v1/trampas', {
+        method: 'POST',
+        headers: cabeceras,
+        body: JSON.stringify({
+          lote_id: lote.id,
+          codigo_ica: codigoIca,
+          tipo: 'mcphail',
+          atrayente: 'Proteína hidrolizada',
+          fecha_instalacion: hace10,
+          geom: { type: 'Point', coordinates: centro },
+        }),
+      })
+    },
+    { codigo, codigoIca },
+  )
+
+  await page.goto('/mapa')
+  const indicador = page.locator('.tarjeta', { hasText: 'Trampas por revisar' })
+  await expect(indicador).toContainText('1 pendientes')
+  const marcador = page.locator('.marcador-trampa--pendiente')
+  await expect(marcador).toHaveCount(1)
+  await expect(page.locator('.mapa-tarjeta__leyenda')).toContainText('Vencida')
+
+  await marcador.click()
+  const ventana = page.getByLabel(`Trampa ${codigoIca}`)
+  await expect(ventana).toContainText('Pendiente')
+  await expect(ventana).toContainText('10 días desde la instalación')
+  await expect(ventana).toContainText('sin lecturas aún')
+
+  await page.getByLabel('Lote', { exact: true }).selectOption({ label: codigo })
+  await expect(page.getByRole('region', { name: 'Lote seleccionado' })).toContainText(codigo)
+  await expect(page.locator('.marcador-trampa')).toHaveCount(1)
+})

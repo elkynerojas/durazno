@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useMap } from 'react-leaflet'
 import { Link } from 'react-router'
 
 import Encabezado from '../../components/Encabezado'
@@ -6,7 +7,7 @@ import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
 import { fechaCorta } from '../../utils/fechas'
 import { formatoCoordenada, formatoHa } from '../../utils/formato'
-import { puntoALeaflet } from '../../utils/geo'
+import { geojsonALeaflet, puntoALeaflet } from '../../utils/geo'
 import { useSesion } from '../auth/useSesion'
 import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
@@ -15,25 +16,37 @@ import CapaLotes from '../lotes/CapaLotes'
 import { COLOR_LIMITE, COLOR_LOTE } from './colores'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
 import CapaTrampas from '../trampas/CapaTrampas'
-import { ESTADOS_TRAMPA, TIPOS_TRAMPA } from '../trampas/catalogo'
+import { ESTADOS_TRAMPA, MONITOREO, TIPOS_TRAMPA } from '../trampas/catalogo'
 import BotonesExportar from './BotonesExportar'
-import { useDatosPredio } from './useDatosPredio'
+import { dias, textoRevision } from './monitoreo'
+import { useMapa } from './useMapa'
 
-// Vista general del predio: indicadores, mapa de consulta y ficha de lo seleccionado.
+// Vista general del predio: indicadores, mapa con el estado de monitoreo de las trampas (HU-18),
+// filtro por lote y ficha de lo seleccionado.
 export default function VistaMapa() {
   const { usuario } = useSesion()
   const editable = ROLES_GESTION.includes(usuario.rol)
   const { predio } = usePredio()
-  const datos = useDatosPredio(predio?.id)
+  const mapa = useMapa(predio?.id)
   const [capas, setCapas] = useState({ lotes: true, trampas: true })
+  // Lote elegido en el filtro ('' = todos).
+  const [loteFiltro, setLoteFiltro] = useState('')
   // { lote } o { trampa } seleccionado en el mapa.
   const [seleccion, setSeleccion] = useState(null)
   const refCapas = useRef(new Map())
 
-  const activas = datos.trampas.filter((t) => t.estado === 'activa')
+  const lotes = loteFiltro ? mapa.lotes.filter((l) => l.id === loteFiltro) : mapa.lotes
+  const trampas = loteFiltro ? mapa.trampas.filter((t) => t.lote_id === loteFiltro) : mapa.trampas
+  const activas = trampas.filter((t) => t.estado === 'activa')
   const porTipo = (tipo) => activas.filter((t) => t.tipo === tipo).length
-  const areaTotal = datos.lotes.reduce((suma, l) => suma + l.area_ha, 0)
-  const noActivas = datos.trampas.length - activas.length
+  const porMonitoreo = (estado) => activas.filter((t) => t.monitoreo === estado).length
+  const areaTotal = lotes.reduce((suma, l) => suma + l.area_ha, 0)
+  const noActivas = trampas.length - activas.length
+
+  function filtrar(loteId) {
+    setLoteFiltro(loteId)
+    setSeleccion(loteId ? { lote: mapa.lotes.find((l) => l.id === loteId) } : null)
+  }
 
   const alternar = (capa) => setCapas((c) => ({ ...c, [capa]: !c[capa] }))
 
@@ -55,16 +68,16 @@ export default function VistaMapa() {
           </>
         )}
       </Encabezado>
-      {datos.error && (
+      {mapa.error && (
         <p className="formulario__error" role="alert">
-          {datos.error}
+          {mapa.error}
         </p>
       )}
 
       <div className="indicadores">
         <Indicador
           etiqueta="Lotes registrados"
-          valor={datos.lotes.length}
+          valor={lotes.length}
           detalle={`${formatoHa.format(areaTotal)} ha delimitadas`}
         />
         <Indicador
@@ -73,9 +86,14 @@ export default function VistaMapa() {
           detalle={`${porTipo('jackson')} Jackson · ${porTipo('mcphail')} McPhail`}
         />
         <Indicador
+          etiqueta="Trampas por revisar"
+          valor={porMonitoreo('pendiente') + porMonitoreo('vencida')}
+          detalle={`${porMonitoreo('vencida')} vencidas · ${porMonitoreo('pendiente')} pendientes`}
+        />
+        <Indicador
           etiqueta="Trampas inactivas o retiradas"
           valor={noActivas}
-          detalle={`${datos.trampas.length} trampas registradas en total`}
+          detalle={`${trampas.length} trampas registradas en total`}
         />
       </div>
 
@@ -98,6 +116,18 @@ export default function VistaMapa() {
                 </button>
               ))}
             </div>
+            <div className="filtro-lote">
+              <label htmlFor="filtro_lote">Lote</label>
+              <select id="filtro_lote" value={loteFiltro} onChange={(e) => filtrar(e.target.value)}>
+                <option value="">Todos los lotes</option>
+                {mapa.lotes.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.codigo}
+                    {l.nombre ? ` · ${l.nombre}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <p className="mapa-tarjeta__ayuda">Toque un lote o una trampa para ver su ficha</p>
           </div>
           <div className="mapa-tarjeta__lienzo">
@@ -105,12 +135,13 @@ export default function VistaMapa() {
               <CapaLimitePredio
                 limite={predio.limite}
                 color={predio.color_limite}
-                encuadrar={datos.lotesIniciales?.length === 0}
+                encuadrar={mapa.lotesIniciales?.length === 0}
               />
+              <EncuadreFiltro lotes={lotes} filtro={loteFiltro} />
               {capas.lotes && (
                 <CapaLotes
-                  lotes={datos.lotes}
-                  lotesIniciales={datos.lotesIniciales}
+                  lotes={lotes}
+                  lotesIniciales={mapa.lotesIniciales}
                   seleccionadoId={seleccion?.lote?.id}
                   alSeleccionar={(lote) => setSeleccion({ lote })}
                   refCapas={refCapas}
@@ -118,9 +149,10 @@ export default function VistaMapa() {
               )}
               {capas.trampas && (
                 <CapaTrampas
-                  trampas={datos.trampas}
+                  trampas={trampas}
                   seleccionadaId={seleccion?.trampa?.id}
                   alSeleccionar={(trampa) => setSeleccion({ trampa })}
+                  ventana={(trampa) => <VentanaTrampa trampa={trampa} />}
                 />
               )}
             </MapaPredio>
@@ -150,6 +182,14 @@ export default function VistaMapa() {
               <i className="leyenda__muestra" />
               McPhail
             </span>
+            {Object.entries(MONITOREO).map(([clave, texto]) => (
+              <span key={clave}>
+                <i
+                  className={`leyenda__muestra leyenda__muestra--circulo leyenda__muestra--${clave}`}
+                />
+                {texto}
+              </span>
+            ))}
             <span>
               <i className="leyenda__muestra leyenda__muestra--circulo leyenda__muestra--inactiva" />
               Inactiva
@@ -162,16 +202,11 @@ export default function VistaMapa() {
         </section>
 
         <div className="columna">
-          {seleccion?.trampa && (
-            <FichaTrampa
-              trampa={seleccion.trampa}
-              lote={datos.lotes.find((l) => l.id === seleccion.trampa.lote_id)}
-            />
-          )}
+          {seleccion?.trampa && <FichaTrampa trampa={seleccion.trampa} umbrales={mapa.umbrales} />}
           {seleccion?.lote && (
             <FichaLote
               lote={seleccion.lote}
-              trampas={datos.trampas.filter((t) => t.lote_id === seleccion.lote.id)}
+              trampas={mapa.trampas.filter((t) => t.lote_id === seleccion.lote.id)}
               editable={editable}
             />
           )}
@@ -181,7 +216,7 @@ export default function VistaMapa() {
               <p>Seleccione un lote o una trampa en el mapa para ver sus datos.</p>
             </section>
           )}
-          <ResumenLotes lotes={datos.lotes} trampas={datos.trampas} />
+          <ResumenLotes lotes={lotes} trampas={trampas} />
         </div>
       </div>
     </Plantilla>
@@ -198,22 +233,66 @@ function Indicador({ etiqueta, valor, detalle }) {
   )
 }
 
-function FichaTrampa({ trampa, lote }) {
+// Al encuadrar por el filtro: el lote elegido o, al volver a «Todos», todos los lotes.
+function EncuadreFiltro({ lotes, filtro }) {
+  const map = useMap()
+  const anterior = useRef(filtro)
+  useEffect(() => {
+    if (anterior.current === filtro || lotes.length === 0) return
+    anterior.current = filtro
+    const limites = lotes.flatMap((lote) => geojsonALeaflet(lote.geom)[0])
+    map.fitBounds(limites, { padding: [24, 24], maxZoom: 18 })
+  }, [map, lotes, filtro])
+  return null
+}
+
+function InsigniaMonitoreo({ trampa }) {
+  return trampa.monitoreo ? (
+    <span className={`insignia insignia--${trampa.monitoreo}`}>{MONITOREO[trampa.monitoreo]}</span>
+  ) : (
+    <span className={`insignia insignia--${trampa.estado}`}>{ESTADOS_TRAMPA[trampa.estado]}</span>
+  )
+}
+
+// Ventana que se abre sobre la trampa al tocarla en el mapa (cómoda en el teléfono).
+function VentanaTrampa({ trampa }) {
+  const tipo = TIPOS_TRAMPA[trampa.tipo]
+  return (
+    <div className="ventana-trampa" aria-label={`Trampa ${trampa.codigo_ica}`}>
+      <p className="ventana-trampa__titulo">{trampa.codigo_ica}</p>
+      <p>
+        Lote {trampa.lote_codigo} · {tipo.nombre}
+      </p>
+      <p>
+        <InsigniaMonitoreo trampa={trampa} />
+      </p>
+      <p>{textoRevision(trampa)}</p>
+      <p>Última lectura: {trampa.ultima_lectura ? '—' : 'sin lecturas aún'}</p>
+      <Link to={`/t/${trampa.codigo_qr}`}>Abrir ficha</Link>
+    </div>
+  )
+}
+
+function FichaTrampa({ trampa, umbrales }) {
   const [lat, lng] = puntoALeaflet(trampa.geom)
   const tipo = TIPOS_TRAMPA[trampa.tipo]
   return (
     <section className="tarjeta" aria-label="Trampa seleccionada">
       <div className="ficha__encabezado">
         <p className="ficha__antetitulo">Trampa seleccionada</p>
-        <span className={`insignia insignia--${trampa.estado}`}>
-          {ESTADOS_TRAMPA[trampa.estado]}
-        </span>
+        <InsigniaMonitoreo trampa={trampa} />
       </div>
       <p className="ficha__titulo">{trampa.codigo_ica}</p>
       <p className="ficha__subtitulo">
-        Lote {lote?.codigo ?? '—'} · {tipo.nombre} + {trampa.atrayente.toLowerCase()}
+        Lote {trampa.lote_codigo} · {tipo.nombre} + {trampa.atrayente.toLowerCase()}
       </p>
       <dl className="ficha__datos">
+        <dt>Estado</dt>
+        <dd>{ESTADOS_TRAMPA[trampa.estado]}</dd>
+        <dt>Revisión</dt>
+        <dd>{textoRevision(trampa)}</dd>
+        <dt>Última lectura</dt>
+        <dd>{trampa.ultima_lectura ? '—' : 'Sin lecturas aún'}</dd>
         <dt>Lat</dt>
         <dd>{formatoCoordenada(lat)}</dd>
         <dt>Lon</dt>
@@ -223,6 +302,12 @@ function FichaTrampa({ trampa, lote }) {
         <dt>QR</dt>
         <dd>{trampa.codigo_qr}</dd>
       </dl>
+      {umbrales && trampa.monitoreo && (
+        <p className="formulario__nota">
+          Revisión cada {dias(umbrales.dias_revision)}: pendiente desde el día{' '}
+          {umbrales.dias_revision}, vencida desde el día {umbrales.dias_vencida}.
+        </p>
+      )}
       <Link to={`/trampas?trampa=${trampa.id}`} className="boton-secundario">
         Ver ficha y QR
       </Link>

@@ -120,6 +120,9 @@ export const eliminarLote = (id) => api(`/lotes/${id}`, { metodo: 'DELETE' })
 
 export const listarTrampas = (predioId) => api(`/trampas?predio_id=${predioId}`)
 
+// Lotes y trampas del predio (FeatureCollection) con el estado de monitoreo de cada trampa.
+export const obtenerMapa = (predioId) => api(`/mapa?predio_id=${predioId}`)
+
 export const crearTrampa = (datos) => api('/trampas', { metodo: 'POST', cuerpo: datos })
 
 export const actualizarTrampa = (id, cambios) =>
