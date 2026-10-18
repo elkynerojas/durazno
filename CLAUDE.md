@@ -74,6 +74,20 @@ sh deploy/obtener-certificado.sh          # primera vez, con el dominio apuntand
 docker compose -f docker-compose.prod.yml exec respaldo sh /respaldo/probar-restauracion.sh
 ```
 
+Despliegue en Google Cloud: proyecto `persica-iser`, VM `persica` (e2-small, `us-east1-b`, IP fija
+34.138.170.192), https://persica.redsoftdevelopers.com, código en `/opt/persica` (tag desplegado).
+`deploy/gcp/crear-infraestructura.sh` crea la infraestructura y `deploy/gcp/instalar-servidor.sh`
+prepara la VM y levanta el stack (también sirve para actualizar a otra versión):
+
+```bash
+gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \
+  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=vX.Y.Z sh -s" \
+  < deploy/gcp/instalar-servidor.sh
+```
+
+Datos de demostración (predio, cuentas ficticias con la clave de ADMIN_CORREO):
+`docker compose -f docker-compose.prod.yml exec -e ADMIN_CORREO=<correo> api python -m app.scripts.sembrar_demostracion`.
+
 La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose down -v`
 (borra la base de datos) sin que el usuario lo pida explícitamente.
 
