@@ -985,7 +985,7 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 ### HU-33 · Probar el flujo de consumo móvil
 
-- **Estado:** Por hacer · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S5 · **Responsable:** Luis
+- **Estado:** En revisión · **Prioridad:** Debe · **Puntos:** 3 · **Sprint:** S5 · **Responsable:** Luis
 - **Historia:** Como equipo del proyecto, quiero una prueba que recorra el flujo de la app móvil contra el servidor, para demostrar que los servicios responden según su documentación.
 
 **Criterios de aceptación**
@@ -996,8 +996,18 @@ _Objetivo 3 · módulo vi._ API documentada y preparada para la sincronización 
 
 **Tareas**
 
-- [ ] `HU-33.1` [Pruebas] Script del flujo con httpx o REST Client
-- [ ] `HU-33.2` [Doc] Registro de resultados para el informe
+- [x] `HU-33.1` [Pruebas] Script del flujo con httpx o REST Client
+- [x] `HU-33.2` [Doc] Registro de resultados para el informe
+
+> `app/scripts/flujo_movil.py` (httpx, sin importar la aplicación): estado → iniciar sesión como
+> cliente nativo (`X-Cliente: movil`) → carga completa (`/sync/cambios`) → resolver el QR →
+> preparar y registrar la lectura en bloque → reenviarla (idempotencia) → MTD de la semana →
+> renovar la sesión. Cada respuesta se compara con el código esperado y se valida con
+> `jsonschema` contra el `openapi.json` del mismo servidor; genera el informe en Markdown y sale
+> con 1 si algún paso no es conforme. Credenciales por `FLUJO_CORREO`/`FLUJO_CLAVE`.
+> `tests/test_flujo_movil.py` lo corre en la CI contra la aplicación en memoria. Resultado local
+> (10 de 10 conformes) en `docs/pruebas/flujo-movil-local-2026-10-18.md`.
+> **Pendiente:** correrlo contra el servidor desplegado (HU-08) y guardar ese informe (criterio 2).
 
 ### HU-34 · Guía de integración de servicios
 

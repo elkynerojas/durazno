@@ -12,3 +12,6 @@ debugpy>=1.8
 zxing-cpp>=2.2
 pillow>=11.0
 pypdfium2>=4.30
+
+# Validar las respuestas contra openapi.json en la prueba del flujo móvil (HU-33)
+jsonschema>=4.23
