@@ -3,7 +3,7 @@ import { Marker, Polyline, Tooltip } from 'react-leaflet'
 
 import { puntoALeaflet } from '../../utils/geo'
 
-const ESTILO_RECORRIDO = { color: '#e8875a', weight: 4, dashArray: '8 6' }
+const ESTILO_RECORRIDO = { color: '#e8902a', weight: 4, dashArray: '8 6' }
 
 const iconos = new Map()
 function icono(texto, tipo) {

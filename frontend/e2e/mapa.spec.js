@@ -302,8 +302,8 @@ test('el agrónomo define la ruta de un lote: propuesta, ajuste, mapa y guardado
   const propuesta = await ordenEnLista(page)
   expect([propuesta, [...propuesta].reverse()]).toContainEqual([c1, c3, c2])
   await expect(page.getByText('La ruta incluye las 3 trampas activas del lote')).toBeVisible()
-  // Línea del recorrido (color #e8875a, CapaRuta).
-  await expect.poll(() => colorEnElMapa(page, '#e8875a')).toBe(true)
+  // Línea del recorrido (color #e8902a, CapaRuta).
+  await expect.poll(() => colorEnElMapa(page, '#e8902a')).toBe(true)
   await expect(page.locator('.mapa-tarjeta__leyenda')).toContainText(/Recorrido: ≈ [\d.]+ m/)
 
   // Ajuste con las flechas y guardado: el servidor calcula la distancia.

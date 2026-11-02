@@ -1,19 +1,23 @@
-/* Sistema visual tomado de los mockups (carpeta mockups/): verde del cultivo, acento durazno. */
+/* Paleta tomada del logo: verde vegetal de la hoja y tintes del durazno sobre fondos crema. */
 :root {
-  --verde-900: #17322a;
-  --verde-800: #21423a;
-  --verde-700: #1e5a43;
-  --verde-600: #2b6e54;
-  --verde-100: #e3efe6;
-  --verde-50: #f0f6f1;
-  --fondo: #f1f2ed;
+  --verde-900: #2f4a22;
+  --verde-800: #3d5f2b;
+  --verde-700: #4e7a35;
+  --verde-600: #64913f;
+  --verde-100: #e5efd8;
+  --verde-50: #f2f7ea;
+  --fondo: #fbf6ef;
   --superficie: #ffffff;
-  --superficie-suave: #f5f6f2;
-  --borde: #dde2da;
-  --texto: #18241e;
-  --texto-suave: #5b6b62;
-  --durazno: #e8875a;
-  --durazno-oscuro: #c4572e;
+  --superficie-suave: #fbf5ed;
+  --borde: #ebdfd1;
+  --texto: #2b241e;
+  --texto-suave: #6e6258;
+  --texto-fuerte: #1d1814;
+  --durazno: #e8902a;
+  --durazno-oscuro: #a9551a;
+  --durazno-claro: #f6c08a;
+  --durazno-100: #fde9d3;
+  --durazno-50: #fff5ea;
   --ambar: #d9a441;
   --ambar-texto: #8a5a00;
   --ambar-fondo: #fbf1dc;
@@ -21,7 +25,7 @@
   --error-fondo: #fbe9e6;
   --gris-retirada: #8a918c;
   --radio: 10px;
-  --sombra: 0 1px 2px rgb(23 50 42 / 6%);
+  --sombra: 0 1px 2px rgb(74 46 24 / 7%);
   --fuente: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
 
@@ -163,8 +167,9 @@ button {
   flex-direction: column;
   gap: 1.5rem;
   padding: 1.5rem 1rem 1.25rem;
-  color: #fff;
-  background: var(--verde-900);
+  color: var(--texto-fuerte);
+  background: linear-gradient(180deg, var(--durazno-50), var(--durazno-100));
+  border-right: 1px solid var(--borde);
   overflow-y: auto;
 }
 
@@ -213,25 +218,28 @@ button {
 
 .lateral__nav a {
   padding: 0.7rem 0.75rem;
-  color: rgb(255 255 255 / 88%);
+  font-weight: 500;
+  color: var(--texto-fuerte);
   text-decoration: none;
   border-radius: 8px;
 }
 
 .lateral__nav a:hover {
-  background: var(--verde-800);
+  background: rgb(232 144 42 / 14%);
 }
 
 .lateral__nav a.active {
-  font-weight: 600;
-  color: var(--verde-900);
-  background: var(--fondo);
+  font-weight: 700;
+  color: var(--verde-800);
+  background: var(--superficie);
+  box-shadow: inset 4px 0 0 var(--durazno), var(--sombra);
 }
 
 .lateral__ayuda {
   padding: 0.7rem 0.75rem;
   font: inherit;
-  color: rgb(255 255 255 / 88%);
+  font-weight: 500;
+  color: var(--texto-fuerte);
   text-align: left;
   background: none;
   border: 0;
@@ -240,7 +248,7 @@ button {
 }
 
 .lateral__ayuda:hover {
-  background: var(--verde-800);
+  background: rgb(232 144 42 / 14%);
 }
 
 /* Ventana modal (Ayuda): encima del menú del teléfono, que es fijo. */
@@ -252,7 +260,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgb(23 50 42 / 55%);
+  background: rgb(74 46 24 / 55%);
 }
 
 .modal {
@@ -265,7 +273,7 @@ button {
   overflow-y: auto;
   background: var(--superficie);
   border-radius: var(--radio);
-  box-shadow: 0 12px 40px rgb(23 50 42 / 30%);
+  box-shadow: 0 12px 40px rgb(74 46 24 / 30%);
 }
 
 .modal h2 {
@@ -299,7 +307,8 @@ button {
 .lateral__semana {
   padding: 0.75rem;
   font-size: 0.82rem;
-  background: var(--verde-800);
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid var(--borde);
   border-radius: 8px;
 }
 
@@ -483,7 +492,7 @@ button {
   padding: 0.6rem 0.8rem;
   color: var(--texto);
   background: var(--superficie);
-  border: 1px solid #cfd6cd;
+  border: 1px solid #e2d4c4;
   border-radius: 8px;
 }
 
@@ -660,8 +669,8 @@ button {
 }
 
 .insignia--retirada {
-  color: #4a524d;
-  background: #e7e9e6;
+  color: #5a5048;
+  background: #efe9e2;
 }
 
 /* ---------- Mapa ---------- */
@@ -772,7 +781,7 @@ button {
 
 .marcador-trampa--retirada {
   border-color: var(--gris-retirada);
-  background: #e7e9e6;
+  background: #efe9e2;
 }
 
 .marcador-trampa--seleccionada {
@@ -878,7 +887,7 @@ button {
   margin-bottom: 1rem;
   padding: 1.1rem 1rem 1rem;
   text-align: center;
-  border: 2px dashed #c9cfc7;
+  border: 2px dashed #dccbb8;
   border-radius: 8px;
 }
 
@@ -943,8 +952,8 @@ button {
   flex-direction: column;
   gap: 2rem;
   padding: 3.5rem;
-  color: #fff;
-  background: var(--verde-900);
+  color: var(--texto);
+  background: linear-gradient(160deg, var(--durazno-50) 0%, var(--durazno-100) 55%, var(--durazno-claro) 100%);
 }
 
 .acceso__portada .marca {
@@ -961,11 +970,12 @@ button {
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.12em;
-  color: rgb(255 255 255 / 70%);
+  color: var(--durazno-oscuro);
   text-transform: uppercase;
 }
 
 .acceso__lema h1 {
+  color: var(--verde-900);
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   font-weight: 700;
   letter-spacing: -0.015em;
@@ -974,7 +984,7 @@ button {
 .acceso__lema p {
   margin: 1rem 0 0;
   font-size: 1.02rem;
-  color: rgb(255 255 255 / 82%);
+  color: var(--texto-suave);
 }
 
 .acceso__ilustracion {
@@ -985,7 +995,7 @@ button {
 .acceso__creditos {
   margin: auto 0 0;
   font-size: 0.82rem;
-  color: rgb(255 255 255 / 60%);
+  color: var(--texto-suave);
 }
 
 .acceso__panel {
@@ -1031,7 +1041,7 @@ button {
 
 .estado--cargando {
   color: var(--texto-suave);
-  background: #e7e9e6;
+  background: #efe9e2;
 }
 
 .estado--ok {
@@ -1164,8 +1174,8 @@ button {
     min-height: 40px;
     padding: 0.4rem 0.8rem;
     color: #fff;
-    background: var(--verde-800);
-    border: 1px solid rgb(255 255 255 / 20%);
+    background: var(--verde-700);
+    border: 1px solid var(--verde-700);
     border-radius: 8px;
   }
 
@@ -1281,7 +1291,7 @@ button {
 }
 
 .leyenda__muestra--retirada {
-  background: #e7e9e6;
+  background: #efe9e2;
   border-color: var(--gris-retirada);
 }
 
@@ -1349,14 +1359,16 @@ button {
   gap: 0.3rem;
   padding: 0 0.25rem;
   font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .lateral__predio select {
   min-height: 40px;
   padding: 0.4rem 0.6rem;
-  color: #fff;
-  background: var(--verde-800);
-  border: 1px solid rgb(255 255 255 / 20%);
+  font-weight: 500;
+  color: var(--texto-fuerte);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
   border-radius: 8px;
 }
 
@@ -1476,7 +1488,7 @@ button {
 
 .parada[data-arrastrando] {
   border-color: var(--verde-600);
-  box-shadow: 0 4px 12px rgb(23 50 42 / 18%);
+  box-shadow: 0 4px 12px rgb(74 46 24 / 18%);
 }
 
 .parada__manija {
@@ -1648,7 +1660,7 @@ button {
   width: 22px;
   height: 26px;
   padding: 0;
-  background: #eef0ea;
+  background: #f5eee5;
   border-radius: 4px;
 }
 
@@ -1658,7 +1670,7 @@ button {
 }
 
 .celda-plan--programada {
-  background: #b9d8c4;
+  background: #cfe3bb;
 }
 
 .celda-plan button {

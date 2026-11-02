@@ -136,11 +136,11 @@ function IlustracionPredio() {
   return (
     <svg className="acceso__ilustracion" viewBox="0 0 470 210" aria-hidden="true">
       {lotes.map((d) => (
-        <path key={d} d={d} fill="#21423a" stroke="#2f5a4c" strokeWidth="2" />
+        <path key={d} d={d} fill="#e5efd8" stroke="#64913f" strokeWidth="2" />
       ))}
       <path
         d="M80 85 L230 72 L380 80"
-        stroke="#e8875a"
+        stroke="#e8902a"
         strokeWidth="2"
         strokeDasharray="6 5"
         fill="none"
@@ -152,7 +152,7 @@ function IlustracionPredio() {
         [120, 172],
         [262, 168],
       ].map(([x, y]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r="6" fill="#e8875a" />
+        <circle key={`${x}-${y}`} cx={x} cy={y} r="6" fill="#e8902a" />
       ))}
     </svg>
   )
