@@ -529,7 +529,7 @@ const despliegue = [
   h3('Paso 3. Servidor y aplicativo'),
   p('Instala Docker y Compose, agrega swap, descarga la versión indicada en `/opt/persica`, crea la carpeta `datos/evidencias` con dueño 10001 (el usuario de la API), crea `.env` con claves aleatorias generadas en el servidor (permisos 600) y levanta el stack:'),
   ...codigo(
-    'gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \\\n  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=v1.1.0 sh -s" \\\n  < deploy/gcp/instalar-servidor.sh',
+    'gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \\\n  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=v1.2.0 sh -s" \\\n  < deploy/gcp/instalar-servidor.sh',
   ),
   h3('Paso 4. Certificado HTTPS'),
   p('Con el DNS resolviendo, se emite primero con el entorno de pruebas de Let\'s Encrypt y luego el definitivo. El servicio certbot lo renueva cada 12 horas.'),
