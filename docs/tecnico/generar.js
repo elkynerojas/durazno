@@ -46,6 +46,7 @@ const DESCRIPCION_VARIABLES = {
   ENVIRONMENT: '`development`, `test` o `production`. Fuera de desarrollo exige claves fuertes y HTTPS.',
   SECRET_KEY: 'Clave para firmar los tokens. Se genera con `openssl rand -hex 32`.',
   CORS_ORIGINS: 'Orígenes del navegador autorizados a llamar la API, separados por comas.',
+  EVIDENCIAS_DIR: 'Carpeta de las fotos de los hallazgos en el contenedor de la API; se monta desde `datos/evidencias` del proyecto.',
   QR_URL_BASE: 'Dirección pública del aplicativo; el QR codifica `<QR_URL_BASE>/t/<código>`. En producción, https.',
   TOKEN_MINUTOS: 'Duración del token de acceso (minutos).',
   RENOVACION_DIAS: 'Duración del token de renovación (días).',

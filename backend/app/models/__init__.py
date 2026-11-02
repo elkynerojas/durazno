@@ -8,6 +8,7 @@ from app.models.lote import Lote  # noqa: F401
 """
 
 from app.db.base import Base  # noqa: F401
+from app.models.hallazgo import EvidenciaHallazgo, Hallazgo  # noqa: F401
 from app.models.lectura_trampa import LecturaTrampa  # noqa: F401
 from app.models.lote import Lote  # noqa: F401
 from app.models.plan_actividad import PlanActividad  # noqa: F401

@@ -8,9 +8,9 @@ ruff>=0.8
 pip-audit>=2.7
 debugpy>=1.8
 
-# Decodificar en las pruebas los QR generados (también los del PDF de etiquetas)
+# Decodificar en las pruebas los QR generados (también los del PDF de etiquetas); Pillow viene
+# de requirements.txt
 zxing-cpp>=2.2
-pillow>=11.0
 pypdfium2>=4.30
 
 # Validar las respuestas contra openapi.json en la prueba del flujo móvil (HU-33)

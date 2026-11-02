@@ -232,7 +232,9 @@ button {
   font-weight: 700;
   color: var(--verde-800);
   background: var(--superficie);
-  box-shadow: inset 4px 0 0 var(--durazno), var(--sombra);
+  box-shadow:
+    inset 4px 0 0 var(--durazno),
+    var(--sombra);
 }
 
 .lateral__ayuda {
@@ -953,7 +955,12 @@ button {
   gap: 2rem;
   padding: 3.5rem;
   color: var(--texto);
-  background: linear-gradient(160deg, var(--durazno-50) 0%, var(--durazno-100) 55%, var(--durazno-claro) 100%);
+  background: linear-gradient(
+    160deg,
+    var(--durazno-50) 0%,
+    var(--durazno-100) 55%,
+    var(--durazno-claro) 100%
+  );
 }
 
 .acceso__portada .marca {
@@ -2105,4 +2112,217 @@ button {
 
 .tipo-hallazgo__edicion input:not([type='color']) {
   flex: 1 1 12rem;
+}
+
+/* ---------- Hallazgos (HU-41) ---------- */
+.marcador-hallazgo {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 2px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 45%);
+  transform: rotate(45deg);
+}
+
+.marcador-hallazgo--seleccionado {
+  outline: 3px solid var(--durazno);
+  outline-offset: 2px;
+}
+
+.marcador-hallazgo--nuevo {
+  background: var(--durazno);
+  border-style: dashed;
+}
+
+.ficha-hallazgo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ficha-hallazgo .tarjeta__titulo,
+.ficha-hallazgo .ficha__datos,
+.ficha-hallazgo .formulario__seccion {
+  margin: 0;
+}
+
+.ficha-hallazgo__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ficha-hallazgo__descripcion {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.galeria-evidencias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.miniatura {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--durazno-50);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+
+.miniatura img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miniatura__abrir {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  cursor: zoom-in;
+  background: none;
+  border: 0;
+}
+
+.miniatura__vacia {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.miniatura__quitar {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  background: rgb(29 24 20 / 70%);
+  border: 0;
+  border-radius: 50%;
+}
+
+.miniatura__estado {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--verde-800);
+  background: var(--verde-100);
+  border-radius: 999px;
+}
+
+.boton-archivo {
+  position: relative;
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+.boton-archivo input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.boton-archivo:focus-within {
+  outline: 2px solid var(--durazno);
+  outline-offset: 2px;
+}
+
+.boton-archivo[aria-disabled='true'] {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.modal--foto {
+  align-items: center;
+  width: min(60rem, 100%);
+}
+
+.modal--foto img {
+  max-width: 100%;
+  max-height: calc(100vh - 8rem);
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.insignia--hallazgo-abierto {
+  color: var(--durazno-oscuro);
+  background: var(--durazno-100);
+}
+
+.insignia--hallazgo-en_atencion {
+  color: #6b4f00;
+  background: #fbefc4;
+}
+
+.insignia--hallazgo-atendido {
+  color: var(--verde-700);
+  background: var(--verde-100);
+}
+
+.lista-hallazgos {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-hallazgos li + li {
+  border-top: 1px solid var(--borde);
+}
+
+.lista-hallazgos__item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.65rem 0.25rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.lista-hallazgos__item:hover,
+.lista-hallazgos__item[aria-pressed='true'] {
+  background: var(--durazno-50);
+}
+
+.lista-hallazgos__texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.lista-hallazgos__texto span {
+  font-size: 0.82rem;
+  color: var(--texto-suave);
 }

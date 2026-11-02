@@ -58,6 +58,9 @@ if [ ! -f "$DESTINO/.env" ]; then
     echo ".env creado con claves nuevas (no se muestran)."
 fi
 
+# Fotos de evidencia de los hallazgos: la API (usuario 10001) escribe aquí.
+sudo install -d -o 10001 -g 10001 "$DESTINO/datos/evidencias"
+
 cd "$DESTINO"
 sudo docker compose -f docker-compose.prod.yml up -d --build
 sudo docker compose -f docker-compose.prod.yml ps

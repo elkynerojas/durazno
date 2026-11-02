@@ -41,6 +41,8 @@ services:
       - "8000"
     volumes:
       - ./backend:/app
+      # Fotos de evidencia de los hallazgos (E9).
+      - ./datos/evidencias:/evidencias
     depends_on:
       db:
         condition: service_healthy

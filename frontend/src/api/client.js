@@ -47,7 +47,8 @@ export async function api(
   { metodo = 'GET', cuerpo, reintento = true, binario = false, ...opciones } = {},
 ) {
   const token = leerToken()
-  const esFormulario = cuerpo instanceof URLSearchParams
+  // Formularios y archivos (multipart) van tal cual: el navegador pone su Content-Type.
+  const esFormulario = cuerpo instanceof URLSearchParams || cuerpo instanceof FormData
   const headers = {}
   if (cuerpo && !esFormulario) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
@@ -245,3 +246,39 @@ export const crearTipoHallazgo = (datos) =>
 
 export const actualizarTipoHallazgo = (id, cambios) =>
   api(`/inspecciones/tipos/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+// Inspección (E9): hallazgos y sus fotos de evidencia (HU-41).
+export function listarHallazgos(predioId, filtros = {}) {
+  const consulta = new URLSearchParams({ predio_id: predioId })
+  for (const [clave, valor] of Object.entries(filtros)) {
+    if (valor !== '' && valor != null) consulta.set(clave, valor)
+  }
+  return api(`/inspecciones/hallazgos?${consulta}`)
+}
+
+export const obtenerHallazgo = (id) => api(`/inspecciones/hallazgos/${id}`)
+
+export const registrarHallazgo = (datos) =>
+  api('/inspecciones/hallazgos', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarHallazgo = (id, cambios) =>
+  api(`/inspecciones/hallazgos/${id}`, { metodo: 'PATCH', cuerpo: cambios })
+
+export const eliminarHallazgo = (id) => api(`/inspecciones/hallazgos/${id}`, { metodo: 'DELETE' })
+
+// `id` lo genera el cliente: reenviar la misma foto no la duplica.
+export function subirEvidencia(hallazgoId, archivo, id) {
+  const cuerpo = new FormData()
+  cuerpo.append('archivo', archivo)
+  if (id) cuerpo.append('id', id)
+  return api(`/inspecciones/hallazgos/${hallazgoId}/evidencias`, { metodo: 'POST', cuerpo })
+}
+
+export const obtenerEvidencia = (hallazgoId, evidenciaId, miniatura = false) =>
+  api(
+    `/inspecciones/hallazgos/${hallazgoId}/evidencias/${evidenciaId}${miniatura ? '?tamano=miniatura' : ''}`,
+    { binario: true },
+  )
+
+export const eliminarEvidencia = (hallazgoId, evidenciaId) =>
+  api(`/inspecciones/hallazgos/${hallazgoId}/evidencias/${evidenciaId}`, { metodo: 'DELETE' })

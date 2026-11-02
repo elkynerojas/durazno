@@ -9,6 +9,7 @@ import {
   EVENTO_SESION_CERRADA,
   iniciarSesion,
   restaurarSesion,
+  subirEvidencia,
 } from './client'
 
 describe('cliente de la API', () => {
@@ -33,6 +34,21 @@ describe('cliente de la API', () => {
     expect(opciones.body.get('username')).toBe('tecnico1@ejemplo.com')
     expect(opciones.method).toBe('POST')
     expect(opciones.body).toBeInstanceOf(URLSearchParams)
+    expect(opciones.headers['Content-Type']).toBeUndefined()
+  })
+
+  it('sube una foto como multipart con su id, sin Content-Type JSON', async () => {
+    const fetchSimulado = simularFetch(respuestaJson(201, { id: 'e-1' }))
+    const foto = new File(['contenido'], 'hoja.jpg', { type: 'image/jpeg' })
+
+    await subirEvidencia('h-1', foto, 'e-1')
+
+    const [url, opciones] = fetchSimulado.mock.calls[0]
+    expect(url).toBe('/api/v1/inspecciones/hallazgos/h-1/evidencias')
+    expect(opciones.method).toBe('POST')
+    expect(opciones.body).toBeInstanceOf(FormData)
+    expect(opciones.body.get('archivo').name).toBe('hoja.jpg')
+    expect(opciones.body.get('id')).toBe('e-1')
     expect(opciones.headers['Content-Type']).toBeUndefined()
   })
 

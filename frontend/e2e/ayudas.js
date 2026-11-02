@@ -93,6 +93,12 @@ export async function limpiarDatosE2E(page) {
           if (actividad.lote_codigo.startsWith('E2E-')) await borrar(`/plan/${actividad.id}`)
         }
       }
+      const { hallazgos } = await leer(
+        `/inspecciones/hallazgos?predio_id=${predio.id}&por_pagina=200`,
+      )
+      for (const h of hallazgos) {
+        if (h.lote_codigo.startsWith('E2E-')) await borrar(`/inspecciones/hallazgos/${h.id}`)
+      }
       for (const lote of await leer(`/lotes?predio_id=${predio.id}`)) {
         if (lote.codigo.startsWith('E2E-')) await borrar(`/lotes/${lote.id}`)
       }

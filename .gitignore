@@ -43,3 +43,6 @@ docs/manual/node_modules/
 
 # Archivos intermedios del documento técnico (docs/tecnico/generar.sh)
 docs/tecnico/build/
+
+# Fotos de evidencia de los hallazgos (montadas en la API como /evidencias)
+datos/

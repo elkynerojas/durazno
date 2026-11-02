@@ -31,7 +31,8 @@ services:
       args:
         REQUISITOS: requirements.txt
     restart: unless-stopped
-    # Sin privilegios de root dentro del contenedor (la API no escribe en disco).
+    # Sin privilegios de root dentro del contenedor. Solo escribe las fotos de los hallazgos en
+    # datos/evidencias (la carpeta pertenece a 10001; la crea deploy/gcp/instalar-servidor.sh).
     user: "10001:10001"
     # ARCHIVO_ENV permite probar este stack en un equipo con otro archivo de variables.
     env_file: ${ARCHIVO_ENV:-.env}
@@ -51,6 +52,8 @@ services:
         --no-server-header --proxy-headers --forwarded-allow-ips=${IP_NGINX:-10.231.0.10}
     expose:
       - "8000"
+    volumes:
+      - ./datos/evidencias:/evidencias
     depends_on:
       db:
         condition: service_healthy

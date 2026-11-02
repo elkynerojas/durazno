@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Dirección pública del aplicativo: el QR de cada trampa codifica <qr_url_base>/t/<código>.
     qr_url_base: str = "http://localhost:5173"
 
+    # Carpeta de las fotos de evidencia de los hallazgos (E9). En Docker Compose se monta desde
+    # `datos/evidencias` del proyecto.
+    evidencias_dir: str = "/evidencias"
+
     @model_validator(mode="after")
     def _exigir_clave_segura(self) -> "Settings":
         if self.environment not in ENTORNOS_LOCALES and (

@@ -963,3 +963,48 @@ test('«Ayuda» muestra la versión y abre el manual de usuario en PDF', async (
   await page.keyboard.press('Escape')
   await expect(ayuda).toHaveCount(0)
 })
+
+// PNG de 1×1 px: basta para que el servidor la procese como foto.
+const FOTO_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+
+test('se registra un hallazgo tocando el mapa, con foto, y se ve en la lista y la ficha', async ({
+  page,
+}) => {
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Inspección' }).click()
+  await page.getByRole('button', { name: 'Registrar hallazgo' }).click()
+
+  const formulario = page.getByRole('form', { name: 'Registrar hallazgo' })
+  await formulario.getByLabel('Tipo de hallazgo').selectOption({ label: 'Plaga' })
+  await formulario.getByLabel('Título').fill('Gusano en frutos E2E')
+  await formulario.getByLabel('Descripción detallada').fill('Larvas en cinco frutos del centro.')
+  await formulario.getByLabel('Lote').selectOption({ label: lote })
+  await formulario.getByRole('button', { name: 'Tocar en el mapa' }).click()
+  await page.mouse.click(...(await puntoDelMapa(page, 0.5, 0.5)))
+  await expect(formulario.getByText(`El punto está dentro del lote ${lote}.`)).toBeVisible()
+  await formulario
+    .getByLabel('Agregar fotos')
+    .setInputFiles({ name: 'hoja.png', mimeType: 'image/png', buffer: FOTO_PNG })
+  await formulario.getByRole('button', { name: 'Guardar hallazgo' }).click()
+
+  await expect(page.getByText('Hallazgo «Gusano en frutos E2E» registrado.')).toBeVisible()
+  const ficha = page.getByRole('article', { name: 'Hallazgo Gusano en frutos E2E' })
+  await expect(ficha.getByText('Marcada en el mapa')).toBeVisible()
+  await expect(ficha.getByRole('img', { name: 'Foto 1' })).toBeVisible()
+  await expect(page.locator('.marcador-hallazgo--seleccionado')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Lista de hallazgos' }).getByText(`Plaga · Lote ${lote}`),
+  ).toBeVisible()
+
+  await ficha.getByRole('button', { name: 'Ver foto 1' }).click()
+  await expect(page.getByRole('img', { name: 'Foto 1 ampliada' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await ficha.getByRole('button', { name: 'Eliminar hallazgo' }).click()
+  await ficha.getByRole('button', { name: 'Confirmar: eliminar hallazgo' }).click()
+  await expect(page.getByText('Hallazgo eliminado.')).toBeVisible()
+})

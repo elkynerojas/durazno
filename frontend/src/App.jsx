@@ -93,14 +93,6 @@ export default function App() {
                   </PorPredio>
                 }
               />
-              <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
-              <Route path="/t/:codigo/lectura" element={<VistaLectura />} />
-              {/* El administrador sin predios crea el primero aquí: no va envuelta en PorPredio. */}
-              <Route path="/predio" element={<VistaPredio />} />
-              <Route path="/predios" element={<Navigate to="/predio" replace />} />
-            </Route>
-            <Route element={<RutaProtegida roles={['administrador']} />}>
-              <Route path="/usuarios" element={<VistaUsuarios />} />
               <Route
                 path="/inspeccion"
                 element={
@@ -109,6 +101,14 @@ export default function App() {
                   </PorPredio>
                 }
               />
+              <Route path="/t/:codigo" element={<VistaFichaTrampa />} />
+              <Route path="/t/:codigo/lectura" element={<VistaLectura />} />
+              {/* El administrador sin predios crea el primero aquí: no va envuelta en PorPredio. */}
+              <Route path="/predio" element={<VistaPredio />} />
+              <Route path="/predios" element={<Navigate to="/predio" replace />} />
+            </Route>
+            <Route element={<RutaProtegida roles={['administrador']} />}>
+              <Route path="/usuarios" element={<VistaUsuarios />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

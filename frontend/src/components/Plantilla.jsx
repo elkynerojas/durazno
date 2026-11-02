@@ -19,7 +19,7 @@ const SECCIONES = [
   { a: '/plan', texto: 'Planeación' },
   { a: '/lecturas', texto: 'Lecturas de trampa', roles: ['tecnico', 'agronomo', 'administrador'] },
   { a: '/mtd', texto: 'MTD e historial' },
-  { a: '/inspeccion', texto: 'Inspección', roles: ['administrador'] },
+  { a: '/inspeccion', texto: 'Inspección' },
   { a: '/predio', texto: 'Predio' },
   { a: '/usuarios', texto: 'Usuarios', roles: ['administrador'] },
 ]

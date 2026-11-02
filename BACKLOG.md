@@ -1159,7 +1159,7 @@ otras irregularidades) con evidencias fotográficas y seguimiento de su atenció
 
 ### HU-41 · Registrar un hallazgo con evidencias
 
-- **Estado:** Por hacer · **Prioridad:** Extra · **Puntos:** 8 · **Sprint:** Extra · **Responsable:** Ambos
+- **Estado:** En revisión · **Prioridad:** Extra · **Puntos:** 8 · **Sprint:** Extra · **Responsable:** Ambos
 - **Historia:** Como técnico de campo, quiero registrar un hallazgo con su ubicación y fotos, para que el agrónomo conozca la irregularidad y pueda atenderla.
 
 **Criterios de aceptación**
@@ -1173,11 +1173,17 @@ otras irregularidades) con evidencias fotográficas y seguimiento de su atenció
 
 **Tareas**
 
-- [ ] `HU-41.1` [BD] Tablas hallazgo y evidencia_hallazgo
-- [ ] `HU-41.2` [API] Registro idempotente, consulta, edición y borrado lógico
-- [ ] `HU-41.3` [API] Subida y entrega de fotos (directorio `datos/evidencias`)
-- [ ] `HU-41.4` [Web] Formulario con GPS y fotos, lista, ficha y capa del mapa
-- [ ] `HU-41.5` [Pruebas] Permisos, punto fuera del lote, imágenes inválidas, EXIF e idempotencia
+- [x] `HU-41.1` [BD] Tablas hallazgo y evidencia_hallazgo
+- [x] `HU-41.2` [API] Registro idempotente, consulta, edición y borrado lógico
+- [x] `HU-41.3` [API] Subida y entrega de fotos (directorio `datos/evidencias`)
+- [x] `HU-41.4` [Web] Formulario con GPS y fotos, lista, ficha y capa del mapa
+- [x] `HU-41.5` [Pruebas] Permisos, punto fuera del lote, imágenes inválidas, EXIF e idempotencia
+
+> Hecho en la rama `hu-41-registrar-hallazgo`. API: `/inspecciones/hallazgos` (CRUD con borrado
+> lógico) y `/inspecciones/hallazgos/{id}/evidencias` (multipart, Pillow: máx. 1920 px, JPEG sin
+> EXIF, miniatura de 400 px, en `datos/evidencias`). Web: `/inspeccion` para todos los roles, con
+> mapa, filtros, lista, formulario y ficha con galería. El filtro por **estado** llega con HU-42,
+> que deriva el estado del plan (por ahora todos quedan «Abierto»).
 
 ### HU-42 · Seguir la atención de un hallazgo desde el plan
 

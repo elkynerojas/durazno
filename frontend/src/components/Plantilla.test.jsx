@@ -56,6 +56,7 @@ describe('Plantilla', () => {
   it.each(['tecnico', 'productor', 'agronomo'])('al rol %s no le muestra administración', (rol) => {
     renderizar(rol)
     expect(enlacesDelMenu()).not.toContain('Usuarios')
+    expect(enlacesDelMenu()).toContain('Inspección')
     // Un solo ítem para el predio: datos, límite y (el administrador) todos los predios.
     expect(enlacesDelMenu().filter((e) => e.startsWith('Predio'))).toEqual(['Predio'])
   })

@@ -6987,6 +6987,900 @@
           }
         }
       }
+    },
+    "/api/v1/inspecciones/hallazgos": {
+      "post": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Registrar un hallazgo",
+        "description": "Lo registran el técnico, el agrónomo y el administrador del predio. El punto debe quedar dentro del lote (`ST_Contains`) y `observado_en` no puede estar en el futuro. Idempotente por `id`: reenviar el mismo hallazgo devuelve el existente con 200. Las fotos se suben después con `POST /inspecciones/hallazgos/{id}/evidencias`.",
+        "operationId": "registrar_hallazgo_api_v1_inspecciones_hallazgos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HallazgoCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallazgoLeer"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "El hallazgo con ese `id` ya existía",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallazgoLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El productor no registra hallazgos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Lote no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Lote no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El `id` ya pertenece a otro registro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "El `id` ya pertenece a otro registro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos, tipo desactivado, punto fuera del lote o fecha futura",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Listar los hallazgos de un predio",
+        "description": "Del más reciente al más antiguo y paginados. Filtros opcionales por lote, tipo, estado y días de observación (`desde` y `hasta` en hora de Bogotá, incluidos). Cualquier rol con el predio asignado; el productor no ve quién los registró.",
+        "operationId": "listar_hallazgos_api_v1_inspecciones_hallazgos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "predio_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Predio Id"
+            }
+          },
+          {
+            "name": "lote_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lote Id"
+            }
+          },
+          {
+            "name": "tipo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "por_pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Por Pagina"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Hallazgos"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Predio no encontrado (o no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Predio no encontrado (o no asignado)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspecciones/hallazgos/{hallazgo_id}": {
+      "get": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Obtener un hallazgo",
+        "description": "Con la lista de sus fotos (se descargan con `GET /inspecciones/hallazgos/{id}/evidencias/{evidencia_id}`).",
+        "operationId": "obtener_hallazgo_api_v1_inspecciones_hallazgos__hallazgo_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallazgoLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Actualizar un hallazgo",
+        "description": "Cambia el tipo, el título, la descripción o la ubicación (con su lote, que debe contener el punto). Lo hacen quien lo registró, el agrónomo y el administrador.",
+        "operationId": "actualizar_hallazgo_api_v1_inspecciones_hallazgos__hallazgo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HallazgoActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallazgoLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos, tipo desactivado o punto fuera del lote",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Eliminar un hallazgo",
+        "description": "Borrado lógico; lo hacen el agrónomo y el administrador.",
+        "operationId": "eliminar_hallazgo_api_v1_inspecciones_hallazgos__hallazgo_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspecciones/hallazgos/{hallazgo_id}/evidencias": {
+      "post": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Subir una foto de evidencia",
+        "description": "Multipart con el campo `archivo` (JPEG, PNG o WebP, máx. 8 MB) y un `id` opcional generado por el cliente: reenviar la misma foto con el mismo `id` devuelve la existente con 200. El servidor la endereza, la reduce a 1920 px, elimina sus metadatos EXIF (que pueden traer el GPS del teléfono) y guarda una miniatura. Máximo 6 fotos por hallazgo. La suben quien registró el hallazgo, el agrónomo y el administrador.",
+        "operationId": "subir_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_subir_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenciaLeer"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "La foto con ese `id` ya existía",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenciaLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El hallazgo ya tiene el máximo de fotos o el `id` está en uso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "El hallazgo ya tiene el máximo de fotos o el `id` está en uso"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "La foto pesa más de lo permitido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "La foto pesa más de lo permitido"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El archivo no es una imagen JPEG, PNG o WebP",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspecciones/hallazgos/{hallazgo_id}/evidencias/{evidencia_id}": {
+      "get": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Descargar una foto de evidencia",
+        "description": "La foto en JPEG (máx. 1920 px) o, con `tamano=miniatura`, de 400 px. Cualquier rol con el predio asignado.",
+        "operationId": "descargar_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias__evidencia_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          },
+          {
+            "name": "evidencia_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evidencia Id"
+            }
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(completa|miniatura)$",
+              "default": "completa",
+              "title": "Tamano"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Foto en JPEG",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo o foto no encontrados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo o foto no encontrados"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Eliminar una foto de evidencia",
+        "description": "Borrado lógico (el archivo se conserva en el servidor). Lo hacen quien registró el hallazgo, el agrónomo y el administrador.",
+        "operationId": "eliminar_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias__evidencia_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "hallazgo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Hallazgo Id"
+            }
+          },
+          {
+            "name": "evidencia_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evidencia Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo o foto no encontrados",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo o foto no encontrados"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7455,6 +8349,34 @@
           "password"
         ],
         "title": "Body_iniciar_sesion_api_v1_auth_token_post"
+      },
+      "Body_subir_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "Foto JPEG, PNG o WebP"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Opcional: reenviar el mismo `id` no duplica la foto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_subir_evidencia_api_v1_inspecciones_hallazgos__hallazgo_id__evidencias_post"
       },
       "CambioLeer": {
         "properties": {
@@ -8116,6 +9038,46 @@
         ],
         "title": "EstadoSalud"
       },
+      "EvidenciaLeer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "ancho": {
+            "type": "integer",
+            "title": "Ancho"
+          },
+          "alto": {
+            "type": "integer",
+            "title": "Alto"
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes"
+          },
+          "orden": {
+            "type": "integer",
+            "title": "Orden"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ancho",
+          "alto",
+          "bytes",
+          "orden",
+          "created_at"
+        ],
+        "title": "EvidenciaLeer"
+      },
       "FeatureLote": {
         "properties": {
           "type": {
@@ -8308,6 +9270,369 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HallazgoActualizar": {
+        "properties": {
+          "tipo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Id"
+          },
+          "titulo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "lote_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lote Id",
+            "description": "Solo junto con `ubicacion`"
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PuntoGeoJSON"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "precision_m": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "description": "Precisión del GPS en metros"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision M",
+            "description": "Con `ubicacion`: la del GPS, o `null` si se tocó el mapa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "HallazgoActualizar",
+        "examples": [
+          {
+            "titulo": "Antracnosis confirmada en el sector norte"
+          }
+        ]
+      },
+      "HallazgoCrear": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Generado por el cliente: reenviar el mismo `id` no duplica el hallazgo"
+          },
+          "lote_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Lote Id"
+          },
+          "tipo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tipo Id",
+            "description": "Un tipo activo de `GET /inspecciones/tipos`"
+          },
+          "titulo": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Titulo"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Descripcion"
+          },
+          "ubicacion": {
+            "$ref": "#/components/schemas/PuntoGeoJSON",
+            "description": "Punto dentro del lote, `[longitud, latitud]`"
+          },
+          "precision_m": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "description": "Precisión del GPS en metros"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision M",
+            "description": "Solo si el punto viene del GPS; `null` si se tocó el mapa"
+          },
+          "observado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observado En",
+            "description": "Momento de la observación en campo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lote_id",
+          "tipo_id",
+          "titulo",
+          "descripcion",
+          "ubicacion",
+          "observado_en"
+        ],
+        "title": "HallazgoCrear",
+        "examples": [
+          {
+            "descripcion": "Cinco árboles con manchas circulares negras en el envés de las hojas y frutos con lesiones hundidas. Posible antracnosis.",
+            "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e0c",
+            "lote_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e02",
+            "observado_en": "2026-10-14T09:15:00-05:00",
+            "precision_m": 6.5,
+            "tipo_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e0b",
+            "titulo": "Manchas oscuras en hojas del sector norte",
+            "ubicacion": {
+              "coordinates": [
+                -72.64102,
+                7.27068
+              ],
+              "type": "Point"
+            }
+          }
+        ]
+      },
+      "HallazgoLeer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "predio_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Predio Id"
+          },
+          "lote_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Lote Id"
+          },
+          "lote_codigo": {
+            "type": "string",
+            "title": "Lote Codigo"
+          },
+          "tipo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tipo Id"
+          },
+          "tipo_nombre": {
+            "type": "string",
+            "title": "Tipo Nombre"
+          },
+          "tipo_color": {
+            "type": "string",
+            "title": "Tipo Color"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "ubicacion": {
+            "$ref": "#/components/schemas/PuntoGeoJSON"
+          },
+          "precision_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision M"
+          },
+          "observado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observado En"
+          },
+          "registrado_por_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrado Por Id",
+            "description": "`null` para el productor (Ley 1581)"
+          },
+          "registrado_por_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrado Por Nombre",
+            "description": "`null` para el productor (Ley 1581)"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "abierto",
+              "en_atencion",
+              "atendido"
+            ],
+            "title": "Estado",
+            "description": "`abierto` sin atención programada, `en_atencion` con una actividad pendiente en el plan, `atendido` cuando esa actividad se cumplió"
+          },
+          "evidencias": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenciaLeer"
+            },
+            "type": "array",
+            "title": "Evidencias"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "predio_id",
+          "lote_id",
+          "lote_codigo",
+          "tipo_id",
+          "tipo_nombre",
+          "tipo_color",
+          "titulo",
+          "descripcion",
+          "ubicacion",
+          "precision_m",
+          "observado_en",
+          "registrado_por_id",
+          "registrado_por_nombre",
+          "estado",
+          "evidencias",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "HallazgoLeer"
+      },
+      "Hallazgos": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Hallazgos que cumplen los filtros"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "por_pagina": {
+            "type": "integer",
+            "title": "Por Pagina"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLeer"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "pagina",
+          "por_pagina",
+          "hallazgos"
+        ],
+        "title": "Hallazgos"
       },
       "Historial": {
         "properties": {
