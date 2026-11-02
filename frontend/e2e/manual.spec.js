@@ -423,7 +423,7 @@ test('administrador y agrónomo', async ({ page }) => {
     .catch(() => {})
   await captura(page, '22-usuario-nuevo', { espera: 600 })
   await page.getByRole('button', { name: 'Ayuda' }).click()
-  await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.0.0')
+  await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.1.0')
   await captura(page, '25-ayuda', { espera: 600 })
 })
 

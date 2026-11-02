@@ -500,7 +500,7 @@ const doc = documento({
       pie: [
         'Vereda Icota · Cácota, Norte de Santander',
         'Instituto Superior de Educación Rural (ISER) · Semillero ORION',
-        'Versión 1.0 · octubre de 2026',
+        'Versión 1.1 · noviembre de 2026',
       ],
     }),
     // MANUAL_TOC (para el PDF): índice con las páginas ya conocidas; si no, campo de Word.

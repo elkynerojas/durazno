@@ -25,9 +25,9 @@ const {
   VerticalAlign,
 } = require('docx')
 
-const VERDE = '1F5A32'
-const VERDE_CLARO = 'E8F1EA'
-const DURAZNO = 'C4572E'
+const VERDE = '3D5F2B'
+const VERDE_CLARO = 'E5EFD8'
+const DURAZNO = 'A9551A'
 const ANCHO_PAGINA = 9360 // DXA: 6,5" de contenido en carta con márgenes de 1"
 const MONO = 'Courier New'
 
@@ -94,7 +94,7 @@ function crear({ imagenes }) {
   const nota = (texto, tipo = 'Nota') =>
     new Paragraph({
       children: [new TextRun({ text: `${tipo}: `, bold: true, color: tipo === 'Importante' ? DURAZNO : VERDE }), ...runs(texto)],
-      shading: { type: ShadingType.CLEAR, fill: tipo === 'Importante' ? 'FCEDE6' : VERDE_CLARO, color: 'auto' },
+      shading: { type: ShadingType.CLEAR, fill: tipo === 'Importante' ? 'FDE9D3' : VERDE_CLARO, color: 'auto' },
       border: { left: { style: BorderStyle.SINGLE, size: 18, color: tipo === 'Importante' ? DURAZNO : VERDE, space: 8 } },
       spacing: { before: 120, after: 160 },
       indent: { left: 160, right: 160 },
@@ -106,7 +106,7 @@ function crear({ imagenes }) {
       (linea, i, todas) =>
         new Paragraph({
           children: [new TextRun({ text: linea || ' ', font: MONO, size: 17 })],
-          shading: { type: ShadingType.CLEAR, fill: 'F3F4F1', color: 'auto' },
+          shading: { type: ShadingType.CLEAR, fill: 'FBF5ED', color: 'auto' },
           spacing: { before: i === 0 ? 80 : 0, after: i === todas.length - 1 ? 160 : 0 },
           indent: { left: 160, right: 160 },
           keepNext: i < todas.length - 1,
@@ -181,7 +181,7 @@ function crear({ imagenes }) {
   // Tabla con encabezado verde. `leyendaTabla` (opcional) la numera como «Tabla N.».
   function tabla(encabezados, filas, anchos, { tamanoLetra = 19, leyendaTabla } = {}) {
     const total = anchos.reduce((a, b) => a + b, 0)
-    const borde = { style: BorderStyle.SINGLE, size: 4, color: 'BFCFC4' }
+    const borde = { style: BorderStyle.SINGLE, size: 4, color: 'D9C8B4' }
     const bordes = { top: borde, bottom: borde, left: borde, right: borde }
     const celda = (texto, i, cabecera) =>
       new TableCell({
@@ -321,7 +321,7 @@ function crear({ imagenes }) {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.RIGHT,
-                  border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'BFCFC4', space: 4 } },
+                  border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'D9C8B4', space: 4 } },
                   children: [new TextRun({ text: encabezado, size: 16, color: '777777' })],
                 }),
               ],

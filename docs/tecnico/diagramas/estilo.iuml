@@ -5,60 +5,60 @@ skinparam defaultFontSize 12
 skinparam shadowing false
 skinparam backgroundColor white
 skinparam roundCorner 8
-skinparam ArrowColor #1F5A32
+skinparam ArrowColor #3D5F2B
 skinparam ArrowFontSize 11
-skinparam BorderColor #1F5A32
-skinparam NoteBackgroundColor #FFF7E6
-skinparam NoteBorderColor #C4572E
+skinparam BorderColor #3D5F2B
+skinparam NoteBackgroundColor #FDE9D3
+skinparam NoteBorderColor #A9551A
 skinparam class {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
-  HeaderBackgroundColor #E8F1EA
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
+  HeaderBackgroundColor #E5EFD8
   AttributeFontSize 11
 }
 skinparam entity {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
 }
 skinparam component {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
 }
 skinparam node {
   BackgroundColor #FFFFFF
-  BorderColor #1F5A32
+  BorderColor #3D5F2B
 }
 skinparam database {
-  BackgroundColor #E8F1EA
-  BorderColor #1F5A32
+  BackgroundColor #E5EFD8
+  BorderColor #3D5F2B
 }
 skinparam actor {
-  BackgroundColor #E8F1EA
-  BorderColor #1F5A32
+  BackgroundColor #E5EFD8
+  BorderColor #3D5F2B
 }
 skinparam usecase {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
 }
 skinparam activity {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
-  DiamondBackgroundColor #FFF7E6
-  DiamondBorderColor #C4572E
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
+  DiamondBackgroundColor #FDE9D3
+  DiamondBorderColor #A9551A
 }
 skinparam state {
-  BackgroundColor #F7FBF5
-  BorderColor #1F5A32
+  BackgroundColor #FFF8EF
+  BorderColor #3D5F2B
 }
 skinparam sequence {
-  ParticipantBackgroundColor #F7FBF5
-  ParticipantBorderColor #1F5A32
-  LifeLineBorderColor #8AA894
-  ActorBackgroundColor #E8F1EA
-  ActorBorderColor #1F5A32
-  GroupBackgroundColor #E8F1EA
+  ParticipantBackgroundColor #FFF8EF
+  ParticipantBorderColor #3D5F2B
+  LifeLineBorderColor #C2A98F
+  ActorBackgroundColor #E5EFD8
+  ActorBorderColor #3D5F2B
+  GroupBackgroundColor #E5EFD8
 }
 skinparam package {
   BackgroundColor #FFFFFF
-  BorderColor #8AA894
+  BorderColor #C2A98F
 }
