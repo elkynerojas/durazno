@@ -99,7 +99,7 @@ def tablas() -> list[dict]:
     return salida
 
 
-# El diagrama completo no se lee en una página carta: va en dos áreas. Las tablas de la otra área
+# El diagrama completo no se lee en una página carta: va en tres áreas. Las tablas de la otra área
 # que se referencian aparecen solo con su llave.
 AREAS = {
     "er-predio": (
@@ -118,6 +118,10 @@ AREAS = {
     "er-operacion": (
         "Modelo entidad-relación: visitas, lecturas y plan de actividades",
         ["visita", "lectura_trampa", "plan_actividad", "plan_cambio"],
+    ),
+    "er-inspeccion": (
+        "Modelo entidad-relación: inspección (hallazgos y evidencias)",
+        ["tipo_hallazgo", "hallazgo", "evidencia_hallazgo"],
     ),
 }
 

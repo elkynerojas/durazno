@@ -1,6 +1,6 @@
 @startuml
 !include estilo.iuml
-title Estados de la lectura, la actividad del plan y la trampa
+title Estados de la lectura, la actividad del plan, la trampa y el hallazgo
 
 state "Lectura de trampa" as L {
   [*] --> registrada : registrar (técnico)
@@ -31,6 +31,15 @@ state "Trampa" as T {
   retirada --> activa : reinstalar
   note right of retirada : los cambios marcan la ruta\n«requiere revisión»
 }
+state "Hallazgo" as H {
+  [*] --> abierto : registrar (campo)
+  abierto --> en_atencion : programar atención\nen el plan
+  en_atencion --> abierto : cancelar o borrar\nla actividad
+  en_atencion --> atendido : marcar cumplida\n(con nota)
+  atendido --> en_atencion : desmarcar
+  note right of en_atencion : se calcula con sus actividades\n(estado_hallazgo); «vencida»\nsi solo quedan vencidas
+}
 L -[hidden]down-> A
 A -[hidden]down-> T
+T -[hidden]down-> H
 @enduml

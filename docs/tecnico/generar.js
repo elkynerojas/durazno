@@ -135,7 +135,7 @@ const vision = [
     'El predio productor de durazno de la vereda Icota (Cácota, Norte de Santander) monitorea moscas de la fruta con trampas Jackson (trimedlure, _Ceratitis capitata_) y McPhail (proteína hidrolizada, _Anastrepha_ spp.), y debe reportar al ICA el índice MTD. Sin una herramienta, la ubicación de las trampas, las rutas de revisión, la planeación semanal y el cálculo del índice se llevan en papel y hojas de cálculo.',
   ),
   p(
-    'PERSICA georreferencia lotes y trampas, identifica cada trampa con un código QR que el técnico lee en campo, registra las lecturas con la posición del teléfono, planea las actividades de las 52 semanas, calcula el MTD por especie y genera el reporte para el ICA. Expone además una API documentada para la app móvil de la fase 2.',
+    'PERSICA georreferencia lotes y trampas, identifica cada trampa con un código QR que el técnico lee en campo, registra las lecturas con la posición del teléfono, planea las actividades de las 52 semanas, calcula el MTD por especie y genera el reporte para el ICA. Como funcionalidad extra, el módulo Inspección registra hallazgos en el cultivo (hongos, plagas, árboles enfermos) con fotos de evidencia y sigue su atención desde el plan. Expone además una API documentada para la app móvil de la fase 2.',
   ),
   h2('2.2 Módulos'),
   ...tabla(
@@ -148,6 +148,7 @@ const vision = [
       ['E5', 'Planeación', 'Calendario de 52 semanas, reprogramación con motivo, cumplimiento y «Mi semana».'],
       ['E6', 'Lecturas y MTD', 'Formulario de lectura, validación, MTD por especie, reporte ICA, historial.'],
       ['E7', 'Servicios móviles', 'OpenAPI completo, sincronización de cambios y lecturas en bloque.'],
+      ['E9', 'Inspección (extra)', 'Tipos de hallazgo administrables, hallazgos georreferenciados con fotos y atención programada en el plan.'],
     ],
     [900, 2500, 5960],
     { leyendaTabla: 'Módulos del aplicativo por épica del backlog.' },
@@ -156,10 +157,10 @@ const vision = [
   ...tabla(
     ['Rol', 'Responsabilidad en el sistema'],
     [
-      ['`tecnico`', 'Registra lecturas en campo y repone etiquetas; consulta su semana, el mapa y el MTD.'],
-      ['`agronomo`', 'Gestiona lotes, trampas, rutas y plan; valida lecturas; descarga reportes. Solo en sus predios.'],
-      ['`productor`', 'Consulta mapa, plan, MTD e historial, sin datos personales del personal.'],
-      ['`administrador`', 'Lo del agrónomo en todos los predios; además crea predios, asigna personal y administra cuentas.'],
+      ['`tecnico`', 'Registra lecturas y hallazgos en campo y repone etiquetas; consulta su semana, el mapa y el MTD.'],
+      ['`agronomo`', 'Gestiona lotes, trampas, rutas y plan; valida lecturas; registra hallazgos y programa su atención; descarga reportes. Solo en sus predios.'],
+      ['`productor`', 'Consulta mapa, plan, hallazgos, MTD e historial, sin datos personales del personal.'],
+      ['`administrador`', 'Lo del agrónomo en todos los predios; además crea predios, asigna personal, administra cuentas y los tipos de hallazgo.'],
     ],
     [2000, 7360],
     { leyendaTabla: 'Roles y responsabilidades.' },
@@ -220,6 +221,8 @@ const arquitectura = [
       ['**Acceso por predio con respuesta 404**', 'Un usuario no puede ni confirmar que existe un recurso de otro predio.'],
       ['**MTD como función pura** (`services/mtd.py`)', 'Se prueba con casos calculados a mano, sin base de datos.'],
       ['**Estado calculado** de las actividades (cumplida, vencida)', 'Siempre coherente con las lecturas; no hay que mantener otro estado.'],
+      ['**Estado del hallazgo derivado** de sus actividades de atención', 'Abierto, en atención o atendido se calcula con las actividades del plan; cancelar o cumplir una actividad lo actualiza sin otro campo que mantener.'],
+      ['**Fotos en disco, entregadas por la API**', 'Sin servicio de objetos adicional; cada foto pasa por el control de acceso del predio y los snapshots del disco la respaldan.'],
       ['**Mapa en canvas** (`preferCanvas`)', 'Chrome en macOS con GPU dejaba zonas sin pintar con la capa SVG de Leaflet.'],
       ['**Stack en una sola VM con Docker Compose**', 'El mismo stack de desarrollo; costo bajo y operación sencilla para un predio.'],
     ],
@@ -277,12 +280,21 @@ const backend = [
     'Reemplazar una etiqueta genera un código nuevo y deja el anterior en `reemplazo_qr`: leerlo responde **410** indicando la etiqueta nueva.',
     'Las etiquetas se generan en PDF carta con 8 por hoja (reportlab), con QR de más de 3 cm, código ICA, lote, tipo y el código impreso para escribirlo a mano.',
   ]),
-  h2('4.6 Sincronización (fase 2)'),
+  h2('4.6 Inspección: hallazgos y evidencias'),
   ...vinetas([
-    '`GET /sync/cambios?desde=` devuelve por entidad los registros creados, modificados y los ids borrados desde la fecha, con `siguiente_desde` y un traslape de 5 minutos (las transacciones fijan `updated_at` al inicio). Un predio recién asignado llega completo; uno desasignado, en borrados.',
+    '`tipo_hallazgo` es un catálogo global que administra el administrador (nombre único, color para el mapa, orden). La migración crea los seis tipos comunes con identificadores fijos; un tipo no se borra, se desactiva, y los hallazgos viejos lo conservan.',
+    'Un hallazgo es un punto dentro de su lote (`ST_Contains`, 422 `FUERA_DEL_LOTE`) con título, descripción, tipo y `observado_en` (sin fechas futuras). `precision_m` va nula cuando el punto se eligió tocando el mapa. Lo registran técnico, agrónomo y administrador; lo edita quien lo registró o la gestión, y solo la gestión lo borra (también borra sus actividades de atención).',
+    'Fotos (`services/evidencias.py`, Pillow en un hilo aparte): hasta **6 por hallazgo** y **8 MB** cada una (413 si se pasa). El tipo se comprueba abriendo la imagen (JPEG, PNG o WebP) y se rechazan las de más de 80 megapíxeles antes de decodificarlas. Se corrige la orientación, se reduce a 1920 px, se guarda en JPEG calidad 82 **sin EXIF** (el EXIF puede traer el GPS del teléfono) y se crea una miniatura de 400 px.',
+    'Los archivos quedan en `<EVIDENCIAS_DIR>/<hallazgo_id>/<evidencia_id>.jpg` con escritura atómica (temporal y `os.replace`). Se entregan solo por la API, con sesión y acceso al predio, y `Cache-Control: private`. Subir la misma foto con el mismo `id` no la duplica.',
+    'El estado lo calcula `estado_hallazgo()` (`services/inspecciones.py`) con sus actividades vigentes: alguna cumplida → **atendido**; alguna programada, reprogramada o vencida → **en atención** (con la marca `vencida` si solo quedan vencidas); si no → **abierto**. El filtro por estado de la lista se resuelve en SQL con `EXISTS`.',
+    '`POST /plan/atencion-hallazgo` (gestión) crea una actividad `atencion_hallazgo` en el lote del hallazgo, por defecto en la semana actual y con el título como nota. Responde 422 si el hallazgo ya está atendido o tiene una atención pendiente; un índice único parcial garantiza una sola atención vigente. La actividad se marca cumplida con `POST /plan/{id}/cumplimiento` y una `nota` opcional de lo que se hizo (`nota_cumplimiento`). No se programa desde el formulario general del plan.',
+  ]),
+  h2('4.7 Sincronización (fase 2)'),
+  ...vinetas([
+    '`GET /sync/cambios?desde=` devuelve por entidad los registros creados, modificados y los ids borrados desde la fecha, con `siguiente_desde` y un traslape de 5 minutos (las transacciones fijan `updated_at` al inicio). Un predio recién asignado llega completo; uno desasignado, en borrados. Incluye `tipos_hallazgo` y `hallazgos` (con los ids de sus evidencias); un hallazgo vuelve a viajar cuando cambian sus actividades de atención. Las fotos se descargan y suben aparte, con el servicio de evidencias.',
     '`POST /sync/lecturas` registra hasta 200 lecturas en bloque, en orden de `observado_en`, con un punto de guardado por lectura: una que falla no impide las demás. Es idempotente por `id`.',
   ]),
-  h2('4.7 Configuración'),
+  h2('4.8 Configuración'),
   p(
     'La configuración se lee de variables de entorno con pydantic-settings (`app/core/config.py`); el anexo A las lista. Fuera de desarrollo la API no arranca con una `SECRET_KEY` débil ni con un `QR_URL_BASE` sin HTTPS. La versión del aplicativo está en `app/core/version.py` y en `frontend/package.json`.',
   ),
@@ -292,8 +304,8 @@ const frontend = [
   h1('5. Frontend'),
   h2('5.1 Estructura'),
   ...vinetas([
-    '`src/api/client.js`: único cliente HTTP. Agrega el token, renueva una vez ante un 401 y, si falla, cierra la sesión (evento `icota:sesion-cerrada`).',
-    '`src/features/<módulo>/`: vistas, formularios y pruebas por módulo (auth, mapa, lotes, trampas, rutas, plan, lecturas, mtd, predio, predios, usuarios).',
+    '`src/api/client.js`: único cliente HTTP. Agrega el token, renueva una vez ante un 401 y, si falla, cierra la sesión (evento `icota:sesion-cerrada`). Envía `FormData` sin `Content-Type` para subir fotos y descarga imágenes como blob.',
+    '`src/features/<módulo>/`: vistas, formularios y pruebas por módulo (auth, mapa, lotes, trampas, rutas, plan, lecturas, mtd, inspeccion, predio, predios, usuarios).',
     '`src/components/`: plantilla con el menú, encabezado, mapa base, modal de Ayuda.',
     '`src/utils/`: conversión GeoJSON ↔ Leaflet (`geo.js`, el único lugar donde se invierte el orden de coordenadas), fechas ISO en America/Bogota, formato y ubicación GPS.',
   ]),
@@ -315,6 +327,7 @@ const frontend = [
       ['`/mi-semana`', 'Actividades asignadas de la semana', 'Técnico y agrónomo'],
       ['`/lecturas`', 'Registrar lecturas y bandeja de validación', 'Técnico, agrónomo, administrador'],
       ['`/t/:codigo`, `/t/:codigo/lectura`', 'Ficha de la trampa al leer el QR y formulario de lectura', 'Todos (registra campo)'],
+      ['`/inspeccion`', 'Hallazgos en mapa y lista, ficha con fotos y atención; tipos de hallazgo', 'Todos (registra campo; programa agrónomo/administrador; tipos administrador)'],
       ['`/mtd`, `/historial`', 'Índice MTD, reporte ICA e historial de capturas', 'Todos'],
       ['`/predio`', 'Datos y límite del predio; personal y todos los predios', 'Todos (administrador: personal y predios)'],
       ['`/usuarios`', 'Cuentas del personal', 'Administrador'],
@@ -325,7 +338,8 @@ const frontend = [
   h2('5.4 Mapas y uso en el teléfono'),
   ...vinetas([
     'react-leaflet con imágenes satelitales (ArcGIS) y de calles (OpenStreetMap); el dibujo y la edición de polígonos usan Leaflet-Geoman.',
-    'Las capas se dibujan en **canvas** y los colores de lotes y límite se eligen por registro.',
+    'Las capas se dibujan en **canvas** y los colores de lotes y límite se eligen por registro. El mapa del predio tiene además la capa «Hallazgos» (apagada por defecto) con los no atendidos, del color de su tipo.',
+    'Para registrar un hallazgo la ubicación sale del GPS o de tocar el mapa; el lote se sugiere con el punto. Las fotos se toman con la cámara (`capture="environment"`) y se suben una a una después de crear el hallazgo, con reintento por foto.',
     'El diseño es adaptable: en el teléfono el menú se pliega y las tablas se resumen. El GPS usa la Geolocation API en alta precisión, que exige HTTPS.',
   ]),
 ]
@@ -377,10 +391,11 @@ const datos = [
   ...figura('clases-dominio.png', 'Modelo de dominio (diagrama de clases).'),
   h2('6.3 Modelo entidad-relación'),
   p(
-    `El modelo físico tiene ${MODELO.tablas.length} tablas. Por legibilidad se presenta en dos áreas; las tablas en gris pertenecen a la otra área. Un asterisco indica columna obligatoria; las columnas comunes se resumen al pie de cada entidad.`,
+    `El modelo físico tiene ${MODELO.tablas.length} tablas. Por legibilidad se presenta en tres áreas; las tablas en gris pertenecen a otra área. Un asterisco indica columna obligatoria; las columnas comunes se resumen al pie de cada entidad.`,
   ),
   ...figura('er-predio.png', 'Modelo entidad-relación: predio, lotes, trampas y rutas.'),
   ...figura('er-operacion.png', 'Modelo entidad-relación: visitas, lecturas y plan de actividades.'),
+  ...figura('er-inspeccion.png', 'Modelo entidad-relación: inspección (hallazgos y evidencias).'),
   h2('6.4 Diccionario de datos'),
   p('Generado desde los modelos ORM. «PK» es llave primaria, «FK» llave foránea.'),
   ...diccionario(),
@@ -390,7 +405,7 @@ const comportamiento = [
   h1('7. Comportamiento del sistema (UML)'),
   h2('7.1 Casos de uso'),
   p(
-    'Los actores son los cuatro roles y la app móvil de la fase 2. El administrador hereda los casos de uso del agrónomo. «Leer el QR» extiende el registro de la lectura, que incluye haber iniciado sesión.',
+    'Los actores son los cuatro roles y la app móvil de la fase 2. El administrador hereda los casos de uso del agrónomo. «Leer el QR» extiende el registro de la lectura, que incluye haber iniciado sesión. «Programar la atención de un hallazgo» extiende la programación del plan.',
   ),
   ...figura('casos-uso-campo.png', 'Casos de uso de campo y consulta.', 4.6),
   ...figura('casos-uso-gestion.png', 'Casos de uso de gestión del predio y administración.', 3.8),
@@ -410,8 +425,8 @@ const comportamiento = [
   p('Integra los módulos: el plan genera las visitas, el técnico recorre la ruta leyendo las trampas, el agrónomo valida y el MTD orienta la reprogramación y el reporte.'),
   ...figura('actividad-monitoreo.png', 'Ciclo semanal de monitoreo.', 5.4),
   h2('7.8 Estados'),
-  p('Las lecturas, las actividades del plan y las trampas tienen ciclos de vida explícitos. «Cumplida» y «vencida» de una actividad se calculan al consultarla a partir de las lecturas de su semana.'),
-  ...figura('estados.png', 'Estados de la lectura, la actividad del plan y la trampa.'),
+  p('Las lecturas, las actividades del plan, las trampas y los hallazgos tienen ciclos de vida explícitos. «Cumplida» y «vencida» de una actividad se calculan al consultarla a partir de las lecturas de su semana; el estado del hallazgo se calcula con sus actividades de atención.'),
+  ...figura('estados.png', 'Estados de la lectura, la actividad del plan, la trampa y el hallazgo.'),
 ]
 
 // --- Servicios (generado desde openapi.json) ---
@@ -439,7 +454,7 @@ const apiDoc = [
   h2('8.1 Convenciones'),
   ...vinetas([
     'Base `/api/v1`; JSON en UTF-8; autenticación `Authorization: Bearer <token>`.',
-    'Errores con cuerpo `{"detail": "..."}` en español; 422 de validación con la lista de Pydantic. Códigos usados: 401, 403, 404, 409, 410, 422 y 429.',
+    'Errores con cuerpo `{"detail": "..."}` en español; 422 de validación con la lista de Pydantic. Códigos usados: 401, 403, 404, 409, 410, 413, 422 y 429.',
     'Los recursos que crea el cliente aceptan su `id`; reenviarlo devuelve 200 con el registro existente (idempotencia).',
     `El contrato completo, con ejemplos y errores de cada operación, está en \`backend/openapi.json\` (versionado; una prueba falla si se desactualiza) y en \`/api/v1/openapi.json\`. La guía \`docs/guia-integracion.md\` explica los flujos para la app móvil.`,
   ]),
@@ -460,6 +475,8 @@ const seguridad = [
       ['Asignación masiva de campos privilegiados', 'Los esquemas de entrada no incluyen campos privilegiados; `rol` y `activo` solo se aceptan en los servicios de cuentas del administrador y `deleted_at` nunca.'],
       ['Inyección SQL', 'Siempre consultas parametrizadas (SQLAlchemy).'],
       ['Inyección de fórmulas en CSV y de marcado en PDF', 'Celdas que empiezan con = + - @ se neutralizan; textos escapados en reportlab.'],
+      ['Archivos subidos maliciosos o enormes', 'Tipo comprobado abriendo la imagen, no por la extensión; tope de 8 MB, 80 megapíxeles y 6 fotos; se recodifica en JPEG; nombres generados por el servidor; nginx limita el cuerpo a 10 MB.'],
+      ['Ubicación del teléfono en las fotos', 'Se elimina todo el EXIF al guardar; las fotos solo se entregan por la API con acceso al predio.'],
       ['Peticiones desde otros sitios', 'CORS restringido y rechazo de `Origin` ajeno en escrituras.'],
       ['Exposición de la infraestructura', 'Base y API solo en la red interna; HSTS, X-Frame-Options, nosniff; Swagger apagado en producción.'],
       ['Secretos en el código', '`.env` fuera de Git; claves generadas en el servidor; gitleaks en la CI.'],
@@ -469,7 +486,7 @@ const seguridad = [
     { leyendaTabla: 'Riesgos y controles de seguridad.' },
   ),
   p(
-    '**Ley 1581 de 2012.** Al crear una cuenta se registra la autorización del titular. El productor no recibe quién registró una lectura ni quién es responsable de una actividad; la posición GPS de una lectura solo la ven el agrónomo, el administrador y el técnico que la tomó. Los reportes CSV y PDF no incluyen datos personales. Las cuentas no se eliminan: se desactivan, para conservar la autoría.',
+    '**Ley 1581 de 2012.** Al crear una cuenta se registra la autorización del titular. El productor no recibe quién registró una lectura o un hallazgo ni quién es responsable de una actividad; la posición GPS de una lectura solo la ven el agrónomo, el administrador y el técnico que la tomó. Los reportes CSV y PDF no incluyen datos personales. Las cuentas no se eliminan: se desactivan, para conservar la autoría.',
   ),
 ]
 
@@ -480,7 +497,7 @@ const calidad = [
     '**Interfaz (Vitest + Testing Library):** componentes con la API simulada, consultando como usuario (roles y textos en español).',
     '**Extremo a extremo (Playwright):** flujos completos con perfil de teléfono Android (Pixel 7) sobre el stack de Docker.',
     '**Flujo móvil:** `app.scripts.flujo_movil` recorre el flujo de la app contra un servidor y valida cada respuesta con el `openapi.json` publicado.',
-    '**Trazabilidad:** 110 casos de prueba trazados a los criterios de aceptación (`docs/pruebas/`).',
+    '**Trazabilidad:** 125 casos de prueba trazados a los criterios de aceptación (`docs/pruebas/`).',
   ]),
   ...figura('actividad-ci.png', 'Integración continua (GitHub Actions) y entrega.', 3.9),
 ]
@@ -510,7 +527,7 @@ const despliegue = [
   p('En el proveedor del dominio, crear el registro **A** del subdominio con la IP que muestra el paso 1 (TTL 300) y verificar que resuelva:'),
   ...codigo('dig +short persica.redsoftdevelopers.com'),
   h3('Paso 3. Servidor y aplicativo'),
-  p('Instala Docker y Compose, agrega swap, descarga la versión indicada en `/opt/persica`, crea `.env` con claves aleatorias generadas en el servidor (permisos 600) y levanta el stack:'),
+  p('Instala Docker y Compose, agrega swap, descarga la versión indicada en `/opt/persica`, crea la carpeta `datos/evidencias` con dueño 10001 (el usuario de la API), crea `.env` con claves aleatorias generadas en el servidor (permisos 600) y levanta el stack:'),
   ...codigo(
     'gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \\\n  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=v1.1.0 sh -s" \\\n  < deploy/gcp/instalar-servidor.sh',
   ),
@@ -538,7 +555,7 @@ const despliegue = [
   h2('11.5 Respaldos y restauración'),
   ...vinetas([
     'El servicio `respaldo` hace un `pg_dump` diario a las 02:00 (Bogotá) y conserva 14 días en el volumen `respaldos`.',
-    'Google Cloud guarda un snapshot diario del disco completo durante 7 días.',
+    'Google Cloud guarda un snapshot diario del disco completo durante 7 días; incluye las fotos de los hallazgos (`/opt/persica/datos/evidencias`), que no van en el `pg_dump`.',
     'Prueba de restauración (restaura la última copia en una base temporal y compara conteos):',
   ]),
   ...codigo('cd /opt/persica && sudo docker compose -f docker-compose.prod.yml exec respaldo sh /respaldo/probar-restauracion.sh'),
@@ -582,6 +599,7 @@ const anexos = [
       ['`nginx/`', 'Configuración de desarrollo y de producción (`prod/`: TLS, seguridad, certificado)'],
       ['`deploy/`', 'Certificado, respaldos y despliegue en Google Cloud (`gcp/`)'],
       ['`db/init/`', 'Extensiones de PostgreSQL al crear el volumen'],
+      ['`datos/evidencias/`', 'Fotos de los hallazgos (fuera de Git; montada en la API)'],
       ['`docs/`', 'Guía de integración, manual, pruebas y este documento'],
       ['`.github/workflows/`', 'Integración continua'],
     ],

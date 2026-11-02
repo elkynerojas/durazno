@@ -16,6 +16,8 @@ rectangle "PERSICA" {
   usecase "Reponer etiqueta QR" as UC4
   usecase "Ver el mapa y el estado\nde monitoreo" as UC11
   usecase "Consultar MTD e historial" as UC12
+  usecase "Registrar hallazgo\ncon fotos" as UC18
+  usecase "Consultar hallazgos\ny su atención" as UC19
   usecase "Sincronizar cambios\ny lecturas en bloque" as UC17
 }
 
@@ -29,8 +31,14 @@ agr --> UC11
 agr --> UC12
 pro --> UC11
 pro --> UC12
+tec --> UC18
+agr --> UC18
+tec --> UC19
+agr --> UC19
+pro --> UC19
 app --> UC17
 UC2 .> UC3 : <<extend>>
 UC3 .> UC0 : <<include>>
 UC17 .> UC0 : <<include>>
+UC18 .> UC0 : <<include>>
 @enduml

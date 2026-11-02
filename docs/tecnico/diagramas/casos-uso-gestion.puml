@@ -18,6 +18,8 @@ rectangle "PERSICA" {
   usecase "Descargar reporte ICA" as UC13
   usecase "Exportar GeoJSON / KML" as UC14
   usecase "Editar datos y límite del predio" as UC15b
+  usecase "Programar la atención\nde un hallazgo" as UC20
+  usecase "Administrar tipos\nde hallazgo" as UC21
   usecase "Crear predios y\nasignar personal" as UC15
   usecase "Administrar cuentas" as UC16
 }
@@ -31,7 +33,10 @@ agr --> UC10
 agr --> UC13
 agr --> UC14
 agr --> UC15b
+agr --> UC20
 adm --> UC15
+adm --> UC21
 adm --> UC16
 UC10b .> UC10 : <<extend>>
+UC20 .> UC9 : <<extend>>
 @enduml

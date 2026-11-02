@@ -30,6 +30,10 @@ package "api/v1/endpoints (routers)" {
     GET /cambios
     POST /lecturas
   }
+  class "inspecciones" as r_ins <<router>> {
+    CRUD /tipos · /hallazgos
+    POST|GET /hallazgos/{id}/evidencias
+  }
   class "plan · rutas · lotes\npredios · usuarios\nmapa · exportar" as r_otros <<router>>
 }
 
@@ -71,6 +75,10 @@ package "services (lógica sin HTTP)" {
     clasificar()
     siguiente_desde()
   }
+  class "inspecciones · evidencias" as s_ins {
+    estado_hallazgo()
+    procesar_y_guardar() (Pillow)
+  }
   class "auth · claves · intentos" as s_auth {
     hashear_clave() (Argon2)
     crear_token()
@@ -80,7 +88,7 @@ package "services (lógica sin HTTP)" {
 }
 
 package "models (SQLAlchemy + GeoAlchemy2)" {
-  class "Predio · Lote · Trampa · Ruta\nVisita · LecturaTrampa\nPlanActividad · Usuario …" as modelos
+  class "Predio · Lote · Trampa · Ruta\nVisita · LecturaTrampa\nPlanActividad · Hallazgo · Usuario …" as modelos
 }
 
 r_auth --> s_auth
@@ -92,6 +100,8 @@ r_vis --> s_lec
 r_mtd --> s_mtd
 r_sync --> r_vis : crear_lectura
 r_sync --> s_sync
+r_ins --> acceso
+r_ins --> s_ins
 r_otros --> acceso
 r_otros --> s_rut
 r_otros --> s_otros

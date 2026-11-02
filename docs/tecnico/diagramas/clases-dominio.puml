@@ -68,11 +68,31 @@ class LecturaTrampa {
   motivo_rechazo [0..1]
 }
 class PlanActividad {
-  tipo : visita_monitoreo | cambio_atrayente | labor_cultural
+  tipo : visita_monitoreo | cambio_atrayente
+    | labor_cultural | atencion_hallazgo
   labor [0..1]
   tipo_trampa [0..1]
   anio, semana : int [semana ISO]
   estado : programada | cumplida | reprogramada | cancelada
+  nota_cumplimiento [0..1]
+}
+class TipoHallazgo {
+  nombre : str [único]
+  color : #rrggbb
+  activo : bool
+  orden : int
+}
+class Hallazgo {
+  titulo : str
+  descripcion : str [0..1]
+  geom : POINT 4326
+  precision_m : decimal [0..1]
+  observado_en : timestamptz
+  estado : abierto | en_atencion | atendido [calculado]
+}
+class EvidenciaHallazgo {
+  archivo : str [JPEG sin EXIF]
+  ancho, alto, bytes, orden : int
 }
 class PlanCambio {
   accion : reprogramada | responsable | eliminada
@@ -85,6 +105,7 @@ EntidadSincronizable <|-- Lote
 EntidadSincronizable <|-- Trampa
 EntidadSincronizable <|-- LecturaTrampa
 EntidadSincronizable <|-- PlanActividad
+EntidadSincronizable <|-- Hallazgo
 
 Predio "1" *-- "0..*" Lote
 Predio "1" -- "0..*" PredioUsuario
@@ -103,6 +124,11 @@ PlanActividad "0..*" -- "1" Usuario : responsable
 PlanActividad "0..*" -- "0..1" Ruta
 PlanActividad "0..1" -- "0..1" LecturaTrampa : origen\n(visita adicional)
 PlanActividad "1" -- "0..*" PlanCambio
+Lote "1" -- "0..*" Hallazgo
+Hallazgo "0..*" -- "1" TipoHallazgo
+Hallazgo "0..*" -- "1" Usuario : registró
+Hallazgo "1" *-- "0..6" EvidenciaHallazgo
+PlanActividad "0..*" -- "0..1" Hallazgo : atención
 note right of EntidadSincronizable
   Todas las tablas del dominio la heredan:
   id generado en el dispositivo (sin conexión),

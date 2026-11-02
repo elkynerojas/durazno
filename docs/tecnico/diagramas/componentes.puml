@@ -11,15 +11,16 @@ node "nginx" as nginx {
 }
 
 node "API (FastAPI · Python 3.13)" as api {
-  component "Routers /api/v1\nauth · usuarios · predios · lotes\ntrampas (QR) · rutas · plan\nvisitas · mtd · sync · exportar" as routers
+  component "Routers /api/v1\nauth · usuarios · predios · lotes\ntrampas (QR) · rutas · plan\nvisitas · mtd · inspecciones\nsync · exportar" as routers
   component "Acceso por rol\ny por predio" as acceso
-  component "Servicios\n(MTD, rutas, lecturas,\nQR, PDF, sincronización)" as servicios
+  component "Servicios\n(MTD, rutas, lecturas,\nQR, PDF, fotos, sincronización)" as servicios
   component "Modelos ORM\n(SQLAlchemy 2 async +\nGeoAlchemy2)" as modelos
 }
 
 database "PostgreSQL 18\n+ PostGIS 3.6" as db
 component "certbot\n(Let's Encrypt)" as certbot
 component "respaldo\n(pg_dump diario)" as respaldo
+folder "datos/evidencias\n(fotos de hallazgos)" as evidencias
 
 usuario --> nginx : HTTPS
 movil --> proxy : HTTPS · JSON
@@ -31,4 +32,5 @@ servicios --> modelos
 modelos --> db : psycopg 3
 certbot ..> nginx : certificados
 respaldo --> db : pg_dump
+servicios --> evidencias : JPEG sin EXIF
 @enduml

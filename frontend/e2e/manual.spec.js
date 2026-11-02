@@ -318,6 +318,182 @@ async function sembrarDemostracion(page) {
   )
 }
 
+// Hallazgos de Inspección en el predio de demostración: uno abierto, uno en atención y uno
+// atendido, con fotos dibujadas en un canvas. Si el predio ya tiene hallazgos no hace nada.
+async function sembrarHallazgos(page, predioId) {
+  return page.evaluate(
+    async ({ predioId, AGRONOMA, TECNICO, clave }) => {
+      const token = async (correo) =>
+        (
+          await (
+            await fetch('/api/v1/auth/token', {
+              method: 'POST',
+              headers: { 'X-Cliente': 'movil' },
+              body: new URLSearchParams({ username: correo, password: clave }),
+            })
+          ).json()
+        ).access_token
+      const api = (tk) => async (metodo, ruta, cuerpo) => {
+        const formulario = cuerpo instanceof FormData
+        const r = await fetch(`/api/v1${ruta}`, {
+          method: metodo,
+          headers: {
+            Authorization: `Bearer ${tk}`,
+            ...(formulario ? {} : { 'Content-Type': 'application/json' }),
+          },
+          body: formulario ? cuerpo : cuerpo ? JSON.stringify(cuerpo) : undefined,
+        })
+        if (!r.ok) throw new Error(`${metodo} ${ruta}: ${r.status} ${await r.text()}`)
+        return r.status === 204 ? null : r.json()
+      }
+      const agronoma = api(await token(AGRONOMA.correo))
+      const tecnico = api(await token(TECNICO.correo))
+      const existentes = await agronoma('GET', `/inspecciones/hallazgos?predio_id=${predioId}`)
+      if (existentes.hallazgos.length) return
+
+      const tipos = Object.fromEntries(
+        (await agronoma('GET', '/inspecciones/tipos')).map((t) => [t.nombre, t.id]),
+      )
+      const lotes = Object.fromEntries(
+        (await agronoma('GET', `/lotes?predio_id=${predioId}`)).map((l) => [l.codigo, l.id]),
+      )
+      const personal = await agronoma('GET', `/predios/${predioId}/usuarios`)
+      const idDe = (correo) => personal.find((p) => p.correo === correo).id
+
+      // Foto de muestra: hojas sobre fondo verde con manchas, insectos o resina según el caso.
+      let semilla = 7
+      const azar = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647)
+      const foto = (motivo) => {
+        const c = document.createElement('canvas')
+        c.width = 1200
+        c.height = 900
+        const g = c.getContext('2d')
+        const fondo = g.createLinearGradient(0, 0, 0, 900)
+        fondo.addColorStop(0, '#1f3d1a')
+        fondo.addColorStop(1, '#4f7a2e')
+        g.fillStyle = fondo
+        g.fillRect(0, 0, 1200, 900)
+        if (motivo === 'gomosis') {
+          g.fillStyle = '#5a3d26'
+          g.fillRect(470, 0, 260, 900)
+          for (let i = 0; i < 9; i++) {
+            g.fillStyle = `rgba(${200 + azar() * 40}, ${120 + azar() * 40}, 30, 0.9)`
+            g.beginPath()
+            g.ellipse(500 + azar() * 200, 120 + i * 85, 18 + azar() * 22, 12 + azar() * 16, 0, 0, 7)
+            g.fill()
+          }
+        }
+        for (let i = 0; i < 16; i++) {
+          const x = azar() * 1200
+          const y = azar() * 900
+          g.save()
+          g.translate(x, y)
+          g.rotate(azar() * Math.PI)
+          g.fillStyle = `hsl(${95 + azar() * 25}, 55%, ${30 + azar() * 18}%)`
+          g.beginPath()
+          g.ellipse(0, 0, 150, 55, 0, 0, 7)
+          g.fill()
+          g.strokeStyle = 'rgba(220, 240, 180, 0.5)'
+          g.lineWidth = 3
+          g.beginPath()
+          g.moveTo(-145, 0)
+          g.lineTo(145, 0)
+          g.stroke()
+          if (motivo === 'hongo' && i % 2 === 0) {
+            for (let k = 0; k < 4; k++) {
+              const [mx, my] = [(azar() - 0.5) * 200, (azar() - 0.5) * 50]
+              g.fillStyle = 'rgba(230, 200, 60, 0.55)'
+              g.beginPath()
+              g.arc(mx, my, 16, 0, 7)
+              g.fill()
+              g.fillStyle = '#2b1b0e'
+              g.beginPath()
+              g.arc(mx, my, 9, 0, 7)
+              g.fill()
+            }
+          }
+          if (motivo === 'plaga' && i % 3 === 0) {
+            for (let k = 0; k < 40; k++) {
+              g.fillStyle = k % 4 ? '#1d2b12' : '#9bbf4a'
+              g.beginPath()
+              g.ellipse((azar() - 0.5) * 220, (azar() - 0.5) * 60, 5, 3.5, azar() * 3, 0, 7)
+              g.fill()
+            }
+          }
+          g.restore()
+        }
+        return new Promise((listo) => c.toBlob(listo, 'image/jpeg', 0.88))
+      }
+      const subir = async (cliente, hallazgoId, motivo) => {
+        const datos = new FormData()
+        datos.append('archivo', await foto(motivo), 'foto.jpg')
+        await cliente('POST', `/inspecciones/hallazgos/${hallazgoId}/evidencias`, datos)
+      }
+      const hace = (dias) => new Date(Date.now() - dias * 86_400_000).toISOString()
+      const registrar = (cliente, datos) =>
+        cliente('POST', '/inspecciones/hallazgos', { id: crypto.randomUUID(), ...datos })
+
+      const hongo = await registrar(tecnico, {
+        lote_id: lotes['L-01'],
+        tipo_id: tipos['Hongo o enfermedad'],
+        titulo: 'Manchas oscuras en hojas del sector norte',
+        descripcion:
+          'Unos 8 árboles con manchas pardas de borde amarillo en las hojas bajas; algunas hojas ya caen. Posible cribado o roya.',
+        ubicacion: { type: 'Point', coordinates: [-72.6427, 7.2668] },
+        precision_m: 5,
+        observado_en: hace(3),
+      })
+      await subir(tecnico, hongo.id, 'hongo')
+      await subir(tecnico, hongo.id, 'hongo')
+      await agronoma('POST', '/plan/atencion-hallazgo', {
+        hallazgo_id: hongo.id,
+        responsable_id: idDe(TECNICO.correo),
+        notas: 'Poda sanitaria y aplicación de fungicida cúprico',
+      })
+
+      const plaga = await registrar(tecnico, {
+        lote_id: lotes['L-02'],
+        tipo_id: tipos['Plaga'],
+        titulo: 'Pulgones en brotes nuevos',
+        descripcion: 'Colonias de pulgón verde en los brotes de 4 árboles junto a la trampa NS-CAC-0105.',
+        ubicacion: { type: 'Point', coordinates: [-72.6401, 7.2672] },
+        precision_m: 7,
+        observado_en: hace(1),
+      })
+      await subir(tecnico, plaga.id, 'plaga')
+
+      const gomosis = await registrar(agronoma, {
+        lote_id: lotes['L-01'],
+        tipo_id: tipos['Árbol enfermo o dañado'],
+        titulo: 'Árbol con gomosis en el tronco',
+        descripcion: 'Exudado de resina en la base del tronco de un árbol de la hilera 3.',
+        ubicacion: { type: 'Point', coordinates: [-72.6434, 7.2656] },
+        observado_en: hace(9),
+      })
+      await subir(agronoma, gomosis.id, 'gomosis')
+      const atencion = await agronoma('POST', '/plan/atencion-hallazgo', {
+        hallazgo_id: gomosis.id,
+        responsable_id: idDe(AGRONOMA.correo),
+      })
+      await agronoma('POST', `/plan/${atencion.id}/cumplimiento`, {
+        cumplida: true,
+        nota: 'Raspado de la lesión y pasta cicatrizante',
+      })
+
+      await registrar(tecnico, {
+        lote_id: lotes['L-03'],
+        tipo_id: tipos['Daño por clima'],
+        titulo: 'Ramas quebradas por el viento',
+        descripcion: 'Dos ramas principales quebradas tras el ventarrón del martes.',
+        ubicacion: { type: 'Point', coordinates: [-72.6425, 7.26778] },
+        precision_m: 9,
+        observado_en: hace(2),
+      })
+    },
+    { predioId, AGRONOMA, TECNICO, clave: CLAVE },
+  )
+}
+
 async function elegirPredio(page, predioId) {
   await page.evaluate((id) => localStorage.setItem('icota.predio', id), predioId)
 }
@@ -332,6 +508,7 @@ test('administrador y agrónomo', async ({ page }) => {
   await ingresar(page, CORREO, CLAVE)
   await expect(page).toHaveURL('/mapa')
   predioId = await sembrarDemostracion(page)
+  await sembrarHallazgos(page, predioId)
   await page.context().clearCookies()
   await page.goto('/')
 
@@ -405,6 +582,26 @@ test('administrador y agrónomo', async ({ page }) => {
   await page.goto('/predio')
   await captura(page, '18-predio-agronomo', { espera: 1500 })
 
+  // Inspección: lista y mapa, ficha en atención, programar la atención de uno abierto.
+  const hallazgos = await page.evaluate(async (id) => {
+    const tk = (await (await fetch('/api/v1/auth/renovar', { method: 'POST' })).json()).access_token
+    const r = await fetch(`/api/v1/inspecciones/hallazgos?predio_id=${id}`, {
+      headers: { Authorization: `Bearer ${tk}` },
+    })
+    return Object.fromEntries((await r.json()).hallazgos.map((h) => [h.titulo, h.id]))
+  }, predioId)
+  await page.goto('/inspeccion')
+  await captura(page, '26-inspeccion', { espera: 1500 })
+  await page.goto(`/inspeccion?hallazgo=${hallazgos['Manchas oscuras en hojas del sector norte']}`)
+  await expect(page.getByRole('img', { name: /Foto/ }).first()).toBeVisible()
+  await captura(page, '27-inspeccion-ficha', { espera: 1500 })
+  await page.goto(`/inspeccion?hallazgo=${hallazgos['Pulgones en brotes nuevos']}`)
+  await page.getByRole('button', { name: 'Programar atención' }).click()
+  await captura(page, '28-inspeccion-programar', { espera: 900 })
+  await page.goto('/mapa')
+  await page.getByRole('button', { name: 'Hallazgos' }).click()
+  await captura(page, '40-mapa-hallazgos', { espera: 1500 })
+
   // Administración (cuenta de administrador).
   await page.context().clearCookies()
   await page.goto('/')
@@ -422,6 +619,8 @@ test('administrador y agrónomo', async ({ page }) => {
     .click({ timeout: 5000 })
     .catch(() => {})
   await captura(page, '22-usuario-nuevo', { espera: 600 })
+  await page.goto('/inspeccion?pestana=tipos')
+  await captura(page, '29-tipos-hallazgo', { espera: 900 })
   await page.getByRole('button', { name: 'Ayuda' }).click()
   await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.1.0')
   await captura(page, '25-ayuda', { espera: 600 })
@@ -461,7 +660,14 @@ test('técnico en el teléfono', async ({ page, context }) => {
     const h = { headers: { Authorization: `Bearer ${tk}` } }
     const lista = await (await fetch(`/api/v1/trampas?predio_id=${id}`, h)).json()
     const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
-    for (const codigo of ['NS-CAC-0105', 'NS-CAC-0102', 'NS-CAC-0103', 'NS-CAC-0106']) {
+    for (const codigo of [
+      'NS-CAC-0105',
+      'NS-CAC-0102',
+      'NS-CAC-0103',
+      'NS-CAC-0106',
+      'NS-CAC-0101',
+      'NS-CAC-0104',
+    ]) {
       const t = lista.find((x) => x.codigo_ica === codigo)
       const prep = await (
         await fetch(`/api/v1/visitas/lecturas/preparar?trampa_id=${t.id}`, h)
@@ -496,4 +702,20 @@ test('técnico en el teléfono', async ({ page, context }) => {
 
   await page.goto('/lecturas')
   await captura(page, '37-telefono-lecturas', { completa: true, espera: 1200 })
+
+  // Registrar un hallazgo con el GPS (sin guardarlo, para que el recorrido se pueda repetir).
+  await context.setGeolocation({ latitude: 7.2672, longitude: -72.6408, accuracy: 5 })
+  await page.goto('/inspeccion')
+  await page.getByRole('button', { name: 'Registrar hallazgo' }).click()
+  const registro = page.getByRole('form', { name: 'Registrar hallazgo' })
+  await registro.getByLabel('Tipo de hallazgo').selectOption({ label: 'Plaga' })
+  await registro.getByLabel('Título').fill('Frutos con picadura en la hilera 5')
+  await registro
+    .getByLabel('Descripción detallada')
+    .fill('Frutos con orificios y zonas blandas; se recogieron 6 caídos para revisar larvas.')
+  await registro.getByRole('button', { name: 'Usar mi ubicación' }).click()
+  await expect(registro.getByText(/El punto está dentro del lote/)).toBeVisible({ timeout: 15000 })
+  // Solo el formulario: al estirar la ventana, el mapa de arriba crece y queda sin teselas.
+  await page.waitForTimeout(900)
+  await registro.screenshot({ path: ruta('38-telefono-hallazgo') })
 })

@@ -19,7 +19,7 @@ const { p, h1, h2, vinetas, pasos, nota, figura, telefono, tabla, espacio, porta
 const introduccion = [
   h1('1. Introducción'),
   p(
-    '**PERSICA** es el aplicativo web con el que el predio registra y georreferencia sus lotes y trampas, identifica cada trampa con un código QR, define las rutas de monitoreo, planea las actividades de las 52 semanas del año y calcula el índice **MTD** (moscas/trampa/día) según el Manual Técnico de Trampeo del ICA (Plan Nacional de Moscas de la Fruta).',
+    '**PERSICA** es el aplicativo web con el que el predio registra y georreferencia sus lotes y trampas, identifica cada trampa con un código QR, define las rutas de monitoreo, planea las actividades de las 52 semanas del año y calcula el índice **MTD** (moscas/trampa/día) según el Manual Técnico de Trampeo del ICA (Plan Nacional de Moscas de la Fruta). Con el módulo **Inspección** registra además los hallazgos del cultivo (hongos, plagas, árboles enfermos) con fotos y sigue su atención.',
   ),
   p(
     'Este manual explica, paso a paso y con capturas de pantalla, todos los flujos del aplicativo. Está organizado por tareas: cada capítulo indica qué rol la realiza, dónde se encuentra en el menú y qué hacer si algo no sale como se espera.',
@@ -28,10 +28,10 @@ const introduccion = [
   tabla(
     ['Perfil', 'Capítulos recomendados'],
     [
-      ['**Técnico de campo**', '2, 3, 4 y 9 (trabajo de campo y lecturas con el teléfono)'],
-      ['**Agrónomo**', 'Todos, en especial 5 a 8 (predio, lotes, trampas, rutas, planeación), 10 (validación) y 11 (MTD)'],
-      ['**Productor**', '2, 3, 4 y 11 (consulta del mapa, del plan y del MTD)'],
-      ['**Administrador**', 'Todos, en especial 12 (predios y cuentas)'],
+      ['**Técnico de campo**', '2, 3, 4, 9 y 12 (trabajo de campo, lecturas y hallazgos con el teléfono)'],
+      ['**Agrónomo**', 'Todos, en especial 5 a 8 (predio, lotes, trampas, rutas, planeación), 10 (validación), 11 (MTD) y 12 (hallazgos)'],
+      ['**Productor**', '2, 3, 4, 11 y 12 (consulta del mapa, del plan, del MTD y de los hallazgos)'],
+      ['**Administrador**', 'Todos, en especial 12.5 (tipos de hallazgo) y 13 (predios y cuentas)'],
     ],
     [2600, 6760],
   ),
@@ -62,20 +62,22 @@ const antes = [
   tabla(
     ['Acción', 'Técnico', 'Agrónomo', 'Productor', 'Administrador'],
     [
-      ['Consultar mapa, plan, rutas, MTD e historial', 'Sí', 'Sí', 'Sí', 'Sí'],
+      ['Consultar mapa, plan, rutas, MTD, historial y hallazgos', 'Sí', 'Sí', 'Sí', 'Sí'],
       ['Registrar lecturas de trampa', 'Sí', 'Sí', 'No', 'Sí'],
       ['Reponer una etiqueta QR dañada', 'Sí', 'Sí', 'No', 'Sí'],
+      ['Registrar hallazgos con fotos', 'Sí', 'Sí', 'No', 'Sí'],
       ['Crear y editar lotes, trampas y rutas', 'No', 'Sí', 'No', 'Sí'],
-      ['Programar y reprogramar actividades', 'No', 'Sí', 'No', 'Sí'],
+      ['Programar y reprogramar actividades (también la atención de un hallazgo)', 'No', 'Sí', 'No', 'Sí'],
       ['Validar o rechazar lecturas', 'No', 'Sí', 'No', 'Sí'],
       ['Editar los datos y el límite del predio', 'No', 'Sí', 'No', 'Sí'],
       ['Crear predios, asignar personal y administrar cuentas', 'No', 'No', 'No', 'Sí'],
+      ['Administrar los tipos de hallazgo', 'No', 'No', 'No', 'Sí'],
     ],
     [4160, 1300, 1300, 1300, 1300],
   ),
   espacio(),
   nota(
-    'Por la Ley 1581 de 2012 (protección de datos personales), el productor no ve quién registró cada lectura ni quién es responsable de cada actividad, y la ubicación GPS de una lectura solo la ven el agrónomo, el administrador y el técnico que la tomó.',
+    'Por la Ley 1581 de 2012 (protección de datos personales), el productor no ve quién registró cada lectura o hallazgo ni quién es responsable de cada actividad, y la ubicación GPS de una lectura solo la ven el agrónomo, el administrador y el técnico que la tomó.',
   ),
 ]
 
@@ -119,8 +121,9 @@ const ingreso = [
       ['**Planeación**', 'Calendario de 52 semanas y cumplimiento. Capítulo 8.'],
       ['**Lecturas de trampa**', 'Registrar lecturas y, para el agrónomo, validarlas. Capítulos 9 y 10.'],
       ['**MTD e historial**', 'Índice MTD, reporte para el ICA e historial de capturas. Capítulo 11.'],
-      ['**Predio**', 'Datos y límite del predio; para el administrador, personal y todos los predios. Capítulo 12.'],
-      ['**Usuarios**', 'Cuentas del personal (solo administrador). Capítulo 12.'],
+      ['**Inspección**', 'Hallazgos del cultivo con fotos y su atención; tipos de hallazgo para el administrador. Capítulo 12.'],
+      ['**Predio**', 'Datos y límite del predio; para el administrador, personal y todos los predios. Capítulo 13.'],
+      ['**Usuarios**', 'Cuentas del personal (solo administrador). Capítulo 13.'],
       ['**Ayuda**', 'Versión del aplicativo, créditos y este manual en PDF. Sección 3.3.'],
     ],
     [2600, 6760],
@@ -168,10 +171,12 @@ const mapa = [
   ...pasos([
     'Toque una trampa en el mapa. Se abre una ventana con su código ICA, lote, tipo, estado y fecha de la última lectura.',
     'Desde la ventana puede ir a **Registrar lectura** o **Abrir ficha**. En el computador, la ficha completa aparece además a la derecha, con los botones **Registrar lectura**, **Ver ficha y QR** e **Historial**.',
-    'Para ver solo un lote, elíjalo en el campo **Lote**. Los botones **Lotes** y **Trampas** muestran u ocultan cada capa, y el botón de capas del mapa cambia entre la imagen satelital y el mapa de calles.',
+    'Para ver solo un lote, elíjalo en el campo **Lote**. Los botones **Lotes**, **Trampas** y **Hallazgos** muestran u ocultan cada capa, y el botón de capas del mapa cambia entre la imagen satelital y el mapa de calles.',
   ]),
   ...figura('03-mapa-trampa.jpg', 'Trampa seleccionada: ventana sobre el mapa y ficha a la derecha.'),
   ...telefono(['31-telefono-mapa.jpg'], 'El mapa en el teléfono.', 2.3),
+  p('La capa **Hallazgos** viene apagada. Al activarla muestra, con un rombo del color de su tipo, los hallazgos que aún no se han atendido; al tocar uno se abre su ficha en **Inspección** (capítulo 12).'),
+  ...figura('40-mapa-hallazgos.jpg', 'Mapa del predio con la capa Hallazgos activa.'),
   h2('4.4 Exportar lotes y trampas'),
   p(
     'Los botones **Exportar GeoJSON** y **Exportar KML** descargan los lotes y trampas del predio (o del lote filtrado) para abrirlos en QGIS, Google Earth u otro sistema de información geográfica.',
@@ -277,7 +282,7 @@ const plan = [
   tabla(
     ['Color', 'Estado'],
     [
-      ['Verde oscuro', '**Cumplida**: la visita tiene las lecturas de su ruta, el recambio se registró o la labor se marcó como hecha.'],
+      ['Verde oscuro', '**Cumplida**: la visita tiene las lecturas de su ruta, el recambio se registró o la labor o la atención de un hallazgo se marcó como hecha.'],
       ['Verde claro', '**Programada**: aún no llega o está en curso.'],
       ['Amarillo', '**Reprogramada**: se movió de semana con un motivo.'],
       ['Rojo', '**Vencida**: su semana pasó sin cumplirse.'],
@@ -285,6 +290,7 @@ const plan = [
     [2000, 7360],
   ),
   espacio(),
+  p('La fila **Atención de hallazgos (Inspección)** muestra las atenciones programadas desde el módulo Inspección (capítulo 12); en esa fila no se programa tocando una celda vacía.'),
   p('Debajo, **Semana N** lista las actividades de la semana con casillas («N de M cumplidas») y las vencidas recientes; **Cumplimiento** muestra el porcentaje del año por semana y por lote.'),
   h2('8.2 Programar una actividad'),
   ...pasos([
@@ -302,7 +308,8 @@ const plan = [
     '**Reprogramar**: elija el año y la nueva semana y escriba el **Motivo** (obligatorio, por ejemplo «aumento de capturas de _C. capitata_ en el lote»). El cambio queda en el historial.',
     '**Cambiar responsable**: elija otra persona y toque **Cambiar**.',
     '**Eliminar actividad**: borra esa actividad o, en una serie, también las siguientes.',
-    '**Marcar cumplida** (solo labores culturales): las visitas y los recambios se cumplen solos con las lecturas de su semana.',
+    '**Marcar cumplida** (labores culturales y atención de hallazgos), con una nota opcional de **Qué se hizo**: las visitas y los recambios se cumplen solos con las lecturas de su semana.',
+    '**Ver el hallazgo** (solo en una atención de hallazgo): abre su ficha en **Inspección**.',
   ]),
   ...figura('12-plan-reprogramar.jpg', 'Reprogramar una actividad a otra semana con su motivo.'),
 ]
@@ -312,7 +319,7 @@ const campo = [
   p('Rol: **técnico** (también agrónomo y administrador). Este capítulo describe el uso en el teléfono.'),
   h2('9.1 Mi semana'),
   p(
-    'En **Mi semana** el técnico ve las actividades que tiene asignadas: las visitas de monitoreo con el número de trampas leídas, los recambios de atrayente y las labores. **Ver la ruta en el mapa** abre el recorrido del lote. Con las flechas se pasa a la semana siguiente o anterior.',
+    'En **Mi semana** el técnico ve las actividades que tiene asignadas: las visitas de monitoreo con el número de trampas leídas, los recambios de atrayente y las labores. **Ver la ruta en el mapa** abre el recorrido del lote y **Ver el hallazgo** abre la ficha de un hallazgo cuya atención le asignaron (sección 12.4). Con las flechas se pasa a la semana siguiente o anterior.',
   ),
   ...telefono(['33-telefono-mi-semana-p1.jpg', '33-telefono-mi-semana-p2.jpg'], 'Mi semana en el teléfono (dos tramos de la misma pantalla).'),
   h2('9.2 Leer el QR de la trampa'),
@@ -413,9 +420,76 @@ const mtd = [
   ...figura('17-historial.jpg', 'Historial de capturas con su gráfico y la tabla de lecturas.'),
 ]
 
+const inspeccion = [
+  h1('12. Inspección: hallazgos en el cultivo'),
+  p(
+    'Un **hallazgo** es cualquier irregularidad que se observa en un lote: un hongo o enfermedad, una plaga, un árbol enfermo o dañado, una deficiencia nutricional, un daño por clima u otra. El hallazgo queda con su punto en el mapa, una descripción y fotos de evidencia, y su atención se programa en el plan.',
+  ),
+  p('Roles: lo registran el **técnico**, el **agrónomo** y el **administrador**; todos lo consultan. La atención la programan el agrónomo y el administrador.'),
+  h2('12.1 Consultar los hallazgos'),
+  p(
+    'Abra **Inspección**. El mapa muestra cada hallazgo con un rombo del color de su tipo y, debajo, la lista con el tipo, el lote, la fecha, el número de fotos y el estado. Filtre por **Lote**, **Tipo**, **Estado**, **Desde** y **Hasta**. Toque un hallazgo en el mapa o en la lista para abrir su ficha.',
+  ),
+  ...figura('26-inspeccion.jpg', 'Inspección: hallazgos del predio en el mapa, filtros y lista.'),
+  tabla(
+    ['Estado', 'Significado'],
+    [
+      ['**Abierto**', 'Nadie ha programado su atención todavía.'],
+      ['**En atención**', 'Tiene una atención programada en el plan. Dice **vencida** si su semana ya pasó sin atenderse.'],
+      ['**Atendido**', 'La actividad de atención se marcó cumplida.'],
+    ],
+    [2400, 6960],
+  ),
+  espacio(),
+  h2('12.2 Registrar un hallazgo'),
+  ...pasos([
+    'En **Inspección**, toque **Registrar hallazgo**.',
+    'En **1 · ¿Qué encontró?**, elija el **Tipo de hallazgo** y escriba un **Título** corto y la **Descripción detallada**: qué observó, cuántos árboles o frutos, en qué parte del lote. Revise la **Fecha y hora de la observación**.',
+    'En **2 · Ubicación**, párese junto al hallazgo y toque **Usar mi ubicación** (el teléfono mide hasta lograr buena precisión), o toque **Tocar en el mapa** y marque el punto. El aplicativo propone el **Lote** y confirma «El punto está dentro del lote…».',
+    'En **3 · Evidencias fotográficas**, toque **Agregar fotos** para tomarlas con la cámara o elegirlas de la galería: hasta 6 fotos JPEG, PNG o WebP de máximo 8 MB cada una.',
+    'Toque **Guardar hallazgo**. Primero se guarda el hallazgo y luego se sube cada foto; las que suben quedan marcadas **Subida**.',
+  ]),
+  ...telefono(['38-telefono-hallazgo-p1.jpg', '38-telefono-hallazgo-p2.jpg'], 'Formulario para registrar un hallazgo en el teléfono.'),
+  nota(
+    'Las fotos se guardan reducidas y **sin la ubicación** que el teléfono agrega a cada imagen. Si una foto falla por la conexión, el hallazgo no se pierde: toque otra vez **Guardar hallazgo** para reintentar solo las fotos pendientes.',
+  ),
+  h2('12.3 Ficha del hallazgo'),
+  p(
+    'La ficha muestra el tipo y el estado, el lote, la fecha de observación, quién lo registró (no lo ve el productor), cómo se tomó la ubicación (GPS con su precisión o marcada en el mapa), la descripción, el **Seguimiento** y las **Evidencias**. Toque una foto para verla en grande.',
+  ),
+  ...figura('27-inspeccion-ficha.jpg', 'Ficha de un hallazgo en atención: seguimiento y evidencias.'),
+  ...vinetas([
+    '**Agregar fotos**: quien registró el hallazgo, el agrónomo o el administrador pueden sumar fotos (hasta 6) o quitar una con la **×**.',
+    '**Eliminar hallazgo** (agrónomo o administrador): pide confirmación y saca del plan su atención pendiente.',
+  ]),
+  h2('12.4 Programar y registrar la atención'),
+  p('La atención de un hallazgo es una actividad del plan, en la fila **Atención de hallazgos (Inspección)** del lote. Solo se programa desde la ficha del hallazgo.'),
+  ...pasos([
+    'Abra la ficha de un hallazgo **Abierto** y toque **Programar atención**.',
+    'Elija el **Año**, la **Semana** (por defecto, la actual) y el **Responsable**. En **Qué hay que hacer (opcional)** escriba la indicación; si lo deja vacío, se usa el título del hallazgo.',
+    'Toque **Programar en el plan**. El hallazgo pasa a **En atención** y la actividad aparece en **Planeación** y en **Mi semana** del responsable.',
+  ]),
+  ...figura('28-inspeccion-programar.jpg', 'Programar la atención de un hallazgo en el plan.'),
+  p(
+    'Cuando se haya atendido, el responsable, el agrónomo o el administrador escriben en **Qué se hizo (opcional)** lo que se hizo y tocan **Marcar atendido** (también se puede marcar desde la ficha de la actividad en **Planeación**). El hallazgo queda **Atendido** y el seguimiento muestra «Qué se hizo: …».',
+  ),
+  nota('Si la actividad de atención se elimina del plan, el hallazgo vuelve a **Abierto** y se puede programar de nuevo. Para moverla de semana, use **Reprogramar** en **Planeación**.'),
+  h2('12.5 Tipos de hallazgo (administrador)'),
+  p(
+    'El administrador ve en **Inspección** la pestaña **Tipos de hallazgo**. El aplicativo trae seis tipos: Hongo o enfermedad, Plaga, Árbol enfermo o dañado, Deficiencia nutricional, Daño por clima y Otra irregularidad.',
+  ),
+  ...vinetas([
+    '**Nuevo tipo de hallazgo**: escriba el **Nombre**, elija el **Color en el mapa** y toque **Agregar tipo**. No se pueden repetir nombres.',
+    '**Editar**: cambia el nombre o el color.',
+    '**Desactivar**: el tipo deja de ofrecerse al registrar, pero los hallazgos que ya lo usan lo conservan. **Activar** lo vuelve a ofrecer.',
+  ]),
+  ...figura('29-tipos-hallazgo.jpg', 'Tipos de hallazgo: crear, editar y desactivar.'),
+  nota('Un tipo no se elimina: se desactiva, para que los hallazgos anteriores conserven su clasificación.', 'Importante'),
+]
+
 const admin = [
-  h1('12. Administración del predio y de las cuentas'),
-  h2('12.1 Datos y límite del predio'),
+  h1('13. Administración del predio y de las cuentas'),
+  h2('13.1 Datos y límite del predio'),
   p(
     'En **Predio**, el agrónomo asignado y el administrador editan la identificación del predio ante el ICA (nombre, vereda, municipio y registro ICA) y su límite:',
   ),
@@ -425,7 +499,7 @@ const admin = [
     'Elija el **Color del límite en el mapa** y toque **Guardar**.',
   ]),
   ...figura('18-predio-agronomo.jpg', 'Predio: límite dibujado sobre el mapa y datos del predio.'),
-  h2('12.2 Personal y todos los predios (administrador)'),
+  h2('13.2 Personal y todos los predios (administrador)'),
   p('El administrador ve además, en la misma pantalla:'),
   ...vinetas([
     '**Personal del predio**: las cuentas asignadas al predio actual. **Asignar una cuenta** agrega a alguien; **Quitar** lo retira (deja de ver el predio).',
@@ -433,12 +507,12 @@ const admin = [
   ]),
   ...figura('19-predio-admin.jpg', 'Predio visto por el administrador, con el personal debajo.'),
   ...figura('20-predios-todos.jpg', 'Personal del predio y lista de todos los predios.'),
-  h2('12.3 Cuentas de usuario'),
+  h2('13.3 Cuentas de usuario'),
   ...pasos([
     'Abra **Usuarios** y toque **Nuevo usuario**.',
     'Escriba el **Nombre completo**, el **Correo**, elija el **Rol** y una **Contraseña inicial** (mínimo 8 caracteres; las contraseñas obvias se rechazan).',
     'Lea al titular el **Aviso de tratamiento de datos personales**, marque la casilla de autorización y toque **Guardar**.',
-    'Entregue la contraseña al titular y asígnelo a su predio (12.2).',
+    'Entregue la contraseña al titular y asígnelo a su predio (13.2).',
   ]),
   ...figura('22-usuario-nuevo.jpg', 'Nueva cuenta con el aviso de tratamiento de datos (Ley 1581 de 2012).'),
   ...figura('21-usuarios.jpg', 'Lista de cuentas del personal.'),
@@ -450,7 +524,7 @@ const admin = [
 ]
 
 const preguntas = [
-  h1('13. Preguntas frecuentes'),
+  h1('14. Preguntas frecuentes'),
   tabla(
     ['Situación', 'Qué hacer'],
     [
@@ -463,19 +537,25 @@ const preguntas = [
       ['El MTD dice «sin dato».', 'No hubo trampas de esa especie revisadas en la semana o el periodo.'],
       ['No veo un predio, un lote o una trampa.', 'Revise el selector **Predio**: solo ve los predios asignados a su cuenta.'],
       ['Me sacó de la sesión.', 'Ingrese de nuevo. Pasa si venció la sesión o si el administrador cambió su contraseña, rol o estado.'],
+      ['«El punto no cae dentro de…» al registrar un hallazgo.', 'El punto quedó fuera del lote elegido: elija el lote correcto, vuelva a medir con **Usar mi ubicación** o toque el punto en el mapa.'],
+      ['Una foto no se subió.', 'El hallazgo ya quedó guardado. Toque de nuevo **Guardar hallazgo** para reintentar las fotos pendientes, o agréguelas luego desde la ficha con **Agregar fotos**.'],
+      ['No puedo programar la atención de un hallazgo.', 'Solo se programa si el hallazgo está **Abierto**. Si ya tiene una atención pendiente, cámbiela o elimínela desde **Planeación**.'],
     ],
     [3600, 5760],
   ),
-  h1('14. Glosario'),
+  h1('15. Glosario'),
   tabla(
     ['Término', 'Definición'],
     [
       ['**Atrayente**', 'Sustancia que atrae a las moscas: trimedlure (Jackson) o proteína hidrolizada (McPhail).'],
       ['**Código ICA**', 'Identificador oficial de la trampa ante el ICA.'],
       ['**Código QR**', 'Código de 8 caracteres de la etiqueta de la trampa; abre su ficha en PERSICA.'],
+      ['**Evidencia**', 'Foto de un hallazgo. Se guarda reducida y sin la ubicación del teléfono.'],
+      ['**Hallazgo**', 'Irregularidad observada en un lote (hongo, plaga, árbol enfermo…), con su punto, descripción y fotos.'],
       ['**Días de exposición**', 'Días que la trampa estuvo en campo desde la revisión anterior (o la instalación).'],
       ['**Lote**', 'Unidad del predio delimitada por un polígono.'],
       ['**MTD**', 'Índice moscas/trampa/día: M ÷ (T × D).'],
+      ['**Tipo de hallazgo**', 'Clasificación del hallazgo, con un color para el mapa. La administra el administrador.'],
       ['**Ruta**', 'Orden de visita de las trampas activas de un lote.'],
       ['**Semana ISO**', 'Numeración de semanas del año (1 a 52 o 53) de lunes a domingo.'],
       ['**Trampa Jackson**', 'Trampa con trimedlure para _Ceratitis capitata_ (mosca del Mediterráneo).'],
@@ -500,7 +580,7 @@ const doc = documento({
       pie: [
         'Vereda Icota · Cácota, Norte de Santander',
         'Instituto Superior de Educación Rural (ISER) · Semillero ORION',
-        'Versión 1.1 · noviembre de 2026',
+        'Versión 1.2 · noviembre de 2026',
       ],
     }),
     // MANUAL_TOC (para el PDF): índice con las páginas ya conocidas; si no, campo de Word.
@@ -516,6 +596,7 @@ const doc = documento({
     ...campo,
     ...validar,
     ...mtd,
+    ...inspeccion,
     ...admin,
     ...preguntas,
   ],

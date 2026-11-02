@@ -9,7 +9,8 @@ registran en un informe.
 ## 2. Alcance
 
 - **Historias incluidas:** las implementadas de `BACKLOG.md` (estado *En revisión* o *Hecho*),
-  más HU-03 y HU-08, que están *En curso*. Son 110 casos de prueba en total.
+  más HU-03 y HU-08, que están *En curso*. Son 125 casos de prueba en total: 110 de la propuesta
+  y 15 de la épica extra E9 (Inspección, HU-40 a HU-42).
 - **Historias excluidas:**
   - Las que aún no se implementan: HU-10 y HU-30, de prioridad *Podría*.
   - Las de documentación o validación externa: HU-01, HU-02 y HU-35 a HU-38.

@@ -2087,10 +2087,18 @@ button {
 }
 
 /* ---------- Inspección (E9) ---------- */
-.tipo-hallazgo {
+.tipo-hallazgo,
+.lista-usuarios li > div.tipo-hallazgo {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.75rem;
+}
+
+.tipo-hallazgo > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
 }
 
 .tipo-hallazgo__muestra {
