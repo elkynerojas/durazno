@@ -6695,6 +6695,298 @@
           }
         ]
       }
+    },
+    "/api/v1/inspecciones/tipos": {
+      "get": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Listar los tipos de hallazgo",
+        "description": "Tipos activos, por orden y nombre. El administrador puede pedir también los inactivos con `todos=true` para administrarlos.",
+        "operationId": "listar_tipos_api_v1_inspecciones_tipos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "todos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Todos"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoHallazgoLeer"
+                  },
+                  "title": "Response Listar Tipos Api V1 Inspecciones Tipos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Crear un tipo de hallazgo",
+        "description": "Solo el administrador. El nombre no se repite entre los tipos vigentes (sin distinguir mayúsculas). Reenviar el mismo `id` devuelve el tipo existente con 200.",
+        "operationId": "crear_tipo_api_v1_inspecciones_tipos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoHallazgoCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoHallazgoLeer"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "El tipo con ese `id` ya existía",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoHallazgoLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nombre repetido o `id` de un tipo eliminado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Nombre repetido o `id` de un tipo eliminado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspecciones/tipos/{tipo_id}": {
+      "patch": {
+        "tags": [
+          "inspecciones"
+        ],
+        "summary": "Actualizar un tipo de hallazgo",
+        "description": "Solo el administrador: renombra, cambia el color o el orden, o lo activa y desactiva. Un tipo no se borra; desactivado deja de ofrecerse al registrar, pero los hallazgos que ya lo usan lo conservan.",
+        "operationId": "actualizar_tipo_api_v1_inspecciones_tipos__tipo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Tipo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoHallazgoActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoHallazgoLeer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin permiso para esta acción",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tipo de hallazgo no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Tipo de hallazgo no encontrado"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Nombre repetido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Nombre repetido"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11013,6 +11305,154 @@
           "distancia_total_m"
         ],
         "title": "RutaPropuesta"
+      },
+      "TipoHallazgoActualizar": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "orden": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 999.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orden"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo",
+            "description": "`false` lo retira de las listas sin afectar los hallazgos"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TipoHallazgoActualizar",
+        "examples": [
+          {
+            "activo": false,
+            "nombre": "Gomosis del tronco"
+          }
+        ]
+      },
+      "TipoHallazgoCrear": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Opcional: reenviar el mismo `id` no duplica el tipo"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "description": "Color del marcador en los mapas (`#rrggbb`)"
+          },
+          "orden": {
+            "type": "integer",
+            "maximum": 999.0,
+            "minimum": 0.0,
+            "title": "Orden",
+            "description": "Posición en las listas",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nombre",
+          "color"
+        ],
+        "title": "TipoHallazgoCrear",
+        "examples": [
+          {
+            "color": "#8e44ad",
+            "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e0b",
+            "nombre": "Gomosis"
+          }
+        ]
+      },
+      "TipoHallazgoLeer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "orden": {
+            "type": "integer",
+            "title": "Orden"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "color",
+          "activo",
+          "orden"
+        ],
+        "title": "TipoHallazgoLeer"
       },
       "Token": {
         "properties": {

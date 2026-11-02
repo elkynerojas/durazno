@@ -28,6 +28,7 @@ Periodo: 1 sep – 19 dic de 2026. Equipo: Ingry García y Luis Silva.
 | S3 | Mapa, rutas y planeación | 17 – 25 nov | 28 | HU-18, HU-19, HU-20, HU-21, HU-23, HU-24 |
 | S4 | Lecturas, MTD y API | 26 nov – 4 dic | 34 | HU-22, HU-25, HU-26, HU-27, HU-28, HU-29, HU-30, HU-31 |
 | S5 | Validación y cierre | 5 – 19 dic | 27 | HU-32, HU-33, HU-34, HU-35, HU-36, HU-37, HU-38 |
+| Extra | Funcionalidades extra | nov 2026 | 16 | HU-40, HU-41, HU-42 |
 
 S4 es el sprint más cargado; si se atrasa, se recortan primero las historias *Podría* y luego las *Debería*.
 
@@ -44,6 +45,7 @@ S4 es el sprint más cargado; si se atrasa, se recortan primero las historias *P
 | E6 | Lecturas de trampa y MTD | Objetivo 3 · módulo v | 26 |
 | E7 | Servicios para la app móvil | Objetivo 3 · módulo vi | 13 |
 | E8 | Validación y cierre | Objetivo 4 y entregables | 17 |
+| E9 | Funcionalidades extra | Fuera de la propuesta, a pedido de Icota | 16 |
 
 ## E0 · Análisis y diseño
 
@@ -1122,3 +1124,78 @@ _Objetivo 4 y entregables._ Pruebas funcionales y de campo, manual de usuario e 
 > (versión 1.0.0 del aplicativo y de la API, y créditos). Falta la revisión del director.
 - [ ] `HU-38.2` [Doc] Informe final del trabajo de grado
 - [ ] `HU-38.3` [Doc] Presentación de la sustentación
+
+## E9 · Funcionalidades extra
+
+_Fuera de la propuesta del trabajo de grado; se agregan a pedido de Icota (noviembre de 2026)._
+Módulo **Inspección**: registro de hallazgos en el cultivo (hongos, plagas, árboles enfermos u
+otras irregularidades) con evidencias fotográficas y seguimiento de su atención desde el plan.
+
+### HU-40 · Administrar los tipos de hallazgo
+
+- **Estado:** En revisión · **Prioridad:** Extra · **Puntos:** 3 · **Sprint:** Extra · **Responsable:** Ambos
+- **Historia:** Como administrador, quiero mantener la lista de tipos de hallazgo, para clasificar las irregularidades según lo que se encuentre en el cultivo.
+
+**Criterios de aceptación**
+
+- Existen por defecto: Hongo o enfermedad, Plaga, Árbol enfermo o dañado, Deficiencia nutricional, Daño por clima y Otra irregularidad.
+- Solo el administrador crea, renombra, cambia el color o desactiva un tipo; todos los roles consultan los activos.
+- Un tipo no se borra: se desactiva y los hallazgos que lo usan lo conservan.
+- No se repiten nombres entre los tipos vigentes.
+
+**Tareas**
+
+- [x] `HU-40.1` [BD] Tabla tipo_hallazgo con los tipos por defecto
+- [x] `HU-40.2` [API] Router `inspecciones`: listar, crear y actualizar tipos
+- [x] `HU-40.3` [Web] Vista «Inspección» con la pestaña «Tipos de hallazgo» para el administrador
+- [x] `HU-40.4` [Pruebas] Rol, nombre duplicado y desactivación
+
+> Tabla `tipo_hallazgo` (nombre único entre los vigentes sin distinguir mayúsculas, color `#rrggbb`,
+> `activo`, `orden`) con los seis tipos por defecto sembrados en la migración (ids fijos). API:
+> `GET /inspecciones/tipos` (activos; `todos=true` para el administrador), `POST` y `PATCH
+> /inspecciones/tipos/{id}` (solo administrador, idempotente por `id`, 409 por nombre repetido).
+> Web: `/inspeccion` con «Tipos de hallazgo» (por ahora solo el administrador; HU-41 abre la vista a
+> todos con los hallazgos).
+
+### HU-41 · Registrar un hallazgo con evidencias
+
+- **Estado:** Por hacer · **Prioridad:** Extra · **Puntos:** 8 · **Sprint:** Extra · **Responsable:** Ambos
+- **Historia:** Como técnico de campo, quiero registrar un hallazgo con su ubicación y fotos, para que el agrónomo conozca la irregularidad y pueda atenderla.
+
+**Criterios de aceptación**
+
+- Se registran lote, tipo, coordenadas (GPS del teléfono con su precisión, o tocando el mapa), título, descripción detallada y fecha de observación.
+- El punto debe quedar dentro del polígono del lote (validado en el servidor).
+- Se adjuntan hasta 6 fotos (JPEG, PNG o WebP, máx. 8 MB); el servidor las reduce y elimina sus metadatos EXIF.
+- Registran el técnico, el agrónomo y el administrador; todos consultan; el productor no ve quién lo registró.
+- Reenviar el mismo hallazgo o la misma foto (mismo `id`) no los duplica.
+- Los hallazgos se ven en el mapa con el color de su tipo y se filtran por lote, tipo, estado y fecha.
+
+**Tareas**
+
+- [ ] `HU-41.1` [BD] Tablas hallazgo y evidencia_hallazgo
+- [ ] `HU-41.2` [API] Registro idempotente, consulta, edición y borrado lógico
+- [ ] `HU-41.3` [API] Subida y entrega de fotos (directorio `datos/evidencias`)
+- [ ] `HU-41.4` [Web] Formulario con GPS y fotos, lista, ficha y capa del mapa
+- [ ] `HU-41.5` [Pruebas] Permisos, punto fuera del lote, imágenes inválidas, EXIF e idempotencia
+
+### HU-42 · Seguir la atención de un hallazgo desde el plan
+
+- **Estado:** Por hacer · **Prioridad:** Extra · **Puntos:** 5 · **Sprint:** Extra · **Responsable:** Ambos
+- **Historia:** Como agrónomo, quiero programar en el plan la atención de un hallazgo, para que su estado refleje si ya se atendió.
+
+**Criterios de aceptación**
+
+- Desde el hallazgo se programa una actividad «Atención de hallazgo» en una semana, con responsable.
+- El hallazgo está «Abierto» sin actividad, «En atención» con una programada o reprogramada (y se marca vencida si su semana pasó) y «Atendido» cuando la actividad se cumple.
+- Al marcar la actividad cumplida se puede dejar una nota de lo que se hizo.
+- Cancelar o borrar la actividad devuelve el hallazgo a «Abierto».
+- Los hallazgos se incluyen en `GET /sync/cambios` para la app móvil.
+
+**Tareas**
+
+- [ ] `HU-42.1` [BD] Tipo de actividad atencion_hallazgo y nota de cumplimiento
+- [ ] `HU-42.2` [API] Programar la atención y estado derivado del hallazgo
+- [ ] `HU-42.3` [API] Hallazgos en la sincronización y guía de integración
+- [ ] `HU-42.4` [Web] Programar y seguir la atención desde la ficha y el plan
+- [ ] `HU-42.5` [Pruebas] Ciclo abierto → en atención → atendido, cancelación y E2E

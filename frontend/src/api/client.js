@@ -235,3 +235,13 @@ export const reemplazarQr = (id, datos) =>
   api(`/trampas/${id}/qr/reemplazar`, { metodo: 'POST', cuerpo: datos })
 
 export const listarReemplazosQr = (id) => api(`/trampas/${id}/qr/reemplazos`)
+
+// Inspección (E9): tipos de hallazgo (HU-40).
+export const listarTiposHallazgo = (todos = false) =>
+  api(`/inspecciones/tipos${todos ? '?todos=true' : ''}`)
+
+export const crearTipoHallazgo = (datos) =>
+  api('/inspecciones/tipos', { metodo: 'POST', cuerpo: datos })
+
+export const actualizarTipoHallazgo = (id, cambios) =>
+  api(`/inspecciones/tipos/${id}`, { metodo: 'PATCH', cuerpo: cambios })

@@ -2078,3 +2078,31 @@ button {
   font-weight: 600;
   color: var(--error);
 }
+
+/* ---------- Inspección (E9) ---------- */
+.tipo-hallazgo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tipo-hallazgo__muestra {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--superficie);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--borde);
+}
+
+.tipo-hallazgo__edicion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.tipo-hallazgo__edicion input:not([type='color']) {
+  flex: 1 1 12rem;
+}

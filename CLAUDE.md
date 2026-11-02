@@ -128,6 +128,9 @@ La API aplica `alembic upgrade head` al arrancar. Nunca uses `docker compose dow
 | `plan_actividad`       | Programación por semana ISO (1–52/53) de visitas y labores del cultivo, con estado de cumplimiento. |
 | `visita`               | Recorrido de un técnico en una fecha. |
 | `lectura_trampa`       | Formulario de cada trampa en una visita: especímenes capturados (por especie), días de exposición, observaciones, responsable. |
+| `tipo_hallazgo`        | Catálogo administrable (administrador) de tipos de hallazgo: hongo, plaga, árbol enfermo… (E9). |
+| `hallazgo`             | Irregularidad observada en un lote (punto, título, descripción, tipo); su estado se deriva de la actividad de atención del plan (E9). |
+| `evidencia_hallazgo`   | Foto de un hallazgo, guardada en `datos/evidencias` (reducida y sin EXIF) (E9). |
 
 Tipos de trampa (Manual ICA): **Jackson** con trimedlure → *Ceratitis capitata* (mosca del
 Mediterráneo, plaga priorizada para durazno por la Res. ICA 995 de 2019); **McPhail** con proteína
@@ -178,7 +181,7 @@ D = días promedio de exposición de las trampas
 
 **API:**
 - Todo bajo `/api/v1`. Un router por grupo de servicios: `auth`, `lotes`, `trampas` (incluye QR),
-  `rutas`, `visitas`, `mtd`, `plan`.
+  `rutas`, `visitas`, `mtd`, `plan`, `inspecciones` (E9).
 - Cada endpoint con `summary`, modelos Pydantic de entrada y salida y códigos de error
   documentados: la documentación OpenAPI es un entregable para la fase 2.
 - El QR codifica solo una URL corta con el identificador de la trampa; la API la resuelve
@@ -224,7 +227,8 @@ antes de implementar; los **criterios de aceptación** de cada historia son la d
 ## Fuera de alcance (no implementar salvo que se pida)
 
 - App móvil, trabajo sin conexión y sincronización (fase 2; solo dejar la API preparada).
-- Registro fenológico, de enfermedades u hongos, y variables agroclimáticas (trabajo futuro).
+- Registro fenológico y variables agroclimáticas (trabajo futuro). Los hallazgos de
+  enfermedades, hongos y plagas sí están, como funcionalidad extra (E9, módulo Inspección).
 
 ## Pruebas
 

@@ -5,6 +5,7 @@ import InicioSesion from './features/auth/InicioSesion'
 import RutaProtegida from './features/auth/RutaProtegida'
 import PorPredio from './features/predios/PorPredio'
 import { ProveedorPredio } from './features/predios/ProveedorPredio'
+import VistaInspeccion from './features/inspeccion/VistaInspeccion'
 import VistaLectura from './features/lecturas/VistaLectura'
 import VistaLecturas from './features/lecturas/VistaLecturas'
 import VistaLotes from './features/lotes/VistaLotes'
@@ -100,6 +101,14 @@ export default function App() {
             </Route>
             <Route element={<RutaProtegida roles={['administrador']} />}>
               <Route path="/usuarios" element={<VistaUsuarios />} />
+              <Route
+                path="/inspeccion"
+                element={
+                  <PorPredio>
+                    <VistaInspeccion />
+                  </PorPredio>
+                }
+              />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

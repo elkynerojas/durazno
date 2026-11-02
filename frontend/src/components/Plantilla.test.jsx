@@ -45,6 +45,7 @@ describe('Plantilla', () => {
       'Planeación',
       'Lecturas de trampa',
       'MTD e historial',
+      'Inspección',
       'Predio',
       'Usuarios',
     ])
