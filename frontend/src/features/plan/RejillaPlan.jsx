@@ -77,7 +77,8 @@ export default function RejillaPlan({
                         onClick={() => alElegir(actividades)}
                       />
                     ) : (
-                      alProgramar && (
+                      alProgramar &&
+                      fila.nuevo && (
                         <button
                           type="button"
                           className="celda-plan__vacia"

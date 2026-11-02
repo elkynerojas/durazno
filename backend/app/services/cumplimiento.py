@@ -60,7 +60,7 @@ async def avances(
 ) -> dict[uuid.UUID, Avance]:
     """Avance (trampas hechas / por hacer) de las visitas y los cambios de atrayente, con pocas
     consultas para todo el plan."""
-    actividades = [a for a in actividades if a.tipo != "labor_cultural"]
+    actividades = [a for a in actividades if a.tipo in ("visita_monitoreo", "cambio_atrayente")]
     if not actividades:
         return {}
     rutas = {a.ruta_id for a in actividades if a.ruta_id}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 
 import {
   actualizarActividad,
@@ -7,7 +8,7 @@ import {
   marcarCumplida,
 } from '../../api/client'
 import { rangoSemana, semanaDelAnio } from '../../utils/fechas'
-import { ESTADOS_ACTIVIDAD, filaDe, textoAvance } from './catalogo'
+import { ESTADOS_ACTIVIDAD, SE_MARCA_A_MANO, filaDe, textoAvance } from './catalogo'
 import HistorialPlan from './HistorialPlan'
 import Reprogramar from './Reprogramar'
 
@@ -28,6 +29,7 @@ export default function FichaActividad({
   const [enviando, setEnviando] = useState(false)
   const [reprogramando, setReprogramando] = useState(false)
   const [historial, setHistorial] = useState(null)
+  const [nota, setNota] = useState('')
 
   // Se vuelve a pedir cuando la actividad cambia (reprogramada o reasignada).
   useEffect(() => {
@@ -87,16 +89,48 @@ export default function FichaActividad({
             <dd>{actividad.notas}</dd>
           </>
         )}
+        {actividad.nota_cumplimiento && (
+          <>
+            <dt>Qué se hizo</dt>
+            <dd>{actividad.nota_cumplimiento}</dd>
+          </>
+        )}
       </dl>
+      {actividad.hallazgo_id && (
+        <Link
+          className="boton-secundario boton-bloque ficha__accion"
+          to={`/inspeccion?hallazgo=${actividad.hallazgo_id}`}
+        >
+          Ver el hallazgo
+        </Link>
+      )}
 
-      {editable && actividad.tipo === 'labor_cultural' && (
+      {editable && SE_MARCA_A_MANO.includes(actividad.tipo) && actividad.estado !== 'cumplida' && (
+        <div className="formulario">
+          <label htmlFor="nota_cumplimiento">Qué se hizo (opcional)</label>
+          <input
+            id="nota_cumplimiento"
+            value={nota}
+            maxLength={300}
+            onChange={(e) => setNota(e.target.value)}
+            disabled={enviando}
+          />
+        </div>
+      )}
+      {editable && SE_MARCA_A_MANO.includes(actividad.tipo) && (
         <button
           type="button"
           className="boton-secundario boton-bloque ficha__accion"
           disabled={enviando}
           onClick={() =>
             ejecutar(async () =>
-              alCambiar(await marcarCumplida(actividad.id, actividad.estado !== 'cumplida')),
+              alCambiar(
+                await marcarCumplida(
+                  actividad.id,
+                  actividad.estado !== 'cumplida',
+                  nota.trim() || undefined,
+                ),
+              ),
             )
           }
         >

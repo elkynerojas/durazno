@@ -7,7 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from app.schemas import ejemplos as ej
 from app.schemas.trampa import TipoTrampa
 
-TipoActividad = Literal["visita_monitoreo", "cambio_atrayente", "labor_cultural"]
+TipoActividad = Literal[
+    "visita_monitoreo", "cambio_atrayente", "labor_cultural", "atencion_hallazgo"
+]
+# La atención de un hallazgo se programa desde el hallazgo (`POST /plan/atencion-hallazgo`).
+TipoProgramable = Literal["visita_monitoreo", "cambio_atrayente", "labor_cultural"]
 Labor = Literal["poda", "fertilizacion", "raleo", "cosecha", "riego", "control_malezas", "otra"]
 # `vencida` es calculado (HU-22): su semana pasó sin cumplirse.
 EstadoActividad = Literal["programada", "cumplida", "reprogramada", "vencida", "cancelada"]
@@ -46,7 +50,7 @@ class ActividadCrear(BaseModel):
         description="Opcional: reenviar el mismo `id` no duplica la actividad (ni su serie)",
     )
     lote_id: uuid.UUID
-    tipo: TipoActividad
+    tipo: TipoProgramable
     labor: Labor | None = Field(default=None, description="Obligatoria en `labor_cultural`")
     tipo_trampa: TipoTrampa | None = Field(
         default=None,
@@ -118,6 +122,12 @@ class ActividadLeer(BaseModel):
     lectura_origen_id: uuid.UUID | None = Field(
         default=None, description="Visita adicional: la lectura con capturas que la originó"
     )
+    hallazgo_id: uuid.UUID | None = Field(
+        default=None, description="Atención de hallazgo: el hallazgo de Inspección que atiende"
+    )
+    nota_cumplimiento: str | None = Field(
+        default=None, description="Labores y atenciones: qué se hizo, al marcarla cumplida"
+    )
     created_at: datetime
     updated_at: datetime
 
@@ -128,9 +138,17 @@ class AvanceLeer(BaseModel):
 
 
 class Cumplimiento(BaseModel):
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"examples": [{"cumplida": True}]})
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [{"cumplida": True, "nota": "Poda sanitaria y fungicida cúprico"}]
+        },
+    )
 
     cumplida: bool = Field(description="`true` la marca cumplida; `false` la desmarca")
+    nota: Notas | None = Field(
+        default=None, description="Opcional al marcarla cumplida: qué se hizo"
+    )
 
 
 class FilaCumplimiento(BaseModel):
@@ -243,4 +261,33 @@ class VisitaAdicional(BaseModel):
     semana: Semana | None = Field(default=None, description="Por defecto, la semana siguiente")
     responsable_id: uuid.UUID | None = Field(
         default=None, description="Por defecto, quien registró la lectura"
+    )
+
+
+class AtencionHallazgo(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": ej.ACTIVIDAD_ID,
+                    "hallazgo_id": ej.HALLAZGO_ID,
+                    "anio": 2026,
+                    "semana": 45,
+                    "responsable_id": ej.USUARIO_ID,
+                    "notas": "Poda sanitaria de los árboles afectados",
+                }
+            ]
+        },
+    )
+
+    id: uuid.UUID | None = Field(
+        default=None, description="Opcional: reenviar el mismo `id` no duplica la actividad"
+    )
+    hallazgo_id: uuid.UUID
+    anio: Anio | None = Field(default=None, description="Por defecto, el de la semana actual")
+    semana: Semana | None = Field(default=None, description="Por defecto, la semana actual")
+    responsable_id: uuid.UUID = Field(description="Técnico o agrónomo asignado al predio")
+    notas: Notas | None = Field(
+        default=None, description="Qué hay que hacer; por defecto, el título del hallazgo"
     )

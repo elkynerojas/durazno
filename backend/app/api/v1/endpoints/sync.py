@@ -9,12 +9,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import AwareDatetime
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.acceso import ADMINISTRADOR, ROLES_CAMPO
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
+from app.api.v1.endpoints.inspecciones import leer_hallazgos
 from app.api.v1.endpoints.plan import leer_actividades, para_usuario
 from app.api.v1.endpoints.rutas import leer_ruta
 from app.api.v1.endpoints.visitas import (
@@ -23,14 +24,17 @@ from app.api.v1.endpoints.visitas import (
     leer_lectura,
     leer_lectura_id,
 )
+from app.models.hallazgo import Hallazgo
 from app.models.lectura_trampa import LecturaTrampa
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
 from app.models.predio import Predio
 from app.models.predio_usuario import PredioUsuario
 from app.models.ruta import Ruta
+from app.models.tipo_hallazgo import TipoHallazgo
 from app.models.trampa import Trampa
 from app.models.usuario import Usuario
+from app.schemas.inspeccion import HallazgoLeer, TipoHallazgoLeer
 from app.schemas.lectura import LecturaLeer
 from app.schemas.lote import LoteLeer
 from app.schemas.plan import ActividadLeer
@@ -131,15 +135,16 @@ def _repartir[T](
     response_model=Cambios,
     summary="Cambios desde la última sincronización",
     description="Lo que la app debe guardar para trabajar sin conexión, por entidad: predios, "
-    "lotes, trampas, rutas, actividades del plan (del año en curso en adelante) y lecturas (de "
-    f"los últimos {DIAS_LECTURAS} días). Cada entidad trae `creados`, `modificados` (mismos "
-    "esquemas de sus endpoints) y los ids `borrados`. Sin `desde` es la carga completa (sin "
-    "borrados). Un predio en `borrados` (borrado o desasignado) se descarta con todo su "
-    "contenido; lo mismo un lote con sus trampas, ruta y actividades. Un predio recién asignado "
-    "llega completo en `creados`. Las actividades de la semana en curso vienen siempre, porque "
-    "su estado y avance se calculan con las lecturas. Para la siguiente vez use "
-    "`siguiente_desde`. Los datos personales siguen las mismas reglas de cada endpoint "
-    "(Ley 1581). Cualquier rol.",
+    "lotes, trampas, rutas, actividades del plan (del año en curso en adelante), lecturas (de los "
+    f"últimos {DIAS_LECTURAS} días), tipos de hallazgo y hallazgos de Inspección (un hallazgo "
+    "vuelve a viajar cuando cambia su atención en el plan). Cada entidad trae `creados`, "
+    "`modificados` (mismos esquemas de sus endpoints) y los ids `borrados`. Sin `desde` es la"
+    " carga completa (sin borrados). Un predio en `borrados` (borrado o desasignado) se "
+    "descarta con todo su contenido; lo mismo un lote con sus trampas, ruta y actividades. Un"
+    " predio recién asignado llega completo en `creados`. Las actividades de la semana en "
+    "curso vienen siempre, porque su estado y avance se calculan con las lecturas. Para la "
+    "siguiente vez use `siguiente_desde`. Los datos personales siguen las mismas reglas de "
+    "cada endpoint (Ley 1581). Cualquier rol.",
     responses={
         **ERROR_401,
         422: {"description": "`desde` sin zona horaria o en el futuro"},
@@ -246,6 +251,56 @@ async def cambios(
     )
     lecturas_leidas = {fila[0].id: leer_lectura(usuario, *fila) for fila in filas}
 
+    tipos = await session.scalars(
+        select(TipoHallazgo)
+        .where(
+            TipoHallazgo.deleted_at.is_(None),
+            True if desde is None else TipoHallazgo.updated_at > desde,
+        )
+        .order_by(TipoHallazgo.orden, TipoHallazgo.nombre)
+    )
+    tipos_creados, tipos_modificados = [], []
+    for tipo in tipos:
+        nuevo = desde is None or tipo.created_at > desde
+        (tipos_creados if nuevo else tipos_modificados).append(
+            TipoHallazgoLeer.model_validate(tipo)
+        )
+
+    hallazgos = await session.execute(
+        select(Hallazgo.id, Hallazgo.id, Hallazgo.created_at, Hallazgo.deleted_at, Lote.predio_id)
+        .join(Lote, Lote.id == Hallazgo.lote_id)
+        .where(
+            alcance.filtro(
+                Hallazgo.predio_id,
+                Hallazgo.updated_at,
+                Hallazgo.deleted_at,
+                # Su estado sale del plan: también si cambió una de sus actividades de atención.
+                *(
+                    []
+                    if desde is None
+                    else [
+                        and_(
+                            Hallazgo.predio_id.in_(alcance.incrementales),
+                            Hallazgo.deleted_at.is_(None),
+                            exists().where(
+                                PlanActividad.hallazgo_id == Hallazgo.id,
+                                or_(
+                                    PlanActividad.updated_at > desde,
+                                    PlanActividad.deleted_at > desde,
+                                ),
+                            ),
+                        )
+                    ]
+                ),
+            ),
+            or_(Lote.deleted_at.is_(None), Hallazgo.deleted_at.is_not(None)),
+        )
+    )
+    h_creados, h_modificados, h_borrados = _repartir(hallazgos, alcance)
+    hallazgos_leidos = {
+        h.id: h for h in await leer_hallazgos(session, usuario, [*h_creados, *h_modificados])
+    }
+
     retirados = sorted(alcance.retirados)
     return Cambios(
         desde=desde,
@@ -280,6 +335,14 @@ async def cambios(
             creados=[lecturas_leidas[i] for i in e_creados if i in lecturas_leidas],
             modificados=[lecturas_leidas[i] for i in e_modificados if i in lecturas_leidas],
             borrados=e_borrados,
+        ),
+        tipos_hallazgo=CambiosEntidad[TipoHallazgoLeer](
+            creados=tipos_creados, modificados=tipos_modificados, borrados=[]
+        ),
+        hallazgos=CambiosEntidad[HallazgoLeer](
+            creados=[hallazgos_leidos[i] for i in h_creados if i in hallazgos_leidos],
+            modificados=[hallazgos_leidos[i] for i in h_modificados if i in hallazgos_leidos],
+            borrados=h_borrados,
         ),
     )
 

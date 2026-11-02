@@ -197,8 +197,15 @@ export const cumplimientoPlan = (predioId, anio) =>
   api(`/plan/cumplimiento?predio_id=${predioId}&anio=${anio}`)
 
 // Marca (o desmarca) una labor cultural como cumplida.
-export const marcarCumplida = (id, cumplida) =>
-  api(`/plan/${id}/cumplimiento`, { metodo: 'POST', cuerpo: { cumplida } })
+export const marcarCumplida = (id, cumplida, nota) =>
+  api(`/plan/${id}/cumplimiento`, {
+    metodo: 'POST',
+    cuerpo: nota ? { cumplida, nota } : { cumplida },
+  })
+
+// Atención de un hallazgo de Inspección en el plan (HU-42).
+export const programarAtencionHallazgo = (datos) =>
+  api('/plan/atencion-hallazgo', { metodo: 'POST', cuerpo: datos })
 
 // Visita de monitoreo adicional a partir de una lectura con capturas (HU-23).
 export const programarVisitaAdicional = (datos) =>

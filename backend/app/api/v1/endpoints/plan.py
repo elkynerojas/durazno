@@ -15,6 +15,7 @@ from app.api.acceso import (
     exigir_predio,
 )
 from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
+from app.models.hallazgo import Hallazgo
 from app.models.lectura_trampa import LecturaTrampa
 from app.models.lote import Lote
 from app.models.plan_actividad import PlanActividad
@@ -29,6 +30,7 @@ from app.schemas.plan import (
     ActividadCrear,
     ActividadLeer,
     Anio,
+    AtencionHallazgo,
     AvanceLeer,
     CambioLeer,
     CatalogoPlan,
@@ -69,7 +71,10 @@ TIPOS = {
     "visita_monitoreo": "Visita de monitoreo",
     "cambio_atrayente": "Cambio de atrayente",
     "labor_cultural": "Labor cultural",
+    "atencion_hallazgo": "Atención de hallazgo",
 }
+# Se marcan cumplidas a mano: no dejan lecturas.
+TIPOS_MANUALES = ("labor_cultural", "atencion_hallazgo")
 LABORES = {
     "poda": "Poda",
     "fertilizacion": "Fertilización",
@@ -268,7 +273,8 @@ async def _ya_programada(
     "/catalogo",
     response_model=CatalogoPlan,
     summary="Tipos de actividad y labores culturales",
-    description="Valores y nombres en español para los selectores del formulario del plan.",
+    description="Valores y nombres en español para los selectores del formulario del plan. "
+    "`atencion_hallazgo` solo se programa con `POST /plan/atencion-hallazgo`.",
     responses=ERROR_401,
 )
 async def catalogo(_: UsuarioActualDep) -> CatalogoPlan:
@@ -537,6 +543,100 @@ async def visita_adicional(
 
 
 @router.post(
+    "/atencion-hallazgo",
+    response_model=ActividadLeer,
+    status_code=status.HTTP_201_CREATED,
+    summary="Programar la atención de un hallazgo",
+    description="Crea en el lote del hallazgo una actividad «Atención de hallazgo» (por defecto "
+    "en la semana actual) con su responsable. Mientras esté pendiente el hallazgo queda "
+    "`en_atencion`; al marcarla cumplida (`POST /plan/{id}/cumplimiento`), `atendido`. "
+    "Reprogramarla o eliminarla funciona como en cualquier actividad; eliminada, el hallazgo "
+    "vuelve a `abierto`. Reenviar el mismo `id` devuelve la actividad ya creada con 200.",
+    responses={
+        200: {"description": "La actividad con ese `id` ya existía"},
+        **ERROR_401,
+        **ERROR_403,
+        404: {"description": "Hallazgo no encontrado (o de un predio no asignado)"},
+        **ERROR_409,
+        422: {
+            "description": "El hallazgo ya tiene una atención pendiente o cumplida, la semana "
+            "no existe o el responsable no está asignado"
+        },
+    },
+)
+async def atencion_hallazgo(
+    entrada: AtencionHallazgo, usuario: GestionDep, session: SessionDep, response: Response
+) -> ActividadLeer:
+    hallazgo = await session.get(Hallazgo, entrada.hallazgo_id)
+    no_existe = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Hallazgo no encontrado"
+    )
+    if hallazgo is None or hallazgo.deleted_at is not None:
+        raise no_existe
+    try:
+        lote = await exigir_lote(session, usuario, hallazgo.lote_id, escribir=True)
+    except HTTPException as error:
+        if error.status_code == status.HTTP_404_NOT_FOUND:
+            raise no_existe from error
+        raise
+
+    if entrada.id is not None and (existente := await session.get(PlanActividad, entrada.id)):
+        if existente.deleted_at is not None or existente.hallazgo_id != hallazgo.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
+            )
+        response.status_code = status.HTTP_200_OK
+        [leida] = await leer_actividades(session, [existente.id])
+        return leida
+
+    vigente = await session.scalar(
+        select(PlanActividad.estado).where(
+            PlanActividad.hallazgo_id == hallazgo.id,
+            PlanActividad.deleted_at.is_(None),
+            PlanActividad.estado != "cancelada",
+        )
+    )
+    if vigente == "cumplida":
+        raise _no_valida("El hallazgo ya fue atendido")
+    if vigente is not None:
+        raise _no_valida(
+            "El hallazgo ya tiene una atención programada: reprográmela o elimínela en el plan"
+        )
+    actual = hoy_bogota().isocalendar()
+    anio = entrada.anio or actual.year
+    semana = entrada.semana or (actual.week if anio == actual.year else 1)
+    _exigir_semana(anio, semana)
+    await _exigir_responsable(session, lote.predio_id, entrada.responsable_id)
+
+    actividad = PlanActividad(
+        predio_id=lote.predio_id,
+        lote_id=lote.id,
+        tipo="atencion_hallazgo",
+        hallazgo_id=hallazgo.id,
+        anio=anio,
+        semana=semana,
+        responsable_id=entrada.responsable_id,
+        notas=entrada.notas or hallazgo.titulo[:300],
+    )
+    if entrada.id is not None:
+        actividad.id = entrada.id
+    session.add(actividad)
+    try:
+        await session.flush()
+    except IntegrityError as error:
+        # Carrera: el mismo `id` o, con otro `id`, otra atención del mismo hallazgo.
+        await session.rollback()
+        if entrada.id is not None and await session.get(PlanActividad, entrada.id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Ese id ya está en uso"
+            ) from error
+        raise _no_valida("El hallazgo ya tiene una atención programada") from error
+    [leida] = await leer_actividades(session, [actividad.id])
+    await session.commit()
+    return leida
+
+
+@router.post(
     "",
     response_model=list[ActividadLeer],
     status_code=status.HTTP_201_CREATED,
@@ -735,15 +835,17 @@ async def historial_actividad(
 @router.post(
     "/{actividad_id}/cumplimiento",
     response_model=ActividadLeer,
-    summary="Marcar una labor cultural como cumplida",
-    description="Las labores culturales no dejan lecturas: las marca cumplidas (o las desmarca) "
-    "su responsable, el agrónomo o el administrador. Las visitas de monitoreo y los cambios de "
-    "atrayente se cumplen solos con las lecturas de su semana.",
+    summary="Marcar una labor o la atención de un hallazgo como cumplida",
+    description="Las labores culturales y las atenciones de hallazgos no dejan lecturas: las "
+    "marca cumplidas (o las desmarca) su responsable, el agrónomo o el administrador, con una "
+    "`nota` opcional de lo que se hizo. Cumplida la atención, el hallazgo queda `atendido`. Las "
+    "visitas de monitoreo y los cambios de atrayente se cumplen solos con las lecturas de su "
+    "semana.",
     responses={
         401: {"description": "Sin sesión o sesión inválida"},
         403: {"description": "El técnico solo marca las labores de las que es responsable"},
         404: {"description": "Actividad no encontrada (o no asignada)"},
-        422: {"description": "No es una labor cultural"},
+        422: {"description": "No es una labor cultural ni la atención de un hallazgo"},
     },
 )
 async def marcar_cumplimiento(
@@ -761,7 +863,7 @@ async def marcar_cumplimiento(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo el responsable, el agrónomo o el administrador marcan esta labor",
         )
-    if actividad.tipo != "labor_cultural":
+    if actividad.tipo not in TIPOS_MANUALES:
         raise _no_valida(
             "Las visitas y los cambios de atrayente se cumplen con las lecturas de su semana"
         )
@@ -769,6 +871,16 @@ async def marcar_cumplimiento(
         actividad.estado = "cumplida"
         actividad.cumplida_por_id = usuario.id
         actividad.cumplida_en = func.now()
+        actividad.nota_cumplimiento = entrada.nota
+    elif entrada.cumplida and entrada.nota is not None:
+        # La nota de una ya cumplida la corrigen quien la marcó o la gestión.
+        if usuario.rol not in ROLES_GESTION and actividad.cumplida_por_id != usuario.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo quien la marcó cumplida, el agrónomo o el administrador cambian "
+                "la nota",
+            )
+        actividad.nota_cumplimiento = entrada.nota
     elif not entrada.cumplida and actividad.estado == "cumplida":
         reprogramada = await session.scalar(
             select(PlanCambio.id).where(
@@ -778,6 +890,7 @@ async def marcar_cumplimiento(
         actividad.estado = "reprogramada" if reprogramada else "programada"
         actividad.cumplida_por_id = None
         actividad.cumplida_en = None
+        actividad.nota_cumplimiento = None
     await session.flush()
     await session.refresh(actividad)
     [leida] = await leer_actividades(session, [actividad.id])

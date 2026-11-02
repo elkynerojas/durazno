@@ -128,8 +128,8 @@ Authorization: Bearer <access_token>
 ```
 
 El servicio devuelve lo que la app necesita para trabajar sin señal: predios, lotes, trampas,
-rutas, actividades del plan (del año en curso en adelante) y lecturas de los últimos 60 días.
-Cada entidad trae tres listas:
+rutas, actividades del plan (del año en curso en adelante), lecturas de los últimos 60 días y,
+del módulo Inspección, los tipos de hallazgo y los hallazgos. Cada entidad trae tres listas:
 
 - `creados`: registros nuevos para la app.
 - `modificados`: registros que la app ya tenía y cambiaron.
@@ -159,7 +159,9 @@ Los registros usan los mismos esquemas de sus endpoints (`TrampaLeer`, `LecturaL
     ],
     "modificados": [],
     "borrados": []
-  }
+  },
+  "tipos_hallazgo": {"creados": [], "modificados": [], "borrados": []},
+  "hallazgos":      {"creados": [], "modificados": [], "borrados": []}
 }
 ```
 
@@ -174,6 +176,12 @@ Reglas para aplicar la respuesta:
 - **Predio recién asignado.** Llega completo en `creados`, aunque sus datos sean viejos.
 - **Semana en curso.** Las actividades de esta semana llegan siempre, porque su `estado` y su
   `avance` se calculan con las lecturas.
+- **Hallazgos.** Cada hallazgo trae su `estado` (`abierto`, `en_atencion` o `atendido`), la marca
+  `vencida`, sus `atenciones` del plan y la lista de `evidencias`. Un hallazgo vuelve a llegar en
+  `modificados` cuando cambia su atención en el plan (programada, cumplida o eliminada). Las
+  fotos no vienen en la respuesta: descárguelas con
+  `GET /api/v1/inspecciones/hallazgos/{id}/evidencias/{evidencia_id}?tamano=miniatura`. Los
+  tipos de hallazgo no se borran; uno con `activo: false` ya no se ofrece al registrar.
 - **Errores.** `desde` sin zona horaria, o en el futuro, responde `422`. Si se perdió la fecha,
   haga la carga completa.
 
@@ -399,7 +407,8 @@ Todos los errores traen `detail`:
 ## 8. Datos personales (Ley 1581 de 2012)
 
 - **Productor:** recibe en `null` el responsable de las lecturas (`responsable_id`,
-  `responsable_nombre`, `revisada_por`) y el de las actividades del plan.
+  `responsable_nombre`, `revisada_por`), el de las actividades del plan, quién registró cada
+  hallazgo (`registrado_por_id`, `registrado_por_nombre`) y quién atiende cada uno.
 - **Posición GPS de una lectura:** solo la reciben el agrónomo, el administrador y el técnico
   que la registró. Los demás la reciben en `null`.
 - **En la app:** no guarde más de lo que llega, no envíe estos datos a servicios de terceros

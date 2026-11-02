@@ -6,7 +6,7 @@ import Encabezado from '../../components/Encabezado'
 import Plantilla from '../../components/Plantilla'
 import { otraSemana, rangoSemana, semanaIso } from '../../utils/fechas'
 import { usePredio } from '../predios/usePredio'
-import { ESTADOS_ACTIVIDAD, filaDe, textoAvance } from './catalogo'
+import { ESTADOS_ACTIVIDAD, SE_MARCA_A_MANO, filaDe, textoAvance } from './catalogo'
 
 // «Mi semana» (HU-24): lo que le toca al usuario esta semana, en todos sus predios. Pensada para
 // el teléfono: tarjetas grandes y acceso directo a la ruta en el mapa.
@@ -47,7 +47,7 @@ export default function VistaMiSemana() {
         ),
       }))
     } catch {
-      setError('No se pudo actualizar la labor. Intente de nuevo.')
+      setError('No se pudo actualizar la actividad. Intente de nuevo.')
     }
   }
 
@@ -139,7 +139,7 @@ export default function VistaMiSemana() {
                   <p className="formulario__nota">{textoAvance(actividad)}</p>
                 )}
                 {actividad.notas && <p className="formulario__nota">{actividad.notas}</p>}
-                {actividad.tipo === 'labor_cultural' && (
+                {SE_MARCA_A_MANO.includes(actividad.tipo) && (
                   <button
                     type="button"
                     className="boton-secundario boton-bloque"
@@ -158,11 +158,17 @@ export default function VistaMiSemana() {
                       actividad,
                       visita
                         ? `/rutas?lote=${actividad.lote_id}`
-                        : `/lotes?lote=${actividad.lote_id}`,
+                        : actividad.hallazgo_id
+                          ? `/inspeccion?hallazgo=${actividad.hallazgo_id}`
+                          : `/lotes?lote=${actividad.lote_id}`,
                     )
                   }
                 >
-                  {visita ? 'Ver la ruta en el mapa' : 'Ver el lote en el mapa'}
+                  {visita
+                    ? 'Ver la ruta en el mapa'
+                    : actividad.hallazgo_id
+                      ? 'Ver el hallazgo'
+                      : 'Ver el lote en el mapa'}
                 </button>
               </li>
             )

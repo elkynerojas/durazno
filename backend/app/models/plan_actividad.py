@@ -1,13 +1,14 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, EntidadSincronizable
 
-# Catálogo de tipos (HU-21). Las labores culturales se precisan con `labor`.
-TIPOS_ACTIVIDAD = ("visita_monitoreo", "cambio_atrayente", "labor_cultural")
+# Catálogo de tipos (HU-21). Las labores culturales se precisan con `labor`. La atención de un
+# hallazgo (HU-42) solo se programa desde el hallazgo.
+TIPOS_ACTIVIDAD = ("visita_monitoreo", "cambio_atrayente", "labor_cultural", "atencion_hallazgo")
 LABORES = ("poda", "fertilizacion", "raleo", "cosecha", "riego", "control_malezas", "otra")
 # `programada` al crearla; HU-22 y HU-23 calculan o registran los demás estados.
 ESTADOS_ACTIVIDAD = ("programada", "cumplida", "reprogramada", "cancelada")
@@ -33,7 +34,20 @@ class PlanActividad(EntidadSincronizable, Base):
         CheckConstraint(
             "(tipo = 'visita_monitoreo') = (ruta_id IS NOT NULL)", name="ruta_segun_tipo"
         ),
+        CheckConstraint(
+            "(tipo = 'atencion_hallazgo') = (hallazgo_id IS NOT NULL)",
+            name="hallazgo_segun_tipo",
+        ),
         Index("ix_plan_actividad_predio_anio", "predio_id", "anio"),
+        # Un hallazgo tiene a lo sumo una atención vigente (pendiente o cumplida).
+        Index(
+            "uq_plan_actividad_atencion_vigente",
+            "hallazgo_id",
+            unique=True,
+            postgresql_where=text(
+                "hallazgo_id IS NOT NULL AND deleted_at IS NULL AND estado <> 'cancelada'"
+            ),
+        ),
     )
 
     predio_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("predio.id"), nullable=False)
@@ -55,6 +69,12 @@ class PlanActividad(EntidadSincronizable, Base):
     lectura_origen_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("lectura_trampa.id"), nullable=True
     )
+    # Atención de un hallazgo de Inspección (HU-42): el estado del hallazgo sale de aquí.
+    hallazgo_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("hallazgo.id"), nullable=True, index=True
+    )
+    # Labores y atenciones de hallazgos: qué se hizo, al marcarla cumplida.
+    nota_cumplimiento: Mapped[str | None] = mapped_column(String(300), nullable=True)
     # Labores culturales: quién y cuándo la marcó cumplida (las visitas y los cambios de
     # atrayente se cumplen con las lecturas, HU-22).
     cumplida_por_id: Mapped[uuid.UUID | None] = mapped_column(

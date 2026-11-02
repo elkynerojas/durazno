@@ -3,7 +3,17 @@ export const TIPOS_ACTIVIDAD = {
   visita_monitoreo: 'Visita de monitoreo',
   cambio_atrayente: 'Cambio de atrayente',
   labor_cultural: 'Labor cultural',
+  atencion_hallazgo: 'Atención de hallazgo',
 }
+
+// Tipos que se programan desde el formulario del plan; la atención de un hallazgo se programa
+// desde su ficha en Inspección.
+export const TIPOS_PROGRAMABLES = Object.fromEntries(
+  Object.entries(TIPOS_ACTIVIDAD).filter(([tipo]) => tipo !== 'atencion_hallazgo'),
+)
+
+// Labores y atenciones de hallazgos no dejan lecturas: se marcan cumplidas a mano.
+export const SE_MARCA_A_MANO = ['labor_cultural', 'atencion_hallazgo']
 
 export const LABORES = {
   poda: 'Poda',
@@ -39,10 +49,19 @@ const ORDEN_LABORES = Object.keys(LABORES)
 const porCodigo = (a, b) => a.localeCompare(b, 'es', { numeric: true })
 
 // Fila de la vista anual (como el mockup): una ruta por lote; los recambios por tipo de trampa
-// y las labores por labor, a nivel de predio. `nuevo` precarga «Programar actividad» desde una
-// celda vacía de la fila.
+// y las labores por labor, a nivel de predio; al final, las atenciones de hallazgos. `nuevo`
+// precarga «Programar actividad» desde una celda vacía de la fila (`null`: no se programa ahí).
 export function filaDe(actividad) {
   const { lote_id, lote_codigo, tipo, labor, tipo_trampa } = actividad
+  if (tipo === 'atencion_hallazgo') {
+    return {
+      clave: 'hallazgo',
+      titulo: 'Atención de hallazgos',
+      detalle: 'Inspección',
+      orden: [3, ''],
+      nuevo: null,
+    }
+  }
   if (tipo === 'visita_monitoreo') {
     return {
       clave: `ruta|${lote_id}`,

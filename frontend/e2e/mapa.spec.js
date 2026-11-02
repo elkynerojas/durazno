@@ -1008,3 +1008,84 @@ test('se registra un hallazgo tocando el mapa, con foto, y se ve en la lista y l
   await ficha.getByRole('button', { name: 'Confirmar: eliminar hallazgo' }).click()
   await expect(page.getByText('Hallazgo eliminado.')).toBeVisible()
 })
+
+test('el agrónomo programa la atención de un hallazgo y al cumplirla queda atendido', async ({
+  page,
+}) => {
+  await asegurarTecnicoE2E(page)
+  const lote = `E2E-${Date.now() % 1_000_000}`
+  await dibujarLote(page, lote)
+  // El hallazgo se crea por la API (su registro en pantalla tiene su propia prueba).
+  await page.evaluate(async (codigo) => {
+    const renovar = await fetch('/api/v1/auth/renovar', { method: 'POST' })
+    const cabeceras = {
+      Authorization: `Bearer ${(await renovar.json()).access_token}`,
+      'Content-Type': 'application/json',
+    }
+    const predioId = localStorage.getItem('icota.predio')
+    const lotes = await (
+      await fetch(`/api/v1/lotes?predio_id=${predioId}`, { headers: cabeceras })
+    ).json()
+    const elegido = lotes.find((l) => l.codigo === codigo)
+    const anillo = elegido.geom.coordinates[0].slice(0, -1)
+    const centro = [0, 1].map((i) => anillo.reduce((s, p) => s + p[i], 0) / anillo.length)
+    const [tipo] = await (await fetch('/api/v1/inspecciones/tipos', { headers: cabeceras })).json()
+    await fetch('/api/v1/inspecciones/hallazgos', {
+      method: 'POST',
+      headers: cabeceras,
+      body: JSON.stringify({
+        lote_id: elegido.id,
+        tipo_id: tipo.id,
+        titulo: 'Árbol con gomosis E2E',
+        descripcion: 'Exudado de goma en el tronco principal.',
+        ubicacion: { type: 'Point', coordinates: centro },
+        observado_en: new Date().toISOString(),
+      }),
+    })
+  }, lote)
+
+  // En el mapa del predio, la capa «Hallazgos» muestra los que siguen sin atender.
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Mapa', exact: true }).click()
+  await page.getByRole('button', { name: 'Hallazgos', exact: true }).click()
+  await expect(page.locator('.marcador-hallazgo')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Inspección' }).click()
+  await page
+    .getByRole('region', { name: 'Lista de hallazgos' })
+    .getByRole('button', { name: /Árbol con gomosis E2E/ })
+    .click()
+  const ficha = page.getByRole('article', { name: 'Hallazgo Árbol con gomosis E2E' })
+  await expect(ficha.locator('.insignia--hallazgo-abierto')).toHaveText('Abierto')
+
+  await ficha.getByRole('button', { name: 'Programar atención' }).click()
+  const programar = ficha.getByRole('form', { name: 'Programar atención' })
+  await programar.getByLabel('Responsable').selectOption({ label: 'Técnico E2E' })
+  await programar.getByLabel('Qué hay que hacer (opcional)').fill('Raspar y aplicar pasta cúprica')
+  await programar.getByRole('button', { name: 'Programar en el plan' }).click()
+  await expect(ficha.locator('.insignia--hallazgo-en_atencion')).toHaveText('En atención')
+  await expect(ficha.getByText('Responsable: Técnico E2E')).toBeVisible()
+
+  // La actividad aparece en el plan, en la fila «Atención de hallazgos».
+  await page.getByRole('button', { name: 'Menú' }).click()
+  await page.getByRole('link', { name: 'Planeación' }).click()
+  await page
+    .getByRole('button', { name: /^Atención de hallazgos \(Inspección\), semana \d+: programada/ })
+    .click()
+  const actividad = page.getByRole('region', { name: 'Actividad seleccionada' })
+  await expect(actividad.getByText('Raspar y aplicar pasta cúprica')).toBeVisible()
+
+  // Desde la actividad se vuelve al hallazgo y se marca atendido con lo que se hizo.
+  await actividad.getByRole('link', { name: 'Ver el hallazgo' }).click()
+  await expect(ficha).toBeVisible()
+  await ficha.getByLabel('Qué se hizo (opcional)').fill('Pasta cúprica aplicada')
+  await ficha.getByRole('button', { name: 'Marcar atendido' }).click()
+  await expect(ficha.locator('.insignia--hallazgo-atendido')).toHaveText('Atendido')
+  await expect(ficha.getByText('Qué se hizo: Pasta cúprica aplicada')).toBeVisible()
+
+  await page.getByLabel('Estado').selectOption({ label: 'Atendido' })
+  await expect(
+    page.getByRole('region', { name: 'Lista de hallazgos' }).getByText('Árbol con gomosis E2E'),
+  ).toBeVisible()
+})

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { programarActividad } from '../../api/client'
 import { rangoSemana, semanaDelAnio, semanasDelAnio } from '../../utils/fechas'
 import { TIPOS_TRAMPA } from '../trampas/catalogo'
-import { LABORES, TIPOS_ACTIVIDAD } from './catalogo'
+import { LABORES, TIPOS_PROGRAMABLES } from './catalogo'
 
 function mensajeDeError(error) {
   if (typeof error.detalle === 'string') return error.detalle
@@ -90,7 +90,7 @@ export default function FormularioActividad({
           Tipo de actividad
         </p>
         <div role="radiogroup" aria-labelledby="tipo_actividad">
-          {Object.entries(TIPOS_ACTIVIDAD).map(([valor, nombre]) => (
+          {Object.entries(TIPOS_PROGRAMABLES).map(([valor, nombre]) => (
             <label key={valor} className="opcion">
               <input
                 type="radio"

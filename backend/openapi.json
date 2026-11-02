@@ -4047,7 +4047,7 @@
           "plan"
         ],
         "summary": "Tipos de actividad y labores culturales",
-        "description": "Valores y nombres en español para los selectores del formulario del plan.",
+        "description": "Valores y nombres en español para los selectores del formulario del plan. `atencion_hallazgo` solo se programa con `POST /plan/atencion-hallazgo`.",
         "operationId": "catalogo_api_v1_plan_catalogo_get",
         "responses": {
           "200": {
@@ -4704,6 +4704,115 @@
         ]
       }
     },
+    "/api/v1/plan/atencion-hallazgo": {
+      "post": {
+        "tags": [
+          "plan"
+        ],
+        "summary": "Programar la atención de un hallazgo",
+        "description": "Crea en el lote del hallazgo una actividad «Atención de hallazgo» (por defecto en la semana actual) con su responsable. Mientras esté pendiente el hallazgo queda `en_atencion`; al marcarla cumplida (`POST /plan/{id}/cumplimiento`), `atendido`. Reprogramarla o eliminarla funciona como en cualquier actividad; eliminada, el hallazgo vuelve a `abierto`. Reenviar el mismo `id` devuelve la actividad ya creada con 200.",
+        "operationId": "atencion_hallazgo_api_v1_plan_atencion_hallazgo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtencionHallazgo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActividadLeer"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "La actividad con ese `id` ya existía"
+          },
+          "401": {
+            "description": "Sin sesión o sesión inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Sesión inválida o expirada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Solo el agrónomo o el administrador programan actividades",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "No tiene permiso para realizar esta acción"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Hallazgo no encontrado (o de un predio no asignado)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Hallazgo no encontrado (o de un predio no asignado)"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "El `id` ya se usó para otra actividad",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "El `id` ya se usó para otra actividad"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El hallazgo ya tiene una atención pendiente o cumplida, la semana no existe o el responsable no está asignado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/plan/{actividad_id}": {
       "patch": {
         "tags": [
@@ -5114,8 +5223,8 @@
         "tags": [
           "plan"
         ],
-        "summary": "Marcar una labor cultural como cumplida",
-        "description": "Las labores culturales no dejan lecturas: las marca cumplidas (o las desmarca) su responsable, el agrónomo o el administrador. Las visitas de monitoreo y los cambios de atrayente se cumplen solos con las lecturas de su semana.",
+        "summary": "Marcar una labor o la atención de un hallazgo como cumplida",
+        "description": "Las labores culturales y las atenciones de hallazgos no dejan lecturas: las marca cumplidas (o las desmarca) su responsable, el agrónomo o el administrador, con una `nota` opcional de lo que se hizo. Cumplida la atención, el hallazgo queda `atendido`. Las visitas de monitoreo y los cambios de atrayente se cumplen solos con las lecturas de su semana.",
         "operationId": "marcar_cumplimiento_api_v1_plan__actividad_id__cumplimiento_post",
         "security": [
           {
@@ -5195,7 +5304,7 @@
             }
           },
           "422": {
-            "description": "No es una labor cultural",
+            "description": "No es una labor cultural ni la atención de un hallazgo",
             "content": {
               "application/json": {
                 "schema": {
@@ -6546,7 +6655,7 @@
           "sync"
         ],
         "summary": "Cambios desde la última sincronización",
-        "description": "Lo que la app debe guardar para trabajar sin conexión, por entidad: predios, lotes, trampas, rutas, actividades del plan (del año en curso en adelante) y lecturas (de los últimos 60 días). Cada entidad trae `creados`, `modificados` (mismos esquemas de sus endpoints) y los ids `borrados`. Sin `desde` es la carga completa (sin borrados). Un predio en `borrados` (borrado o desasignado) se descarta con todo su contenido; lo mismo un lote con sus trampas, ruta y actividades. Un predio recién asignado llega completo en `creados`. Las actividades de la semana en curso vienen siempre, porque su estado y avance se calculan con las lecturas. Para la siguiente vez use `siguiente_desde`. Los datos personales siguen las mismas reglas de cada endpoint (Ley 1581). Cualquier rol.",
+        "description": "Lo que la app debe guardar para trabajar sin conexión, por entidad: predios, lotes, trampas, rutas, actividades del plan (del año en curso en adelante), lecturas (de los últimos 60 días), tipos de hallazgo y hallazgos de Inspección (un hallazgo vuelve a viajar cuando cambia su atención en el plan). Cada entidad trae `creados`, `modificados` (mismos esquemas de sus endpoints) y los ids `borrados`. Sin `desde` es la carga completa (sin borrados). Un predio en `borrados` (borrado o desasignado) se descarta con todo su contenido; lo mismo un lote con sus trampas, ruta y actividades. Un predio recién asignado llega completo en `creados`. Las actividades de la semana en curso vienen siempre, porque su estado y avance se calculan con las lecturas. Para la siguiente vez use `siguiente_desde`. Los datos personales siguen las mismas reglas de cada endpoint (Ley 1581). Cualquier rol.",
         "operationId": "cambios_api_v1_sync_cambios_get",
         "security": [
           {
@@ -7161,6 +7270,27 @@
             }
           },
           {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "abierto",
+                    "en_atencion",
+                    "atendido"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
             "name": "desde",
             "in": "query",
             "required": false,
@@ -7464,7 +7594,7 @@
           "inspecciones"
         ],
         "summary": "Eliminar un hallazgo",
-        "description": "Borrado lógico; lo hacen el agrónomo y el administrador.",
+        "description": "Borrado lógico; lo hacen el agrónomo y el administrador. También salen del plan sus actividades de atención.",
         "operationId": "eliminar_hallazgo_api_v1_inspecciones_hallazgos__hallazgo_id__delete",
         "security": [
           {
@@ -8085,7 +8215,8 @@
             "enum": [
               "visita_monitoreo",
               "cambio_atrayente",
-              "labor_cultural"
+              "labor_cultural",
+              "atencion_hallazgo"
             ],
             "title": "Tipo"
           },
@@ -8240,6 +8371,31 @@
             "title": "Lectura Origen Id",
             "description": "Visita adicional: la lectura con capturas que la originó"
           },
+          "hallazgo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hallazgo Id",
+            "description": "Atención de hallazgo: el hallazgo de Inspección que atiende"
+          },
+          "nota_cumplimiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Cumplimiento",
+            "description": "Labores y atenciones: qué se hizo, al marcarla cumplida"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -8272,6 +8428,195 @@
           "updated_at"
         ],
         "title": "ActividadLeer"
+      },
+      "AtencionHallazgo": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Opcional: reenviar el mismo `id` no duplica la actividad"
+          },
+          "hallazgo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Hallazgo Id"
+          },
+          "anio": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2020.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anio",
+            "description": "Por defecto, el de la semana actual"
+          },
+          "semana": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 53.0,
+                "minimum": 1.0,
+                "description": "Semana ISO 8601"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semana",
+            "description": "Por defecto, la semana actual"
+          },
+          "responsable_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Responsable Id",
+            "description": "Técnico o agrónomo asignado al predio"
+          },
+          "notas": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notas",
+            "description": "Qué hay que hacer; por defecto, el título del hallazgo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hallazgo_id",
+          "responsable_id"
+        ],
+        "title": "AtencionHallazgo",
+        "examples": [
+          {
+            "anio": 2026,
+            "hallazgo_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e0c",
+            "id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e09",
+            "notas": "Poda sanitaria de los árboles afectados",
+            "responsable_id": "0192f3a0-5b1c-7d2e-8f30-1a2b3c4d5e06",
+            "semana": 45
+          }
+        ]
+      },
+      "AtencionLeer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "anio": {
+            "type": "integer",
+            "title": "Anio"
+          },
+          "semana": {
+            "type": "integer",
+            "title": "Semana"
+          },
+          "estado": {
+            "type": "string",
+            "enum": [
+              "programada",
+              "cumplida",
+              "reprogramada",
+              "vencida",
+              "cancelada"
+            ],
+            "title": "Estado"
+          },
+          "responsable_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Id",
+            "description": "`null` para el productor (Ley 1581)"
+          },
+          "responsable_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responsable Nombre",
+            "description": "`null` para el productor (Ley 1581)"
+          },
+          "notas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notas"
+          },
+          "nota_cumplimiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Cumplimiento"
+          },
+          "cumplida_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cumplida En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "anio",
+          "semana",
+          "estado",
+          "responsable_id",
+          "responsable_nombre",
+          "notas",
+          "nota_cumplimiento",
+          "cumplida_en"
+        ],
+        "title": "AtencionLeer",
+        "description": "Actividad «Atención de hallazgo» del plan, resumida para la ficha del hallazgo."
       },
       "AvanceLeer": {
         "properties": {
@@ -8399,7 +8744,8 @@
             "enum": [
               "visita_monitoreo",
               "cambio_atrayente",
-              "labor_cultural"
+              "labor_cultural",
+              "atencion_hallazgo"
             ],
             "title": "Tipo"
           },
@@ -8586,6 +8932,14 @@
           },
           "lecturas": {
             "$ref": "#/components/schemas/CambiosEntidad_LecturaLeer_"
+          },
+          "tipos_hallazgo": {
+            "$ref": "#/components/schemas/CambiosEntidad_TipoHallazgoLeer_",
+            "description": "Catálogo global de tipos de hallazgo, activos e inactivos (no se borran)"
+          },
+          "hallazgos": {
+            "$ref": "#/components/schemas/CambiosEntidad_HallazgoLeer_",
+            "description": "Hallazgos de Inspección con su estado, sus atenciones y los ids de sus fotos (las fotos se descargan aparte)"
           }
         },
         "type": "object",
@@ -8598,7 +8952,9 @@
           "trampas",
           "rutas",
           "actividades",
-          "lecturas"
+          "lecturas",
+          "tipos_hallazgo",
+          "hallazgos"
         ],
         "title": "Cambios"
       },
@@ -8637,6 +8993,42 @@
           "borrados"
         ],
         "title": "CambiosEntidad[ActividadLeer]"
+      },
+      "CambiosEntidad_HallazgoLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[HallazgoLeer]"
       },
       "CambiosEntidad_LecturaLeer_": {
         "properties": {
@@ -8782,6 +9174,42 @@
         ],
         "title": "CambiosEntidad[RutaLeer]"
       },
+      "CambiosEntidad_TipoHallazgoLeer_": {
+        "properties": {
+          "creados": {
+            "items": {
+              "$ref": "#/components/schemas/TipoHallazgoLeer"
+            },
+            "type": "array",
+            "title": "Creados",
+            "description": "Nuevos para el cliente desde `desde`"
+          },
+          "modificados": {
+            "items": {
+              "$ref": "#/components/schemas/TipoHallazgoLeer"
+            },
+            "type": "array",
+            "title": "Modificados",
+            "description": "Ya existían en `desde` y cambiaron después"
+          },
+          "borrados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Borrados",
+            "description": "Ids que el cliente debe descartar (borrado lógico o fuera de su alcance)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creados",
+          "modificados",
+          "borrados"
+        ],
+        "title": "CambiosEntidad[TipoHallazgoLeer]"
+      },
       "CambiosEntidad_TrampaLeer_": {
         "properties": {
           "creados": {
@@ -8848,6 +9276,20 @@
             "type": "boolean",
             "title": "Cumplida",
             "description": "`true` la marca cumplida; `false` la desmarca"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota",
+            "description": "Opcional al marcarla cumplida: qué se hizo"
           }
         },
         "additionalProperties": false,
@@ -8858,7 +9300,8 @@
         "title": "Cumplimiento",
         "examples": [
           {
-            "cumplida": true
+            "cumplida": true,
+            "nota": "Poda sanitaria y fungicida cúprico"
           }
         ]
       },
@@ -9560,6 +10003,20 @@
             ],
             "title": "Estado",
             "description": "`abierto` sin atención programada, `en_atencion` con una actividad pendiente en el plan, `atendido` cuando esa actividad se cumplió"
+          },
+          "vencida": {
+            "type": "boolean",
+            "title": "Vencida",
+            "description": "En atención, pero la semana de la actividad ya pasó",
+            "default": false
+          },
+          "atenciones": {
+            "items": {
+              "$ref": "#/components/schemas/AtencionLeer"
+            },
+            "type": "array",
+            "title": "Atenciones",
+            "description": "Actividades del plan que lo atienden (HU-42)"
           },
           "evidencias": {
             "items": {
@@ -10944,7 +11401,8 @@
             "enum": [
               "visita_monitoreo",
               "cambio_atrayente",
-              "labor_cultural"
+              "labor_cultural",
+              "atencion_hallazgo"
             ],
             "title": "Tipo"
           },
@@ -11098,6 +11556,31 @@
             ],
             "title": "Lectura Origen Id",
             "description": "Visita adicional: la lectura con capturas que la originó"
+          },
+          "hallazgo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hallazgo Id",
+            "description": "Atención de hallazgo: el hallazgo de Inspección que atiende"
+          },
+          "nota_cumplimiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Cumplimiento",
+            "description": "Labores y atenciones: qué se hizo, al marcarla cumplida"
           },
           "created_at": {
             "type": "string",

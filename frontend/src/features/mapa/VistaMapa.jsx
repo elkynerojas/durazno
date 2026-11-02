@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMap } from 'react-leaflet'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
+import { listarHallazgos } from '../../api/client'
 import Encabezado from '../../components/Encabezado'
 import MapaPredio from '../../components/MapaPredio'
 import Plantilla from '../../components/Plantilla'
@@ -12,6 +13,7 @@ import { useSesion } from '../auth/useSesion'
 import CapaLimitePredio from '../predios/CapaLimitePredio'
 import { usePredio } from '../predios/usePredio'
 import { ROLES_CAMPO, ROLES_GESTION } from '../usuarios/roles'
+import CapaHallazgos from '../inspeccion/CapaHallazgos'
 import CapaLotes from '../lotes/CapaLotes'
 import { COLOR_LIMITE, COLOR_LOTE } from './colores'
 import BotonEtiquetas from '../trampas/BotonEtiquetas'
@@ -29,12 +31,26 @@ export default function VistaMapa() {
   const registra = ROLES_CAMPO.includes(usuario.rol)
   const { predio } = usePredio()
   const mapa = useMapa(predio?.id)
-  const [capas, setCapas] = useState({ lotes: true, trampas: true })
+  const [capas, setCapas] = useState({ lotes: true, trampas: true, hallazgos: false })
+  // Hallazgos de Inspección sin atender (abiertos o en atención); se piden al mostrar la capa.
+  const [hallazgos, setHallazgos] = useState([])
+  const navigate = useNavigate()
   // Lote elegido en el filtro ('' = todos).
   const [loteFiltro, setLoteFiltro] = useState('')
   // { lote } o { trampa } seleccionado en el mapa.
   const [seleccion, setSeleccion] = useState(null)
   const refCapas = useRef(new Map())
+
+  useEffect(() => {
+    if (!capas.hallazgos) return
+    let vigente = true
+    listarHallazgos(predio.id, { por_pagina: 200 })
+      .then((r) => vigente && setHallazgos(r.hallazgos.filter((h) => h.estado !== 'atendido')))
+      .catch(() => vigente && setHallazgos([]))
+    return () => {
+      vigente = false
+    }
+  }, [capas.hallazgos, predio.id])
 
   const lotes = loteFiltro ? mapa.lotes.filter((l) => l.id === loteFiltro) : mapa.lotes
   const trampas = loteFiltro ? mapa.trampas.filter((t) => t.lote_id === loteFiltro) : mapa.trampas
@@ -107,6 +123,7 @@ export default function VistaMapa() {
               {[
                 ['lotes', 'Lotes'],
                 ['trampas', 'Trampas'],
+                ['hallazgos', 'Hallazgos'],
               ].map(([clave, texto]) => (
                 <button
                   key={clave}
@@ -171,6 +188,14 @@ export default function VistaMapa() {
                   seleccionadaId={seleccion?.trampa?.id}
                   alSeleccionar={(trampa) => setSeleccion({ trampa })}
                   ventana={(trampa) => <VentanaTrampa trampa={trampa} registra={registra} />}
+                />
+              )}
+              {capas.hallazgos && (
+                <CapaHallazgos
+                  hallazgos={
+                    loteFiltro ? hallazgos.filter((h) => h.lote_id === loteFiltro) : hallazgos
+                  }
+                  alSeleccionar={(h) => navigate(`/inspeccion?hallazgo=${h.id}`)}
                 />
               )}
             </MapaPredio>

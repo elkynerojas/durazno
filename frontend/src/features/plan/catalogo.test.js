@@ -27,6 +27,15 @@ describe('plan: filas del calendario', () => {
     })
   })
 
+  it('las atenciones de hallazgos van en una fila al final y no se programan desde la rejilla', () => {
+    const filas = filasDelPlan([
+      actividad('1', { tipo: 'atencion_hallazgo', hallazgo_id: 'h-1', semana: 45 }),
+      actividad('2', { tipo: 'labor_cultural', labor: 'poda', semana: 6 }),
+    ])
+    expect(filas.at(-1)).toMatchObject({ titulo: 'Atención de hallazgos', nuevo: null })
+    expect(filas.at(-1).semanas.get(45)).toHaveLength(1)
+  })
+
   it('sin actividades muestra las rutas y los recambios', () => {
     const filas = filasDelPlan(
       [],

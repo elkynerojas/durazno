@@ -7,3 +7,10 @@ export const ESTADOS_HALLAZGO = {
 
 export const MAX_EVIDENCIAS = 6
 export const MAX_MB = 8
+
+// «En atención · vencida» cuando la semana de la atención ya pasó sin cumplirse.
+export const textoEstado = (hallazgo) =>
+  ESTADOS_HALLAZGO[hallazgo.estado] + (hallazgo.vencida ? ' · vencida' : '')
+
+// Atenciones del plan que siguen por hacer.
+export const PENDIENTES = ['programada', 'reprogramada', 'vencida']

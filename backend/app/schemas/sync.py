@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas import ejemplos as ej
+from app.schemas.inspeccion import HallazgoLeer, TipoHallazgoLeer
 from app.schemas.lectura import LecturaCrear, LecturaLeer
 from app.schemas.lote import LoteLeer
 from app.schemas.plan import ActividadLeer
@@ -38,6 +39,13 @@ class Cambios(BaseModel):
     rutas: CambiosEntidad[RutaLeer]
     actividades: CambiosEntidad[ActividadLeer]
     lecturas: CambiosEntidad[LecturaLeer]
+    tipos_hallazgo: CambiosEntidad[TipoHallazgoLeer] = Field(
+        description="Catálogo global de tipos de hallazgo, activos e inactivos (no se borran)"
+    )
+    hallazgos: CambiosEntidad[HallazgoLeer] = Field(
+        description="Hallazgos de Inspección con su estado, sus atenciones y los ids de sus fotos "
+        "(las fotos se descargan aparte)"
+    )
 
 
 class LecturaSincronizar(LecturaCrear):

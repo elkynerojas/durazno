@@ -134,6 +134,20 @@ class EvidenciaLeer(BaseModel):
     created_at: datetime
 
 
+class AtencionLeer(BaseModel):
+    """Actividad «Atención de hallazgo» del plan, resumida para la ficha del hallazgo."""
+
+    id: uuid.UUID
+    anio: int
+    semana: int
+    estado: Literal["programada", "cumplida", "reprogramada", "vencida", "cancelada"]
+    responsable_id: uuid.UUID | None = Field(description="`null` para el productor (Ley 1581)")
+    responsable_nombre: str | None = Field(description="`null` para el productor (Ley 1581)")
+    notas: str | None
+    nota_cumplimiento: str | None
+    cumplida_en: datetime | None
+
+
 class HallazgoLeer(BaseModel):
     id: uuid.UUID
     predio_id: uuid.UUID
@@ -152,6 +166,12 @@ class HallazgoLeer(BaseModel):
     estado: EstadoHallazgo = Field(
         description="`abierto` sin atención programada, `en_atencion` con una actividad "
         "pendiente en el plan, `atendido` cuando esa actividad se cumplió"
+    )
+    vencida: bool = Field(
+        default=False, description="En atención, pero la semana de la actividad ya pasó"
+    )
+    atenciones: list["AtencionLeer"] = Field(
+        default_factory=list, description="Actividades del plan que lo atienden (HU-42)"
     )
     evidencias: list[EvidenciaLeer]
     created_at: datetime

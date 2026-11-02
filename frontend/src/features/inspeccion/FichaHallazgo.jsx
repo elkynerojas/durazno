@@ -8,8 +8,9 @@ import {
 } from '../../api/client'
 import { fechaHora } from '../../utils/fechas'
 import { ROLES_GESTION } from '../usuarios/roles'
-import { ESTADOS_HALLAZGO, MAX_EVIDENCIAS, MAX_MB } from './catalogo'
+import { MAX_EVIDENCIAS, MAX_MB, textoEstado } from './catalogo'
 import GaleriaEvidencias from './GaleriaEvidencias'
+import SeguimientoHallazgo from './SeguimientoHallazgo'
 
 const mensajeDeError = (e, porDefecto) => (typeof e.detalle === 'string' ? e.detalle : porDefecto)
 
@@ -79,7 +80,7 @@ export default function FichaHallazgo({ hallazgo, usuario, alCambiar, alEliminar
           {hallazgo.tipo_nombre}
         </span>
         <span className={`insignia insignia--hallazgo-${hallazgo.estado}`}>
-          {ESTADOS_HALLAZGO[hallazgo.estado]}
+          {textoEstado(hallazgo)}
         </span>
       </div>
       <h2 className="tarjeta__titulo">{hallazgo.titulo}</h2>
@@ -102,6 +103,8 @@ export default function FichaHallazgo({ hallazgo, usuario, alCambiar, alEliminar
         </dd>
       </dl>
       <p className="ficha-hallazgo__descripcion">{hallazgo.descripcion}</p>
+
+      <SeguimientoHallazgo hallazgo={hallazgo} usuario={usuario} alCambiar={alCambiar} />
 
       <h3 className="formulario__seccion">Evidencias</h3>
       <GaleriaEvidencias

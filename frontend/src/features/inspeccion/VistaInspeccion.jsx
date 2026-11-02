@@ -16,12 +16,12 @@ import { CapturaClic } from '../trampas/CapaTrampas'
 import { ROLES_CAMPO } from '../usuarios/roles'
 import AdministrarTipos from './AdministrarTipos'
 import CapaHallazgos from './CapaHallazgos'
-import { ESTADOS_HALLAZGO } from './catalogo'
+import { ESTADOS_HALLAZGO, textoEstado } from './catalogo'
 import FichaHallazgo from './FichaHallazgo'
 import FormularioHallazgo from './FormularioHallazgo'
 
 const SIN_COORDENADAS = { lat: '', lng: '' }
-const SIN_FILTROS = { lote_id: '', tipo_id: '', desde: '', hasta: '' }
+const SIN_FILTROS = { lote_id: '', tipo_id: '', estado: '', desde: '', hasta: '' }
 const POR_PAGINA = 200
 
 // Inspección (E9, funcionalidad extra): hallazgos del cultivo (hongos, plagas, árboles
@@ -319,6 +319,21 @@ export default function VistaInspeccion() {
                 </select>
               </div>
               <div>
+                <label htmlFor="filtro_estado">Estado</label>
+                <select
+                  id="filtro_estado"
+                  value={filtros.estado}
+                  onChange={cambiarFiltro('estado')}
+                >
+                  <option value="">Todos los estados</option>
+                  {Object.entries(ESTADOS_HALLAZGO).map(([valor, nombre]) => (
+                    <option key={valor} value={valor}>
+                      {nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label htmlFor="filtro_desde">Desde</label>
                 <input
                   id="filtro_desde"
@@ -365,7 +380,7 @@ export default function VistaInspeccion() {
                         </span>
                       </span>
                       <span className={`insignia insignia--hallazgo-${h.estado}`}>
-                        {ESTADOS_HALLAZGO[h.estado]}
+                        {textoEstado(h)}
                       </span>
                     </button>
                   </li>

@@ -16,7 +16,7 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.exc import IntegrityError
 from uuid6 import uuid7
 
@@ -25,10 +25,13 @@ from app.api.deps import SessionDep, UsuarioActualDep, requiere_rol
 from app.core.config import get_settings
 from app.models.hallazgo import EvidenciaHallazgo, Hallazgo
 from app.models.lote import Lote
+from app.models.plan_actividad import PlanActividad
 from app.models.tipo_hallazgo import TipoHallazgo
 from app.models.usuario import Usuario
 from app.schemas.geo import a_geometria
 from app.schemas.inspeccion import (
+    AtencionLeer,
+    EstadoHallazgo,
     EvidenciaLeer,
     HallazgoActualizar,
     HallazgoCrear,
@@ -38,6 +41,7 @@ from app.schemas.inspeccion import (
     TipoHallazgoCrear,
     TipoHallazgoLeer,
 )
+from app.services.cumplimiento import estado_actividad
 from app.services.evidencias import (
     MAX_BYTES,
     ImagenInvalida,
@@ -45,7 +49,8 @@ from app.services.evidencias import (
     procesar_y_guardar,
     ruta_archivo,
 )
-from app.services.inspecciones import MAX_EVIDENCIAS, rango_bogota
+from app.services.inspecciones import MAX_EVIDENCIAS, estado_hallazgo, rango_bogota
+from app.services.monitoreo import hoy_bogota
 from app.services.trampas import punto_en_lote
 
 router = APIRouter(prefix="/inspecciones", tags=["inspecciones"])
@@ -206,12 +211,66 @@ async def _evidencias(session: SessionDep, ids: list[uuid.UUID]) -> dict:
     return por_hallazgo
 
 
+async def _atenciones(session: SessionDep, ids: list[uuid.UUID], oculto: bool) -> dict:
+    """Actividades de atención (HU-42) de cada hallazgo, con su estado calculado."""
+    por_hallazgo: dict[uuid.UUID, list[AtencionLeer]] = defaultdict(list)
+    if not ids:
+        return por_hallazgo
+    hoy = hoy_bogota()
+    filas = await session.execute(
+        select(PlanActividad, Usuario.nombre_completo)
+        .join(Usuario, Usuario.id == PlanActividad.responsable_id)
+        .where(PlanActividad.hallazgo_id.in_(ids), PlanActividad.deleted_at.is_(None))
+        .order_by(PlanActividad.created_at)
+    )
+    for actividad, responsable in filas:
+        por_hallazgo[actividad.hallazgo_id].append(
+            AtencionLeer(
+                id=actividad.id,
+                anio=actividad.anio,
+                semana=actividad.semana,
+                estado=estado_actividad(
+                    actividad.estado, actividad.anio, actividad.semana, hoy, None
+                ),
+                responsable_id=None if oculto else actividad.responsable_id,
+                responsable_nombre=None if oculto else responsable,
+                notas=actividad.notas,
+                nota_cumplimiento=actividad.nota_cumplimiento,
+                cumplida_en=actividad.cumplida_en,
+            )
+        )
+    return por_hallazgo
+
+
+def _filtro_estado(estado: EstadoHallazgo):
+    """El mismo criterio de `estado_hallazgo`, en SQL (la marca de vencida no cambia el estado)."""
+
+    def con(*condiciones):
+        return exists().where(
+            PlanActividad.hallazgo_id == Hallazgo.id,
+            PlanActividad.deleted_at.is_(None),
+            *condiciones,
+        )
+
+    atendido = con(PlanActividad.estado == "cumplida")
+    if estado == "atendido":
+        return atendido
+    pendiente = con(PlanActividad.estado.in_(("programada", "reprogramada")))
+    if estado == "en_atencion":
+        return pendiente & ~atendido
+    return ~atendido & ~pendiente
+
+
 async def _leer_filas(session: SessionDep, usuario: Usuario, filas) -> list[HallazgoLeer]:
-    """Hallazgos para el usuario. Ley 1581: el productor no ve quién los registró."""
-    evidencias = await _evidencias(session, [fila[0].id for fila in filas])
+    """Hallazgos para el usuario. Ley 1581: el productor no ve quién los registró ni quién los
+    atiende."""
+    oculto = usuario.rol == "productor"
+    ids = [fila[0].id for fila in filas]
+    evidencias = await _evidencias(session, ids)
+    atenciones = await _atenciones(session, ids, oculto)
     leidos = []
     for hallazgo, lote_codigo, tipo_nombre, tipo_color, registrador in filas:
-        oculto = usuario.rol == "productor"
+        estado, vencida = estado_hallazgo(a.estado for a in atenciones[hallazgo.id])
         leidos.append(
             HallazgoLeer(
                 id=hallazgo.id,
@@ -228,13 +287,29 @@ async def _leer_filas(session: SessionDep, usuario: Usuario, filas) -> list[Hall
                 observado_en=hallazgo.observado_en,
                 registrado_por_id=None if oculto else registrador.id,
                 registrado_por_nombre=None if oculto else registrador.nombre_completo,
-                estado="abierto",
+                estado=estado,
+                vencida=vencida,
+                atenciones=atenciones[hallazgo.id],
                 evidencias=[EvidenciaLeer.model_validate(e) for e in evidencias[hallazgo.id]],
                 created_at=hallazgo.created_at,
                 updated_at=hallazgo.updated_at,
             )
         )
     return leidos
+
+
+async def leer_hallazgos(
+    session: SessionDep, usuario: Usuario, ids: list[uuid.UUID]
+) -> list[HallazgoLeer]:
+    """Hallazgos vigentes con esos ids, como los devuelve la API (para la sincronización)."""
+    if not ids:
+        return []
+    filas = (
+        await session.execute(
+            _consulta().where(Hallazgo.id.in_(ids)).order_by(Hallazgo.observado_en)
+        )
+    ).all()
+    return await _leer_filas(session, usuario, filas)
 
 
 async def _leer(session: SessionDep, usuario: Usuario, hallazgo_id: uuid.UUID) -> HallazgoLeer:
@@ -374,6 +449,7 @@ async def listar_hallazgos(
     session: SessionDep,
     lote_id: uuid.UUID | None = None,
     tipo_id: uuid.UUID | None = None,
+    estado: EstadoHallazgo | None = None,
     desde: date | None = None,
     hasta: date | None = None,
     pagina: Annotated[int, Query(ge=1)] = 1,
@@ -385,6 +461,8 @@ async def listar_hallazgos(
         consulta = consulta.where(Hallazgo.lote_id == lote_id)
     if tipo_id is not None:
         consulta = consulta.where(Hallazgo.tipo_id == tipo_id)
+    if estado is not None:
+        consulta = consulta.where(_filtro_estado(estado))
     inicio, fin = rango_bogota(desde, hasta)
     if inicio is not None:
         consulta = consulta.where(Hallazgo.observado_en >= inicio)
@@ -453,6 +531,13 @@ async def actualizar_hallazgo(
                 raise _no_valido("El lote debe ser del mismo predio del hallazgo")
         punto = a_geometria(entrada.ubicacion)
         await _exigir_punto(session, lote_id, punto)
+        if lote_id != hallazgo.lote_id:
+            # Su atención en el plan sigue al hallazgo al nuevo lote.
+            await session.execute(
+                update(PlanActividad)
+                .where(PlanActividad.hallazgo_id == hallazgo.id)
+                .values(lote_id=lote_id, updated_at=func.now())
+            )
         hallazgo.lote_id = lote_id
         hallazgo.geom = punto
         hallazgo.precision_m = entrada.precision_m
@@ -466,7 +551,8 @@ async def actualizar_hallazgo(
     "/hallazgos/{hallazgo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar un hallazgo",
-    description="Borrado lógico; lo hacen el agrónomo y el administrador.",
+    description="Borrado lógico; lo hacen el agrónomo y el administrador. También salen del "
+    "plan sus actividades de atención.",
     responses={**ERROR_401, **ERROR_403, **ERROR_404},
 )
 async def eliminar_hallazgo(
@@ -475,7 +561,13 @@ async def eliminar_hallazgo(
     hallazgo = await _exigir_hallazgo(
         session, usuario, hallazgo_id, escribir=True, roles_escritura=ROLES_GESTION
     )
-    hallazgo.deleted_at = datetime.now(UTC)
+    momento = datetime.now(UTC)
+    hallazgo.deleted_at = momento
+    await session.execute(
+        update(PlanActividad)
+        .where(PlanActividad.hallazgo_id == hallazgo.id, PlanActividad.deleted_at.is_(None))
+        .values(deleted_at=momento, updated_at=momento)
+    )
     await session.commit()
 
 

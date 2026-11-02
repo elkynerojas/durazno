@@ -1182,12 +1182,11 @@ otras irregularidades) con evidencias fotográficas y seguimiento de su atenció
 > Hecho en la rama `hu-41-registrar-hallazgo`. API: `/inspecciones/hallazgos` (CRUD con borrado
 > lógico) y `/inspecciones/hallazgos/{id}/evidencias` (multipart, Pillow: máx. 1920 px, JPEG sin
 > EXIF, miniatura de 400 px, en `datos/evidencias`). Web: `/inspeccion` para todos los roles, con
-> mapa, filtros, lista, formulario y ficha con galería. El filtro por **estado** llega con HU-42,
-> que deriva el estado del plan (por ahora todos quedan «Abierto»).
+> mapa, filtros, lista, formulario y ficha con galería. El filtro por estado llegó con HU-42.
 
 ### HU-42 · Seguir la atención de un hallazgo desde el plan
 
-- **Estado:** Por hacer · **Prioridad:** Extra · **Puntos:** 5 · **Sprint:** Extra · **Responsable:** Ambos
+- **Estado:** En revisión · **Prioridad:** Extra · **Puntos:** 5 · **Sprint:** Extra · **Responsable:** Ambos
 - **Historia:** Como agrónomo, quiero programar en el plan la atención de un hallazgo, para que su estado refleje si ya se atendió.
 
 **Criterios de aceptación**
@@ -1200,8 +1199,18 @@ otras irregularidades) con evidencias fotográficas y seguimiento de su atenció
 
 **Tareas**
 
-- [ ] `HU-42.1` [BD] Tipo de actividad atencion_hallazgo y nota de cumplimiento
-- [ ] `HU-42.2` [API] Programar la atención y estado derivado del hallazgo
-- [ ] `HU-42.3` [API] Hallazgos en la sincronización y guía de integración
-- [ ] `HU-42.4` [Web] Programar y seguir la atención desde la ficha y el plan
-- [ ] `HU-42.5` [Pruebas] Ciclo abierto → en atención → atendido, cancelación y E2E
+- [x] `HU-42.1` [BD] Tipo de actividad atencion_hallazgo y nota de cumplimiento
+- [x] `HU-42.2` [API] Programar la atención y estado derivado del hallazgo
+- [x] `HU-42.3` [API] Hallazgos en la sincronización y guía de integración
+- [x] `HU-42.4` [Web] Programar y seguir la atención desde la ficha y el plan
+- [x] `HU-42.5` [Pruebas] Ciclo abierto → en atención → atendido, cancelación y E2E
+
+> Hecho en la rama `hu-42-atencion-hallazgo`. `plan_actividad` gana el tipo `atencion_hallazgo`
+> (con `hallazgo_id`) y `nota_cumplimiento`. `POST /plan/atencion-hallazgo` la programa desde el
+> hallazgo (422 si ya tiene una pendiente o cumplida) y `POST /plan/{id}/cumplimiento` acepta
+> `nota`. El estado del hallazgo se deriva de sus actividades (`estado_hallazgo`, con la marca
+> `vencida`) y se filtra en SQL. El plan las muestra en la fila «Atención de hallazgos»; «Mi
+> semana» y la actividad enlazan al hallazgo; el mapa del predio tiene la capa «Hallazgos» (sin
+> atender). Borrar el hallazgo saca su atención del plan. `GET /sync/cambios` trae
+> `tipos_hallazgo` y `hallazgos` (guía de integración actualizada). Cancelar equivale a eliminar la
+> actividad: el plan no tiene acción de cancelar.

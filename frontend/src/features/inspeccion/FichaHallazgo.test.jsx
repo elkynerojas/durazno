@@ -17,6 +17,8 @@ const HALLAZGO = {
   precision_m: 4.2,
   registrado_por_id: 'u-tec',
   registrado_por_nombre: 'Luis Pérez',
+  vencida: false,
+  atenciones: [],
   evidencias: [{ id: 'e-1', ancho: 800, alto: 600, bytes: 1000, orden: 0 }],
 }
 

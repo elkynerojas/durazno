@@ -274,6 +274,7 @@ async def test_catalogo(cliente, datos):
         "visita_monitoreo",
         "cambio_atrayente",
         "labor_cultural",
+        "atencion_hallazgo",
     ]
     assert {"valor": "raleo", "nombre": "Raleo de frutos"} in respuesta.json()["labores"]
 

@@ -2326,3 +2326,38 @@ button {
   font-size: 0.82rem;
   color: var(--texto-suave);
 }
+
+/* ---------- Seguimiento de hallazgos (HU-42) ---------- */
+.seguimiento-hallazgo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.seguimiento-hallazgo .formulario__seccion {
+  margin: 0;
+}
+
+.seguimiento-hallazgo__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seguimiento-hallazgo__lista li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.88rem;
+  background: var(--durazno-50);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+
+.seguimiento-hallazgo__lista span {
+  color: var(--texto-suave);
+}

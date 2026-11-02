@@ -35,6 +35,8 @@ const HALLAZGO = {
   registrado_por_id: null,
   registrado_por_nombre: null,
   ubicacion: { type: 'Point', coordinates: [-72.6, 7.2] },
+  vencida: false,
+  atenciones: [],
   evidencias: [],
 }
 
