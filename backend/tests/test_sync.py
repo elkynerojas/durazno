@@ -5,7 +5,7 @@ cliente ya tenía, se llevan sus marcas de tiempo a `VIEJO`, antes del `desde` d
 """
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select, update
@@ -77,7 +77,7 @@ async def finca(session, predio_vacio, crear_usuario):
     )
     session.add(lote)
     await session.flush()
-    instalada = date.today() - timedelta(days=20)
+    instalada = hoy_bogota() - timedelta(days=20)
     trampas = {
         codigo: Trampa(
             lote_id=lote.id,
@@ -187,7 +187,7 @@ async def test_solo_lo_que_cambio_desde_la_ultima_vez(cliente, session, finca):
             "codigo_ica": "J3",
             "tipo": "jackson",
             "atrayente": "Trimedlure",
-            "fecha_instalacion": str(date.today()),
+            "fecha_instalacion": str(hoy_bogota()),
             "geom": {"type": "Point", "coordinates": list(PUNTO)},
         },
         headers=h,

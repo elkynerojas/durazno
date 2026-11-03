@@ -2,7 +2,7 @@
 servidor desplegado se ejecuta con `python -m app.scripts.flujo_movil --url ...`."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -12,6 +12,7 @@ from app.models.lote import Lote
 from app.models.trampa import Trampa
 from app.schemas.geo import PoligonoGeoJSON, PuntoGeoJSON, a_geometria
 from app.scripts.flujo_movil import Flujo, informe, recorrer
+from app.services.monitoreo import hoy_bogota
 from app.services.qr import generar_codigo
 from tests.utilidades import CLAVE
 
@@ -35,7 +36,7 @@ async def tecnico(session, predio_vacio, crear_usuario):
             codigo_qr=generar_codigo(),
             tipo="jackson",
             atrayente="Trimedlure",
-            fecha_instalacion=date.today() - timedelta(days=7),
+            fecha_instalacion=hoy_bogota() - timedelta(days=7),
             geom=a_geometria(PuntoGeoJSON(type="Point", coordinates=(-72.6395, 7.2705))),
         )
     )
