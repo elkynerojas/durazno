@@ -622,7 +622,7 @@ test('administrador y agrónomo', async ({ page }) => {
   await page.goto('/inspeccion?pestana=tipos')
   await captura(page, '29-tipos-hallazgo', { espera: 900 })
   await page.getByRole('button', { name: 'Ayuda' }).click()
-  await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.2.0')
+  await expect(page.getByRole('dialog', { name: 'Ayuda' })).toContainText('1.2.1')
   await captura(page, '25-ayuda', { espera: 600 })
 })
 
