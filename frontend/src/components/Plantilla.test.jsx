@@ -78,11 +78,11 @@ describe('Plantilla', () => {
 
   it('en la parte superior muestra solo el logo, que lleva al mapa', () => {
     renderizar('tecnico')
-    expect(screen.getByRole('link', { name: 'PERSICA: ir al mapa' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'SIDURAF: ir al mapa' })).toHaveAttribute(
       'href',
       '/mapa',
     )
-    expect(screen.queryByText('PERSICA')).not.toBeInTheDocument()
+    expect(screen.queryByText('SIDURAF')).not.toBeInTheDocument()
     expect(screen.queryByText('Icota · Cácota')).not.toBeInTheDocument()
   })
 

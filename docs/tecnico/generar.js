@@ -1,4 +1,4 @@
-// Documento técnico de PERSICA (HU-02) en Word: arquitectura, diagramas UML, modelo de datos,
+// Documento técnico de SIDURAF (HU-02) en Word: arquitectura, diagramas UML, modelo de datos,
 // servicios y despliegue. Se ejecuta con docs/tecnico/generar.sh, que prepara los diagramas (PNG),
 // el modelo de datos (modelo.json) y las versiones instaladas (pip.json, npm.json).
 const fs = require('fs')
@@ -83,7 +83,7 @@ const introduccion = [
   h1('1. Introducción'),
   h2('1.1 Propósito'),
   p(
-    'Este documento describe cómo está construido **PERSICA**, el aplicativo web de trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo de durazno: su arquitectura, los componentes del servidor y de la interfaz, el comportamiento del sistema en diagramas UML, el modelo de datos, los servicios que expone y las instrucciones para desplegarlo y operarlo.',
+    'Este documento describe cómo está construido **SIDURAF** (Sistema de Información del Durazno para el Registro y Análisis Fitosanitario), el aplicativo web de trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo de durazno: su arquitectura, los componentes del servidor y de la interfaz, el comportamiento del sistema en diagramas UML, el modelo de datos, los servicios que expone y las instrucciones para desplegarlo y operarlo.',
   ),
   h2('1.2 Alcance'),
   p(
@@ -135,7 +135,7 @@ const vision = [
     'El predio productor de durazno de la vereda Icota (Cácota, Norte de Santander) monitorea moscas de la fruta con trampas Jackson (trimedlure, _Ceratitis capitata_) y McPhail (proteína hidrolizada, _Anastrepha_ spp.), y debe reportar al ICA el índice MTD. Sin una herramienta, la ubicación de las trampas, las rutas de revisión, la planeación semanal y el cálculo del índice se llevan en papel y hojas de cálculo.',
   ),
   p(
-    'PERSICA georreferencia lotes y trampas, identifica cada trampa con un código QR que el técnico lee en campo, registra las lecturas con la posición del teléfono, planea las actividades de las 52 semanas, calcula el MTD por especie y genera el reporte para el ICA. Como funcionalidad extra, el módulo Inspección registra hallazgos en el cultivo (hongos, plagas, árboles enfermos) con fotos de evidencia y sigue su atención desde el plan. Expone además una API documentada para la app móvil de la fase 2.',
+    'SIDURAF georreferencia lotes y trampas, identifica cada trampa con un código QR que el técnico lee en campo, registra las lecturas con la posición del teléfono, planea las actividades de las 52 semanas, calcula el MTD por especie y genera el reporte para el ICA. Como funcionalidad extra, el módulo Inspección registra hallazgos en el cultivo (hongos, plagas, árboles enfermos) con fotos de evidencia y sigue su atención desde el plan. Expone además una API documentada para la app móvil de la fase 2.',
   ),
   h2('2.2 Módulos'),
   ...tabla(
@@ -171,7 +171,7 @@ const arquitectura = [
   h1('3. Arquitectura'),
   h2('3.1 Estilo arquitectónico'),
   p(
-    'PERSICA sigue una arquitectura **cliente-servidor en tres capas**: una SPA en React que corre en el navegador, una API REST en FastAPI que concentra las reglas de negocio y una base de datos PostgreSQL con PostGIS. Todo se empaqueta en contenedores Docker y se orquesta con Docker Compose, tanto en desarrollo como en producción. Un nginx publica el frontend compilado y hace de proxy de la API, termina TLS y aplica cabeceras de seguridad y límites de peticiones.',
+    'SIDURAF sigue una arquitectura **cliente-servidor en tres capas**: una SPA en React que corre en el navegador, una API REST en FastAPI que concentra las reglas de negocio y una base de datos PostgreSQL con PostGIS. Todo se empaqueta en contenedores Docker y se orquesta con Docker Compose, tanto en desarrollo como en producción. Un nginx publica el frontend compilado y hace de proxy de la API, termina TLS y aplica cabeceras de seguridad y límites de peticiones.',
   ),
   ...figura('componentes.png', 'Diagrama de componentes.', 4.3),
   p(
@@ -615,14 +615,14 @@ const anexos = [
 // ============================ DOCUMENTO ============================
 
 const doc = documento({
-  titulo: 'PERSICA · Documento técnico',
-  descripcion: 'Arquitectura, diseño UML, modelo de datos y despliegue de PERSICA (HU-02)',
-  encabezado: 'PERSICA · Documento técnico',
+  titulo: 'SIDURAF · Documento técnico',
+  descripcion: 'Arquitectura, diseño UML, modelo de datos y despliegue de SIDURAF (HU-02)',
+  encabezado: 'SIDURAF · Documento técnico',
   contenido: [
     ...portada({
       logo: 'logo.png',
       titulo: 'Documento técnico',
-      subtitulo: 'Arquitectura, diseño, modelo de datos y despliegue de PERSICA',
+      subtitulo: 'Arquitectura, diseño, modelo de datos y despliegue de SIDURAF',
       lineas: ['Trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo de durazno'],
       pie: [
         'Luis e Ingry · Trabajo de grado, Semillero ORION',
@@ -646,4 +646,4 @@ const doc = documento({
   ],
 })
 
-guardar(doc, process.argv[2] || path.join(__dirname, 'Documento_tecnico_PERSICA.docx'), process.env.TECNICO_TITULOS)
+guardar(doc, process.argv[2] || path.join(__dirname, 'Documento_tecnico_SIDURAF.docx'), process.env.TECNICO_TITULOS)

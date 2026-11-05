@@ -48,8 +48,8 @@ export default function ModalAyuda({ alCerrar }) {
           <div>
             <h2 id="titulo-ayuda">Ayuda</h2>
             <p className="formulario__nota">
-              PERSICA · Trazabilidad geolocalizada del trampeo de moscas de la fruta en el cultivo
-              de durazno.
+              SIDURAF · Sistema de Información del Durazno para el Registro y Análisis
+              Fitosanitario. Trazabilidad geolocalizada del trampeo de moscas de la fruta.
             </p>
           </div>
         </div>

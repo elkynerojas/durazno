@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "PERSICA API"
+    app_name: str = "SIDURAF API"
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
 

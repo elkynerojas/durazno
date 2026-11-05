@@ -1,5 +1,5 @@
 #!/bin/sh
-# Infraestructura de PERSICA en Google Cloud (Compute Engine). Idempotente: lo que ya existe se
+# Infraestructura de SIDURAF en Google Cloud (Compute Engine). Idempotente: lo que ya existe se
 # deja como está.
 #
 #   PROYECTO=persica-iser sh deploy/gcp/crear-infraestructura.sh

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Documento técnico de PERSICA (docs/tecnico/Documento_tecnico_PERSICA.docx).
+# Documento técnico de SIDURAF (docs/tecnico/Documento_tecnico_SIDURAF.docx).
 #
 #   NODE_PATH=<carpeta con node_modules/docx> sh docs/tecnico/generar.sh
 #
@@ -30,4 +30,4 @@ docker run --rm -v "$SALIDA/img:/d" -w /d plantuml/plantuml:1.2024.7 -tpng -char
 cp "$RAIZ/docs/manual/img/logo.png" "$SALIDA/img/logo.png"
 
 TECNICO_IMG="$SALIDA/img" TECNICO_MODELO="$SALIDA/modelo.json" node "$TECNICO/generar.js" \
-    "$TECNICO/Documento_tecnico_PERSICA.docx"
+    "$TECNICO/Documento_tecnico_SIDURAF.docx"

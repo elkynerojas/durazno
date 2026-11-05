@@ -1,4 +1,4 @@
-"""Modelo de datos de PERSICA desde los metadatos de SQLAlchemy, para el documento técnico.
+"""Modelo de datos de SIDURAF desde los metadatos de SQLAlchemy, para el documento técnico.
 
     docker compose exec -T api python - < docs/tecnico/modelo.py > modelo.json
 

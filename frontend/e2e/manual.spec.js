@@ -628,7 +628,7 @@ test('administrador y agrónomo', async ({ page }) => {
 
 test('logo para la portada', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 600 })
-  await page.goto('/persica-logo.svg')
+  await page.goto('/siduraf-logo.svg')
   await page.locator('svg').evaluate((svg) => {
     svg.setAttribute('width', '600')
     svg.setAttribute('height', '600')

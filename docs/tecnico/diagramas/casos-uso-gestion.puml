@@ -7,7 +7,7 @@ actor "Agrónomo" as agr
 actor "Administrador" as adm
 adm -|> agr
 
-rectangle "PERSICA" {
+rectangle "SIDURAF" {
   usecase "Dibujar y editar lotes" as UC5
   usecase "Registrar y ubicar trampas" as UC6
   usecase "Imprimir etiquetas QR" as UC7

@@ -1,6 +1,6 @@
 @startuml
 !include estilo.iuml
-title Componentes de PERSICA
+title Componentes de SIDURAF
 
 actor "Usuario\n(navegador)" as usuario
 actor "App móvil\n(fase 2)" as movil

@@ -35,7 +35,7 @@ export default function Plantilla({ children }) {
   return (
     <div className="plantilla">
       <aside className={`lateral${abierto ? ' lateral--abierto' : ''}`}>
-        <Link to="/mapa" className="marca marca--lateral" aria-label="PERSICA: ir al mapa">
+        <Link to="/mapa" className="marca marca--lateral" aria-label="SIDURAF: ir al mapa">
           <Logo className="marca__logo marca__logo--lateral" />
         </Link>
         <button

@@ -1,4 +1,4 @@
-// Genera el manual de usuario de PERSICA (HU-38.1) en Word a partir de las capturas.
+// Genera el manual de usuario de SIDURAF (HU-38.1) en Word a partir de las capturas.
 //
 // 1. Capturas: MANUAL=1 docker compose --profile e2e run --rm e2e npx playwright test manual
 //    (quedan en frontend/test-results/manual/, junto con etiquetas.pdf y reporte-mtd.pdf).
@@ -19,7 +19,7 @@ const { p, h1, h2, vinetas, pasos, nota, figura, telefono, tabla, espacio, porta
 const introduccion = [
   h1('1. Introducción'),
   p(
-    '**PERSICA** es el aplicativo web con el que el predio registra y georreferencia sus lotes y trampas, identifica cada trampa con un código QR, define las rutas de monitoreo, planea las actividades de las 52 semanas del año y calcula el índice **MTD** (moscas/trampa/día) según el Manual Técnico de Trampeo del ICA (Plan Nacional de Moscas de la Fruta). Con el módulo **Inspección** registra además los hallazgos del cultivo (hongos, plagas, árboles enfermos) con fotos y sigue su atención.',
+    '**SIDURAF** (Sistema de Información del Durazno para el Registro y Análisis Fitosanitario) es el aplicativo web con el que el predio registra y georreferencia sus lotes y trampas, identifica cada trampa con un código QR, define las rutas de monitoreo, planea las actividades de las 52 semanas del año y calcula el índice **MTD** (moscas/trampa/día) según el Manual Técnico de Trampeo del ICA (Plan Nacional de Moscas de la Fruta). Con el módulo **Inspección** registra además los hallazgos del cultivo (hongos, plagas, árboles enfermos) con fotos y sigue su atención.',
   ),
   p(
     'Este manual explica, paso a paso y con capturas de pantalla, todos los flujos del aplicativo. Está organizado por tareas: cada capítulo indica qué rol la realiza, dónde se encuentra en el menú y qué hacer si algo no sale como se espera.',
@@ -325,7 +325,7 @@ const campo = [
   h2('9.2 Leer el QR de la trampa'),
   ...pasos([
     'Abra la cámara del teléfono (o el lector de QR) y apunte a la etiqueta de la trampa.',
-    'Toque el enlace que aparece. Se abre la **ficha de la trampa** en PERSICA: código ICA, tipo, lote, posición en la ruta («Parada 2 de 3 · sigue …») y la última lectura.',
+    'Toque el enlace que aparece. Se abre la **ficha de la trampa** en SIDURAF: código ICA, tipo, lote, posición en la ruta («Parada 2 de 3 · sigue …») y la última lectura.',
     'Si el QR no se lee, en el aplicativo puede escribir el código impreso bajo el QR.',
   ]),
   ...telefono(['34-telefono-ficha-qr-p1.jpg', '34-telefono-ficha-qr-p2.jpg'], 'Ficha de la trampa al leer su QR.'),
@@ -549,7 +549,7 @@ const preguntas = [
     [
       ['**Atrayente**', 'Sustancia que atrae a las moscas: trimedlure (Jackson) o proteína hidrolizada (McPhail).'],
       ['**Código ICA**', 'Identificador oficial de la trampa ante el ICA.'],
-      ['**Código QR**', 'Código de 8 caracteres de la etiqueta de la trampa; abre su ficha en PERSICA.'],
+      ['**Código QR**', 'Código de 8 caracteres de la etiqueta de la trampa; abre su ficha en SIDURAF.'],
       ['**Evidencia**', 'Foto de un hallazgo. Se guarda reducida y sin la ubicación del teléfono.'],
       ['**Hallazgo**', 'Irregularidad observada en un lote (hongo, plaga, árbol enfermo…), con su punto, descripción y fotos.'],
       ['**Días de exposición**', 'Días que la trampa estuvo en campo desde la revisión anterior (o la instalación).'],
@@ -568,9 +568,9 @@ const preguntas = [
 // ============================ DOCUMENTO ============================
 
 const doc = documento({
-  titulo: 'PERSICA · Manual de usuario',
-  descripcion: 'Manual de usuario del aplicativo PERSICA (HU-38)',
-  encabezado: 'PERSICA · Manual de usuario',
+  titulo: 'SIDURAF · Manual de usuario',
+  descripcion: 'Manual de usuario del aplicativo SIDURAF (HU-38)',
+  encabezado: 'SIDURAF · Manual de usuario',
   contenido: [
     ...portada({
       logo: 'logo.png',
@@ -602,4 +602,4 @@ const doc = documento({
   ],
 })
 
-guardar(doc, process.argv[2] || path.join(__dirname, 'Manual_de_usuario_PERSICA.docx'), process.env.MANUAL_TITULOS)
+guardar(doc, process.argv[2] || path.join(__dirname, 'Manual_de_usuario_SIDURAF.docx'), process.env.MANUAL_TITULOS)

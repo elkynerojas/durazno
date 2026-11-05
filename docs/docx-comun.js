@@ -1,4 +1,4 @@
-// Ayudas para generar los documentos Word de PERSICA (manual de usuario y documento técnico) con
+// Ayudas para generar los documentos Word de SIDURAF (manual de usuario y documento técnico) con
 // la librería docx: mismo estilo, portada, índice, figuras y tablas numeradas.
 const fs = require('fs')
 const path = require('path')
@@ -265,7 +265,7 @@ function crear({ imagenes }) {
   // Documento carta con encabezado y pie (sin ellos en la portada).
   function documento({ titulo, descripcion, encabezado, contenido }) {
     return new Document({
-      creator: 'PERSICA',
+      creator: 'SIDURAF',
       title: titulo,
       description: descripcion,
       styles: {

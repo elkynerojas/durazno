@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prepara la VM y levanta PERSICA (se ejecuta en el servidor, como un usuario con sudo):
+# Prepara la VM y levanta SIDURAF (se ejecuta en el servidor, como un usuario con sudo):
 #
 #   gcloud compute ssh persica --zone us-east1-b --command \
 #     "DOMINIO=persica.ejemplo.co CORREO=responsable@ejemplo.co VERSION=v1.0.0 sh -s" \

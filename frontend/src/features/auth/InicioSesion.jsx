@@ -48,7 +48,7 @@ export default function InicioSesion() {
       <section className="acceso__portada">
         <div className="marca">
           <Logo className="marca__logo marca__logo--grande" />
-          <span className="marca__nombre">PERSICA</span>
+          <span className="marca__nombre">SIDURAF</span>
         </div>
         <div className="acceso__lema">
           <p className="acceso__antetitulo">Plan Nacional de Moscas de la Fruta</p>

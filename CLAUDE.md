@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Durazno Icota — Trazabilidad geolocalizada del trampeo de moscas de la fruta
 
+El aplicativo se llama **SIDURAF** (Sistema de Información del Durazno para el Registro y Análisis
+Fitosanitario); logo en `frontend/public/siduraf-logo.svg`. Antes se llamó PERSICA: ese nombre sigue
+solo en la infraestructura (proyecto GCP, VM, dominio, `/opt/persica`) y en los correos demo.
+
 Aplicativo web para registrar y georreferenciar los lotes y las trampas de un predio
 productor de durazno, generar un código QR por trampa, visualizar el predio en un mapa,
 definir rutas de monitoreo, planear actividades (52 semanas) y calcular el índice MTD

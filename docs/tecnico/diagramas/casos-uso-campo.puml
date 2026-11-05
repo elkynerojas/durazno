@@ -8,7 +8,7 @@ actor "Productor" as pro
 actor "Agrónomo" as agr
 actor "App móvil\n(fase 2)" as app
 
-rectangle "PERSICA" {
+rectangle "SIDURAF" {
   usecase "Iniciar sesión" as UC0
   usecase "Consultar mi semana" as UC1
   usecase "Leer el QR de una trampa" as UC2
