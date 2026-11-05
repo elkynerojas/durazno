@@ -3,7 +3,7 @@
 title Despliegue en producción (Google Cloud)
 
 actor "Técnico / agrónomo\n(teléfono o PC)" as u
-node "DNS\npersica.redsoftdevelopers.com\nA → 34.138.170.192" as dns
+node "DNS\nsiduraf.redsoftdevelopers.com\n(persica.… redirige aquí)\nA → 34.138.170.192" as dns
 
 cloud "Google Cloud · proyecto persica-iser · us-east1" {
   node "VM persica\ne2-small · Debian 12 · 20 GB\nfirewall 80/443" as vm {

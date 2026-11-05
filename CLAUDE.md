@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 El aplicativo se llama **SIDURAF** (Sistema de Información del Durazno para el Registro y Análisis
 Fitosanitario); logo en `frontend/public/siduraf-logo.svg`. Antes se llamó PERSICA: ese nombre sigue
-solo en la infraestructura (proyecto GCP, VM, dominio, `/opt/persica`) y en los correos demo.
+solo en la infraestructura (proyecto GCP, VM, dominio anterior, `/opt/persica`) y en los correos demo.
 
 Aplicativo web para registrar y georreferenciar los lotes y las trampas de un predio
 productor de durazno, generar un código QR por trampa, visualizar el predio en un mapa,
@@ -79,13 +79,14 @@ docker compose -f docker-compose.prod.yml exec respaldo sh /respaldo/probar-rest
 ```
 
 Despliegue en Google Cloud: proyecto `persica-iser`, VM `persica` (e2-small, `us-east1-b`, IP fija
-34.138.170.192), https://persica.redsoftdevelopers.com, código en `/opt/persica` (tag desplegado).
+34.138.170.192), https://siduraf.redsoftdevelopers.com (https://persica.redsoftdevelopers.com redirige
+aquí por los QR impresos: `DOMINIO_ANTERIOR`), código en `/opt/persica` (tag desplegado).
 `deploy/gcp/crear-infraestructura.sh` crea la infraestructura y `deploy/gcp/instalar-servidor.sh`
 prepara la VM y levanta el stack (también sirve para actualizar a otra versión):
 
 ```bash
 gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \
-  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=vX.Y.Z sh -s" \
+  "DOMINIO=siduraf.redsoftdevelopers.com CORREO=<correo> VERSION=vX.Y.Z sh -s" \
   < deploy/gcp/instalar-servidor.sh
 ```
 

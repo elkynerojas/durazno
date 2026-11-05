@@ -2,7 +2,8 @@
 # Primera emisión del certificado de Let's Encrypt (después lo renueva el servicio certbot).
 # Requisitos: el dominio apunta a este servidor, los puertos 80 y 443 están abiertos y el
 # stack de producción está arriba. Con STAGING=1 usa el entorno de pruebas de Let's Encrypt
-# (sin límites de emisión; el certificado no es de confianza).
+# (sin límites de emisión; el certificado no es de confianza). Si .env define DOMINIO_ANTERIOR, el
+# certificado cubre también ese nombre (nginx lo redirige al dominio actual).
 #
 #   sh deploy/obtener-certificado.sh
 set -eu
@@ -10,6 +11,7 @@ set -eu
 cd "$(dirname "$0")/.."
 DOMINIO=$(grep -E '^DOMINIO=' .env | cut -d= -f2-)
 CORREO=$(grep -E '^CORREO_LETSENCRYPT=' .env | cut -d= -f2-)
+ANTERIOR=$(grep -E '^DOMINIO_ANTERIOR=' .env | cut -d= -f2- || true)
 [ -n "$DOMINIO" ] && [ -n "$CORREO" ] || {
     echo "Defina DOMINIO y CORREO_LETSENCRYPT en .env" >&2
     exit 1
@@ -17,7 +19,7 @@ CORREO=$(grep -E '^CORREO_LETSENCRYPT=' .env | cut -d= -f2-)
 COMPOSE="docker compose -f docker-compose.prod.yml"
 
 $COMPOSE run --rm --entrypoint certbot certbot certonly \
-    --webroot -w /var/www/certbot -d "$DOMINIO" \
+    --webroot -w /var/www/certbot --cert-name "$DOMINIO" -d "$DOMINIO" ${ANTERIOR:+-d "$ANTERIOR"} \
     --email "$CORREO" --agree-tos --no-eff-email --non-interactive \
     ${STAGING:+--staging}
 

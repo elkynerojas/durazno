@@ -66,6 +66,7 @@ services:
     restart: unless-stopped
     environment:
       DOMINIO: ${DOMINIO}
+      DOMINIO_ANTERIOR: ${DOMINIO_ANTERIOR:-}
     ports:
       - "${HTTP_PUERTO:-80}:80"
       - "${HTTPS_PUERTO:-443}:443"

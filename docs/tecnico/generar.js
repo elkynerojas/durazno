@@ -34,6 +34,7 @@ const npm = (nombre) => NPM[nombre]?.version ?? '—'
 // descripción sale de esta tabla; una variable nueva sin descripción detiene la generación.
 const DESCRIPCION_VARIABLES = {
   DOMINIO: 'Dominio o subdominio que apunta a la IP pública del servidor.',
+  DOMINIO_ANTERIOR: 'Opcional. Dominio usado antes: nginx lo redirige a DOMINIO y el certificado lo incluye.',
   CORREO_LETSENCRYPT: 'Correo al que Let\'s Encrypt avisa de certificados por vencer.',
   HTTP_PUERTO: 'Puerto HTTP publicado por nginx (80).',
   HTTPS_PUERTO: 'Puerto HTTPS publicado por nginx (443).',
@@ -519,22 +520,22 @@ const despliegue = [
     'Pruebas: `docker compose exec api pytest`, `docker compose exec frontend npm test` y, para E2E, `docker compose exec api python -m app.scripts.sembrar_e2e` seguido de `docker compose --profile e2e run --rm e2e`.',
   ]),
   h2('11.3 Producción en Google Cloud'),
-  p('El despliegue actual: proyecto `persica-iser`, VM `persica` (e2-small, Debian 12, `us-east1-b`), IP fija 34.138.170.192 y https://persica.redsoftdevelopers.com.'),
+  p('El despliegue actual: proyecto `persica-iser`, VM `persica` (e2-small, Debian 12, `us-east1-b`), IP fija 34.138.170.192 y https://siduraf.redsoftdevelopers.com. La dirección anterior, https://persica.redsoftdevelopers.com, redirige a la actual: los QR impresos con ella siguen funcionando.'),
   h3('Paso 1. Infraestructura'),
   p('Crea la IP fija, la VM, la regla de firewall para los puertos 80 y 443 y los snapshots diarios del disco (7 días). Es idempotente.'),
   ...codigo('gcloud auth login\nPROYECTO=persica-iser sh deploy/gcp/crear-infraestructura.sh'),
   h3('Paso 2. DNS'),
   p('En el proveedor del dominio, crear el registro **A** del subdominio con la IP que muestra el paso 1 (TTL 300) y verificar que resuelva:'),
-  ...codigo('dig +short persica.redsoftdevelopers.com'),
+  ...codigo('dig +short siduraf.redsoftdevelopers.com'),
   h3('Paso 3. Servidor y aplicativo'),
   p('Instala Docker y Compose, agrega swap, descarga la versión indicada en `/opt/persica`, crea la carpeta `datos/evidencias` con dueño 10001 (el usuario de la API), crea `.env` con claves aleatorias generadas en el servidor (permisos 600) y levanta el stack:'),
   ...codigo(
-    'gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \\\n  "DOMINIO=persica.redsoftdevelopers.com CORREO=<correo> VERSION=v1.2.1 sh -s" \\\n  < deploy/gcp/instalar-servidor.sh',
+    'gcloud compute ssh persica --project persica-iser --zone us-east1-b --command \\\n  "DOMINIO=siduraf.redsoftdevelopers.com CORREO=<correo> VERSION=v1.2.2 sh -s" \\\n  < deploy/gcp/instalar-servidor.sh',
   ),
   h3('Paso 4. Certificado HTTPS'),
   p('Con el DNS resolviendo, se emite primero con el entorno de pruebas de Let\'s Encrypt y luego el definitivo. El servicio certbot lo renueva cada 12 horas.'),
   ...codigo(
-    'gcloud compute ssh persica --project persica-iser --zone us-east1-b\n# ya en el servidor:\ncd /opt/persica\nsudo STAGING=1 sh deploy/obtener-certificado.sh\n# si sale bien, borrar el de prueba y emitir el definitivo:\nsudo docker compose -f docker-compose.prod.yml run --rm \\\n  --entrypoint certbot certbot delete --cert-name persica.redsoftdevelopers.com\nsudo sh deploy/obtener-certificado.sh',
+    'gcloud compute ssh persica --project persica-iser --zone us-east1-b\n# ya en el servidor:\ncd /opt/persica\nsudo STAGING=1 sh deploy/obtener-certificado.sh\n# si sale bien, borrar el de prueba y emitir el definitivo:\nsudo docker compose -f docker-compose.prod.yml run --rm \\\n  --entrypoint certbot certbot delete --cert-name siduraf.redsoftdevelopers.com\nsudo sh deploy/obtener-certificado.sh',
   ),
   h3('Paso 5. Primer administrador y datos de demostración'),
   p('Crear la cuenta desde una terminal interactiva (pide la contraseña) y, si se quiere, sembrar el predio de demostración con cuentas ficticias que toman la misma contraseña:'),
@@ -543,7 +544,7 @@ const despliegue = [
   ),
   h3('Paso 6. Verificación'),
   ...codigo(
-    '# 200 y cabeceras HSTS y CSP:\ncurl -sI https://persica.redsoftdevelopers.com | head -5\n# versión, base de datos y PostGIS:\ncurl -s https://persica.redsoftdevelopers.com/api/v1/health',
+    '# 200 y cabeceras HSTS y CSP:\ncurl -sI https://siduraf.redsoftdevelopers.com | head -5\n# versión, base de datos y PostGIS:\ncurl -s https://siduraf.redsoftdevelopers.com/api/v1/health',
   ),
   h2('11.4 Actualizar a una versión nueva'),
   ...pasos([
@@ -552,6 +553,15 @@ const despliegue = [
     'Verificar con `/api/v1/health` que responda la versión nueva.',
   ]),
   nota('Nunca ejecute `docker compose down -v` en el servidor: borra el volumen de la base de datos.', 'Importante'),
+  h3('Cambiar de dominio'),
+  p('Los QR impresos codifican la dirección del aplicativo, así que el dominio anterior no se apaga: nginx lo redirige (301) al nuevo con la misma ruta, y un solo certificado cubre los dos nombres. Así se pasó de persica a siduraf.redsoftdevelopers.com:'),
+  ...pasos([
+    'Crear el registro **A** del dominio nuevo con la IP del servidor y verificar que resuelva.',
+    'En el `.env` del servidor: `DOMINIO` con el nuevo, `DOMINIO_ANTERIOR` con el que se usaba, y `CORS_ORIGINS` y `QR_URL_BASE` con `https://` y el nuevo. Las etiquetas QR que se generen desde entonces usan la dirección nueva.',
+    'Reconstruir con `instalar-servidor.sh` (o `docker compose -f docker-compose.prod.yml up -d --build`). Mientras no exista el certificado nuevo, nginx sigue usando el del dominio anterior.',
+    'Emitir el certificado con `sudo sh deploy/obtener-certificado.sh`, que agrega `DOMINIO_ANTERIOR` al mismo certificado.',
+    'Verificar que el dominio nuevo responda 200 y que una ruta del anterior (p. ej. `/t/<código>`) responda 301 hacia el nuevo. Las sesiones abiertas en el dominio anterior deben iniciarse de nuevo.',
+  ]),
   h2('11.5 Respaldos y restauración'),
   ...vinetas([
     'El servicio `respaldo` hace un `pg_dump` diario a las 02:00 (Bogotá) y conserva 14 días en el volumen `respaldos`.',

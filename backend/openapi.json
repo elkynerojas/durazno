@@ -3,7 +3,7 @@
   "info": {
     "title": "SIDURAF API",
     "description": "Servicios de trazabilidad geolocalizada del trampeo de moscas de la fruta en durazno (vereda Icota, Cácota). Documentación OpenAPI para la integración de la aplicación móvil (fase 2).",
-    "version": "1.2.1"
+    "version": "1.2.2"
   },
   "paths": {
     "/api/v1/health": {

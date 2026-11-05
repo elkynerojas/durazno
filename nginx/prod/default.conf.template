@@ -1,4 +1,6 @@
-# Nginx de producción. ${DOMINIO} lo reemplaza la imagen oficial al iniciar (envsubst).
+# Nginx de producción. ${DOMINIO} y ${DOMINIO_ANTERIOR} los reemplaza la imagen oficial al iniciar
+# (envsubst). DOMINIO_ANTERIOR (opcional) redirige al actual: los QR impresos con la dirección
+# anterior siguen funcionando.
 
 # Inicio de sesión: máximo 10 intentos por minuto por IP (rociado de contraseñas y bloqueo de
 # cuentas ajenas, auditoría HU-05). El límite por correo lo aplica además la API.
@@ -25,7 +27,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name ${DOMINIO};
+    server_name ${DOMINIO} ${DOMINIO_ANTERIOR};
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -40,7 +42,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name ${DOMINIO};
+    server_name ${DOMINIO} ${DOMINIO_ANTERIOR};
 
     # Enlace al certificado vigente: Let's Encrypt o el provisional (certificado.sh).
     ssl_certificate /etc/nginx/tls/actual/fullchain.pem;
@@ -52,6 +54,11 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:TLS:10m;
     ssl_session_tickets off;
+
+    # Dominio anterior: misma ruta en el dominio actual.
+    if ($host != ${DOMINIO}) {
+        return 301 https://${DOMINIO}$request_uri;
+    }
 
     # Permite subir GeoJSON/KML de lotes con muchos vértices.
     client_max_body_size 10m;

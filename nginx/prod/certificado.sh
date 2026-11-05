@@ -1,6 +1,7 @@
 #!/bin/sh
-# Apunta /etc/nginx/tls/actual al certificado de Let's Encrypt del dominio si ya existe; si no,
-# a uno autofirmado provisional (Nginx no arranca sin certificado y certbot necesita a Nginx).
+# Apunta /etc/nginx/tls/actual al certificado de Let's Encrypt del dominio si ya existe; si no, al
+# del dominio anterior (mientras se emite el del nuevo, el anterior sigue en servicio); si no, a
+# uno autofirmado provisional (Nginx no arranca sin certificado y certbot necesita a Nginx).
 set -eu
 
 REAL="/etc/letsencrypt/live/${DOMINIO}"
@@ -10,6 +11,13 @@ mkdir -p /etc/nginx/tls
 if [ -f "${REAL}/fullchain.pem" ]; then
     ln -sfn "${REAL}" /etc/nginx/tls/actual
     echo "certificado.sh: usando el certificado de Let's Encrypt de ${DOMINIO}"
+    exit 0
+fi
+
+ANTERIOR="/etc/letsencrypt/live/${DOMINIO_ANTERIOR:-}"
+if [ -n "${DOMINIO_ANTERIOR:-}" ] && [ -f "${ANTERIOR}/fullchain.pem" ]; then
+    ln -sfn "${ANTERIOR}" /etc/nginx/tls/actual
+    echo "certificado.sh: usando el certificado de ${DOMINIO_ANTERIOR} hasta emitir el de ${DOMINIO}"
     exit 0
 fi
 
